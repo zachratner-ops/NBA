@@ -1,0 +1,401 @@
+<!-- NBA PLAYOFF POINTS TRACKER — paste into a Squarespace Code Block -->
+<style>
+#nba-tracker { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 100%; }
+#nba-tracker * { box-sizing: border-box; }
+.nba-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.nba-title { font-size: 22px; font-weight: 700; margin: 0; }
+.nba-updated { font-size: 12px; color: #888; margin-top: 2px; }
+.nba-btn { background: #1a1a1a; color: #fff; border: none; font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: 7px; cursor: pointer; }
+.nba-btn:hover { background: #333; }
+.nba-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.nba-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.nba-card { background: #f5f5f3; border-radius: 10px; padding: 14px; }
+.nba-card.leader { background: #fff; border: 2px solid #2e7d32; }
+.nba-rank { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+.nba-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.nba-pts { font-size: 28px; font-weight: 700; line-height: 1; }
+.nba-lbl { font-size: 11px; color: #888; }
+.nba-delta { font-size: 12px; font-weight: 600; margin-top: 6px; }
+.nba-bar-bg { height: 3px; background: #ddd; border-radius: 2px; margin-top: 10px; }
+.nba-bar { height: 3px; border-radius: 2px; }
+.nba-section-title { font-size: 14px; font-weight: 700; color: #444; margin: 28px 0 12px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
+.nba-wrap { overflow-x: auto; margin-bottom: 32px; }
+.nba-table { border-collapse: collapse; width: 100%; min-width: 700px; font-size: 12px; }
+.nba-table th { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; border-bottom: 2px solid #eee; text-align: left; }
+.nba-table th.r { text-align: right; padding-right: 12px; }
+.nba-table td { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+.nba-table tr.totals { background: #f5f5f3; font-weight: 700; }
+.nba-table tr.totals td { border-top: 2px solid #ddd; font-size: 13px; padding: 9px 8px; }
+.nba-table tr.behind td { font-size: 11px; color: #aaa; font-style: italic; }
+.nba-table td.sep { border-left: 2px solid #eee; }
+.nba-table td.pts { text-align: right; font-weight: 700; padding-right: 12px; }
+.nba-table td.pts.z { color: #ccc; font-weight: 400; }
+.nba-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 3px; letter-spacing: .04em; }
+.nba-elim { opacity: 0.38; text-decoration: line-through; }
+.nba-elim-badge { font-size: 9px; background: #eee; color: #999; border-radius: 3px; padding: 1px 4px; margin-left: 4px; font-weight: 600; vertical-align: middle; }
+.nba-err { background: #fff0f0; border: 1px solid #fcc; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #900; margin-bottom: 12px; display: none; }
+.nba-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #ccc; border-top-color: #333; border-radius: 50%; animation: nba-spin .7s linear infinite; vertical-align: middle; margin-right: 5px; }
+@keyframes nba-spin { to { transform: rotate(360deg); } }
+.nba-chart-wrap { width: 100%; overflow-x: auto; margin-bottom: 32px; }
+.nba-chart-inner { min-width: 500px; height: 220px; position: relative; }
+.nba-chart-inner canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+.t-BOS{background:#007A33;color:#fff}.t-LAL{background:#FDB927;color:#552583}.t-DEN{background:#0E2240;color:#FEC524}
+.t-OKC{background:#007AC1;color:#EF3B24}.t-NYK{background:#F58426;color:#006BB6}.t-SAS{background:#666;color:#fff}
+.t-CLE{background:#860038;color:#FDBB30}.t-HOU{background:#CE1141;color:#fff}.t-DET{background:#1D42BA;color:#C8102E}
+.t-MIN{background:#0C2340;color:#78BE20}.t-PHI{background:#ED174C;color:#006BB6}.t-ATL{background:#E03A3E;color:#fff}
+.t-ORL{background:#0077C0;color:#C4D600}.t-POR{background:#1D1160;color:#E03A3E}.t-TOR{background:#000;color:#CE1141}
+.t-ELIM{background:#ddd;color:#999}
+</style>
+
+<div id="nba-tracker">
+  <div class="nba-header">
+    <div>
+      <div class="nba-title">Playoff Points 2026</div>
+      <div class="nba-updated" id="nba-updated">Hit refresh to load live data</div>
+    </div>
+    <button class="nba-btn" id="nba-btn" onclick="nbaRefresh()">&#8635; Refresh</button>
+  </div>
+  <div class="nba-err" id="nba-err"></div>
+
+  <div class="nba-section-title">Leaderboard</div>
+  <div class="nba-cards" id="nba-cards"></div>
+
+  <div style="margin-top:32px;"></div>
+
+  <div class="nba-section-title">Roster</div>
+  <div class="nba-wrap"><table class="nba-table" id="nba-table"></table></div>
+
+  <div class="nba-section-title">Points over time</div>
+  <div class="nba-chart-wrap"><div class="nba-chart-inner"><canvas id="nba-chart"></canvas></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+var NBA_PROXY = 'https://reasonable-illumination-production-6e9a.up.railway.app';
+
+// ── Eliminated teams — update this list as teams get knocked out ──
+// Add team abbreviations here when they're eliminated
+var ELIMINATED = []; // auto-updated from Basketball Reference on each refresh
+var INJURED = []; // auto-updated from Basketball Reference on each refresh
+var SERIES = {}; // team -> net lead (e.g. OKC: 2 means up 2-0, DET: -1 means down 1-2)
+var WINS = {};   // team -> {w, l} actual wins/losses in series
+
+var OWNERS = [
+  { name:'Max', color:'#2e7d32', players:[
+    { name:'Shai Gilgeous-Alexander', team:'OKC' },
+    { name:"De'Aaron Fox",            team:'SAS' },
+    { name:'Karl-Anthony Towns',      team:'NYK' },
+    { name:'Derrick White',           team:'BOS' },
+    { name:'James Harden',            team:'CLE' },
+    { name:'Cameron Johnson',         team:'DEN' },
+    { name:'Jabari Smith Jr.',        team:'HOU' },
+    { name:'Deni Avdija',             team:'POR' },
+  ]},
+  { name:'Throuple', color:'#1565c0', players:[
+    { name:'Jaylen Brown',   team:'BOS' },
+    { name:'Jamal Murray',   team:'DEN' },
+    { name:'Jalen Duren',    team:'DET' },
+    { name:'OG Anunoby',     team:'NYK' },
+    { name:'Brandon Ingram', team:'TOR' },
+    { name:'Devin Vassell',  team:'SAS' },
+    { name:'Ajay Mitchell',  team:'OKC' },
+    { name:'Luka Doncic',    team:'LAL' },
+  ]},
+  { name:'Andrew', color:'#c62828', players:[
+    { name:'Jayson Tatum',    team:'BOS' },
+    { name:'Cade Cunningham', team:'DET' },
+    { name:'Jalen Williams',  team:'OKC' },
+    { name:'Aaron Gordon',    team:'DEN' },
+    { name:'Evan Mobley',     team:'CLE' },
+    { name:'Alperen Sengun',  team:'HOU' },
+    { name:'Mikal Bridges',   team:'NYK' },
+    { name:'Dylan Harper',    team:'SAS' },
+  ]},
+  { name:'Jared', color:'#6a1b9a', players:[
+    { name:'Donovan Mitchell', team:'CLE' },
+    { name:'Nikola Jokic',     team:'DEN' },
+    { name:'Kevin Durant',     team:'HOU' },
+    { name:'Stephon Castle',   team:'SAS' },
+    { name:'Payton Pritchard', team:'BOS' },
+    { name:'Jalen Johnson',    team:'ATL' },
+    { name:'Paolo Banchero',   team:'ORL' },
+    { name:'Julius Randle',    team:'MIN' },
+  ]},
+  { name:'Zach', color:'#e65100', players:[
+    { name:'Victor Wembanyama', team:'SAS' },
+    { name:'Jalen Brunson',     team:'NYK' },
+    { name:'Chet Holmgren',     team:'OKC' },
+    { name:'Anthony Edwards',   team:'MIN' },
+    { name:'Amen Thompson',     team:'HOU' },
+    { name:'Tobias Harris',     team:'DET' },
+    { name:'Tyrese Maxey',      team:'PHI' },
+    { name:'LeBron James',      team:'LAL' },
+  ]},
+];
+
+function isElim(team){ return ELIMINATED.indexOf(team) !== -1; }
+function normalizeStr(str){ return str.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function isInjured(name){ return INJURED.indexOf(normalizeStr(name)) !== -1; }
+function seriesRowBg(team){
+  if(isElim(team)) return '';
+  var lead = SERIES[team];
+  if(lead === undefined) return '';
+  if(lead >= 3)  return 'background:#d4edda;'; // up 3, dark green
+  if(lead === 2) return 'background:#eaf6ec;'; // up 2, light green
+  if(lead <= -3) return 'background:#f8d7da;'; // down 3, dark red
+  if(lead === -2)return 'background:#fdf0f1;'; // down 2, light red
+  return '';
+}
+
+// State
+var pts = {};
+var lastUpdated = null;
+var snapHistory = []; // [{date, totals:{ownerName: pts}}]
+var chart = null;
+
+try {
+  var s = JSON.parse(localStorage.getItem('nba26v2') || 'null');
+  if(s){ pts=s.p||{}; lastUpdated=s.t||null; snapHistory = Array.isArray(s.h) ? s.h : []; INJURED=s.inj||[]; SERIES=s.series||{}; WINS=s.wins||{}; }
+} catch(e){}
+
+function save(){
+  try{ localStorage.setItem('nba26v2', JSON.stringify({p:pts,t:lastUpdated,h:snapHistory,inj:INJURED,series:SERIES,wins:WINS})); }catch(e){}
+}
+
+function ownerTotal(o){
+  return o.players.reduce(function(s,p){ return s+(pts[p.name]||0); }, 0);
+}
+
+// ── Leaderboard cards ────────────────────────────────────────────
+function renderCards(){
+  var sorted = OWNERS.map(function(o){ return {o:o,tot:ownerTotal(o)}; }).sort(function(a,b){return b.tot-a.tot;});
+  var top = sorted[0].tot || 1;
+  document.getElementById('nba-cards').innerHTML = sorted.map(function(item,rank){
+    var o=item.o, tot=item.tot, behind=sorted[0].tot-tot, pct=Math.round(tot/top*100);
+    var activePlayers = o.players.filter(function(p){ return !isElim(p.team); }).length;
+    var elimNote = activePlayers < o.players.length ? '<div style="font-size:10px;color:#e53935;margin-top:4px;">'+activePlayers+'/'+o.players.length+' active</div>' : '';
+    return '<div class="nba-card'+(rank===0?' leader':'')+'">'+
+      '<div class="nba-rank">'+(rank===0?'🏆 Leading':'#'+(rank+1))+'</div>'+
+      '<div class="nba-name" style="color:'+o.color+'">'+o.name+'</div>'+
+      '<div class="nba-pts">'+tot.toLocaleString()+'</div>'+
+      '<div class="nba-lbl">playoff pts</div>'+
+      '<div class="nba-delta" style="color:'+(rank===0?'#2e7d32':'#e53935')+'">'+
+        (rank===0?'↑ leading':'-'+behind.toLocaleString()+' back')+
+      '</div>'+
+      elimNote+
+      '<div class="nba-bar-bg"><div class="nba-bar" style="width:'+pct+'%;background:'+o.color+'"></div></div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── Roster table ─────────────────────────────────────────────────
+function renderTable(){
+  var tops = Math.max.apply(null, OWNERS.map(ownerTotal).concat([0]));
+  var h = '<thead><tr><th>Rd</th>';
+  OWNERS.forEach(function(o){ h+='<th class="sep" colspan="3" style="background:#fff;padding:10px 8px;text-align:center;"><span style="display:inline-block;background:'+o.color+';color:#fff;font-size:15px;font-weight:700;padding:6px 20px;border-radius:6px;">'+o.name+'</span></th>'; });
+  h += '</tr><tr><th></th>';
+  OWNERS.forEach(function(){ h+='<th class="sep">Player</th><th>Team</th><th class="r">PTS</th>'; });
+  h += '</tr></thead><tbody>';
+
+  for(var r=0;r<8;r++){
+    h += '<tr><td style="color:#aaa;font-size:11px;text-align:center;">'+(r+1)+'</td>';
+    OWNERS.forEach(function(o){
+      var p = o.players[r];
+      if(!p){ h+='<td colspan="3"></td>'; return; }
+      var v = pts[p.name];
+      var disp = (v===undefined) ? '—' : v.toLocaleString();
+      var elim = isElim(p.team);
+      var inj = isInjured(p.name);
+      var rowBg = seriesRowBg(p.team);
+      var nameCls = elim ? ' class="nba-elim"' : '';
+      var injIcon = inj ? ' <span style="font-size:9px;font-weight:700;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:3px;padding:1px 4px;vertical-align:middle;">HURT</span>' : '';
+      var seriesScore = '';
+      if(!elim && WINS[p.team]) {
+        var wl = WINS[p.team];
+        seriesScore = '<div style="font-size:9px;font-weight:700;margin-top:2px;letter-spacing:.02em;">'+wl.w+'-'+wl.l+'</div>';
+      }
+      var teamBadge = elim
+        ? '<span class="nba-badge t-ELIM">'+p.team+'</span><span class="nba-elim-badge">ELIMINATED</span>'
+        : '<div style="display:inline-block;text-align:center;"><span class="nba-badge t-'+p.team+'">'+p.team+'</span>'+seriesScore+'</div>';
+      h += '<td class="sep" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+'</td>'+
+           '<td style="'+rowBg+'">'+teamBadge+'</td>'+
+           '<td class="pts'+(v===0?' z':'')+(elim?' nba-elim':'')+'" style="'+rowBg+'">'+disp+'</td>';
+    });
+    h += '</tr>';
+  }
+
+  h += '<tr class="totals"><td>Total</td>';
+  OWNERS.forEach(function(o){
+    var t = ownerTotal(o);
+    h += '<td class="sep" colspan="2" style="color:#888;font-size:10px;">Total</td><td class="pts" style="color:'+o.color+'">'+t.toLocaleString()+'</td>';
+  });
+  h += '</tr><tr class="behind"><td>Behind</td>';
+  OWNERS.forEach(function(o){
+    h += '<td class="sep" colspan="2">Points behind</td><td class="pts">'+(tops-ownerTotal(o)).toLocaleString()+'</td>';
+  });
+  h += '</tr></tbody>';
+  document.getElementById('nba-table').innerHTML = h;
+}
+
+// ── Line chart ───────────────────────────────────────────────────
+function renderChart(){
+  var ctx = document.getElementById('nba-chart').getContext('2d');
+  if(!snapHistory.length){
+    if(chart){ chart.destroy(); chart=null; }
+    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+    ctx.fillStyle='#aaa'; ctx.font='13px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('Refresh a few times to build up the chart', ctx.canvas.width/2, 140);
+    return;
+  }
+
+  var labels = snapHistory.map(function(snap){
+    var d = new Date(snap.date);
+    return (d.getMonth()+1)+'/'+(d.getDate());
+  });
+
+  var datasets = OWNERS.map(function(o){
+    return {
+      label: o.name,
+      data: snapHistory.map(function(snap){ return snap.totals[o.name] || 0; }),
+      borderColor: o.color,
+      backgroundColor: o.color,
+      borderWidth: 2.5,
+      pointRadius: snapHistory.length < 10 ? 4 : 2,
+      pointHoverRadius: 6,
+      tension: 0.3,
+      fill: false
+    };
+  });
+
+  if(chart){ chart.destroy(); }
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:10, padding:12, font:{size:10} } },
+        tooltip: {
+          callbacks: {
+            label: function(ctx){ return ctx.dataset.label+': '+ctx.parsed.y.toLocaleString()+' pts'; }
+          }
+        }
+      },
+      scales: {
+        x: { grid:{ color:'#f0f0f0' }, ticks:{ font:{size:10} } },
+        y: { grid:{ color:'#f0f0f0' }, ticks:{ font:{size:10} } }
+      }
+    }
+  });
+}
+
+function renderAll(){ renderCards(); renderTable(); renderChart(); }
+
+// ── Name mapping for BBRef spellings ────────────────────────────
+var NAME_MAP = {
+  'Shai Gilgeous-Alexander':'Shai Gilgeous-Alexander',
+  "De'Aaron Fox":"De'Aaron Fox",
+  'Karl-Anthony Towns':'Karl-Anthony Towns',
+  'Derrick White':'Derrick White',
+  'James Harden':'James Harden',
+  'Cameron Johnson':'Cameron Johnson',
+  'Jabari Smith':'Jabari Smith Jr.',
+  'Jabari Smith Jr.':'Jabari Smith Jr.',
+  'Deni Avdija':'Deni Avdija',
+  'Jaylen Brown':'Jaylen Brown',
+  'Jamal Murray':'Jamal Murray',
+  'Jalen Duren':'Jalen Duren',
+  'OG Anunoby':'OG Anunoby',
+  'Brandon Ingram':'Brandon Ingram',
+  'Devin Vassell':'Devin Vassell',
+  'Ajay Mitchell':'Ajay Mitchell',
+  'Luka Dončić':'Luka Doncic',
+  'Luka Doncic':'Luka Doncic',
+  'Jayson Tatum':'Jayson Tatum',
+  'Cade Cunningham':'Cade Cunningham',
+  'Jalen Williams':'Jalen Williams',
+  'Aaron Gordon':'Aaron Gordon',
+  'Evan Mobley':'Evan Mobley',
+  'Alperen Şengün':'Alperen Sengun',
+  'Alperen Sengun':'Alperen Sengun',
+  'Mikal Bridges':'Mikal Bridges',
+  'Dylan Harper':'Dylan Harper',
+  'Donovan Mitchell':'Donovan Mitchell',
+  'Nikola Jokić':'Nikola Jokic',
+  'Nikola Jokic':'Nikola Jokic',
+  'Kevin Durant':'Kevin Durant',
+  'Stephon Castle':'Stephon Castle',
+  'Payton Pritchard':'Payton Pritchard',
+  'Jalen Johnson':'Jalen Johnson',
+  'Paolo Banchero':'Paolo Banchero',
+  'Julius Randle':'Julius Randle',
+  'Victor Wembanyama':'Victor Wembanyama',
+  'Jalen Brunson':'Jalen Brunson',
+  'Chet Holmgren':'Chet Holmgren',
+  'Anthony Edwards':'Anthony Edwards',
+  'Amen Thompson':'Amen Thompson',
+  'Tobias Harris':'Tobias Harris',
+  'Tyrese Maxey':'Tyrese Maxey',
+  'LeBron James':'LeBron James',
+};
+
+// ── Refresh ──────────────────────────────────────────────────────
+function nbaRefresh(){
+  var btn = document.getElementById('nba-btn');
+  var err = document.getElementById('nba-err');
+  btn.disabled=true; btn.innerHTML='<span class="nba-spinner"></span>Fetching…'; err.style.display='none';
+
+  fetch(NBA_PROXY+'/all')
+    .then(function(r){ if(!r.ok) throw new Error('Proxy error '+r.status); return r.json(); })
+    .then(function(data){
+      if(data.error) throw new Error(data.error);
+
+      Object.keys(data.players).forEach(function(bbName){
+        var ourName = NAME_MAP[bbName] || bbName;
+        pts[ourName] = data.players[bbName];
+      });
+      // Update eliminated teams from BBRef
+      if(data.eliminated && data.eliminated.length) {
+        ELIMINATED = data.eliminated;
+      }
+      if(data.injured) {
+        INJURED = data.injured;
+      }
+      if(data.seriesStandings) {
+        SERIES = data.seriesStandings;
+      }
+      if(data.seriesWins) {
+        WINS = data.seriesWins;
+      }
+
+      lastUpdated = data.updated;
+
+      // Save a history snapshot (max one per day, keyed by date string)
+      var today = new Date().toISOString().slice(0,10);
+      var snap = { date: new Date().toISOString(), totals:{} };
+      OWNERS.forEach(function(o){ snap.totals[o.name] = ownerTotal(o); });
+
+      // Replace today's entry or append
+      var todayIdx = snapHistory.findIndex(function(h){ return h.date.slice(0,10)===today; });
+      if(todayIdx>=0) history[todayIdx]=snap; else snapHistory.push(snap);
+
+      // Keep last 60 snapshots max
+      if(snapHistory.length>60) history=snapHistory.slice(-60);
+
+      save();
+      renderAll();
+      document.getElementById('nba-updated').innerHTML =
+        '<span style="color:#2e7d32;">●</span> Updated '+new Date(lastUpdated).toLocaleString()+' via Basketball Reference';
+    })
+    .catch(function(e){ err.style.display=''; err.textContent='Error: '+e.message; })
+    .finally(function(){ btn.disabled=false; btn.innerHTML='&#8635; Refresh'; });
+}
+
+// Init
+if(lastUpdated){
+  document.getElementById('nba-updated').textContent='Last updated '+new Date(lastUpdated).toLocaleString()+' — click Refresh';
+}
+renderAll();
+</script>
