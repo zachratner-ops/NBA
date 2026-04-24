@@ -1,0 +1,6744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golf Bet History</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;}
+.topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-title{font-size:16px;font-weight:600;}
+.topbar-nav{display:flex;gap:16px;}
+.topbar-nav a{color:#aaa;font-size:13px;text-decoration:none;}
+.topbar-nav a:hover{color:#fff;}
+.topbar-nav a.active{color:#fff;}
+.main{max-width:1200px;margin:0 auto;padding:28px 20px;}
+.page-title{font-size:28px;font-weight:700;margin-bottom:4px;}
+.page-sub{font-size:14px;color:#888;margin-bottom:20px;}
+
+/* Tab toggle */
+.tab-row{display:flex;gap:4px;margin-bottom:24px;background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:4px;width:fit-content;}
+.tab-btn{font-size:13px;font-weight:600;padding:7px 18px;border-radius:7px;border:none;background:transparent;color:#888;cursor:pointer;}
+.tab-btn.active{background:#1a1a1a;color:#fff;}
+
+/* Jump nav */
+.jump-nav{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:14px 18px;margin-bottom:28px;}
+.jump-nav-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:10px;}
+.jump-years{display:flex;flex-wrap:wrap;gap:6px;}
+.jump-year{font-size:13px;font-weight:600;padding:4px 12px;background:#f5f5f3;border-radius:20px;color:#1a1a1a;text-decoration:none;border:0.5px solid #e0e0e0;}
+.jump-year:hover{background:#eee;}
+
+/* All-time */
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:12px;margin-top:28px;}
+.section-label:first-of-type{margin-top:0;}
+.alltime{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:8px;}
+.at-card{background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:14px;text-align:center;}
+.at-card.top{border:2px solid #2e7d32;}
+.at-name{font-size:13px;font-weight:700;margin-bottom:6px;}
+.at-wins{font-size:28px;font-weight:700;line-height:1;}
+.at-lbl{font-size:10px;color:#888;margin-top:2px;}
+.at-earnings{font-size:13px;font-weight:600;color:#2e7d32;margin-top:6px;}
+.at-breakdown{font-size:10px;color:#aaa;margin-top:3px;}
+
+/* Results */
+.year-group{margin-bottom:36px;}
+.year-label{font-size:18px;font-weight:700;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #eee;scroll-margin-top:20px;}
+.major-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;margin-bottom:16px;overflow:hidden;}
+.major-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:0.5px solid #eee;flex-wrap:wrap;gap:8px;}
+.major-name{font-size:16px;font-weight:700;}
+.major-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.pot-pill{font-size:11px;background:#f5f5f3;border-radius:20px;padding:3px 10px;color:#666;}
+.winner-badge{font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;color:#fff;}
+.tie-badge{font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;background:#888;color:#fff;}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:1px;background:#eee;}
+.result-card{background:#fff;padding:12px;}
+.result-card.won{background:#f0faf0;}
+.result-card.out{opacity:0.55;}
+.rc-header{font-size:12px;font-weight:700;margin-bottom:6px;padding-bottom:6px;border-bottom:2px solid;}
+.rc-score{font-size:20px;font-weight:700;margin-bottom:2px;}
+.rc-score.under{color:#2e7d32;}
+.rc-score.over{color:#c62828;}
+.rc-score.out-txt{color:#aaa;font-size:14px;}
+.rc-rank{font-size:10px;color:#888;margin-bottom:8px;}
+.rc-player{font-size:11px;padding:2px 0;display:flex;justify-content:space-between;color:#555;border-bottom:0.5px solid #f5f5f3;}
+.rc-player.cut{color:#bbb;text-decoration:line-through;}
+.rc-player.alt{border-top:1.5px solid #eee;margin-top:3px;padding-top:3px;}
+.alt-lbl{font-size:9px;font-weight:700;color:#856404;margin-right:2px;}
+.rc-score-val{font-weight:600;flex-shrink:0;margin-left:4px;}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.stats-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;}
+@media(max-width:700px){.stats-grid,.stats-grid-3{grid-template-columns:1fr;}}
+.stat-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:16px;}
+.stat-card-title{font-size:13px;font-weight:700;margin-bottom:14px;color:#1a1a1a;}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid #f0f0f0;}
+.stat-row:last-child{border-bottom:none;}
+.stat-row-name{font-size:13px;font-weight:500;}
+.stat-row-val{font-size:13px;font-weight:700;color:#1a1a1a;}
+.stat-row-sub{font-size:11px;color:#aaa;margin-top:1px;}
+.stat-bar-wrap{flex:1;margin:0 10px;height:6px;background:#f0f0f0;border-radius:3px;}
+.stat-bar{height:6px;border-radius:3px;}
+.golfer-table{width:100%;border-collapse:collapse;font-size:12px;}
+.golfer-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;padding:6px 8px;border-bottom:2px solid #eee;text-align:left;}
+.golfer-table th.r{text-align:right;}
+.golfer-table td{padding:6px 8px;border-bottom:0.5px solid #f5f5f3;}
+.golfer-table td.r{text-align:right;font-weight:600;}
+.golfer-table tr:last-child td{border-bottom:none;}
+.owner-pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;color:#fff;margin-left:4px;}
+.trend-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid #f0f0f0;}
+.trend-row:last-child{border-bottom:none;}
+.trend-year{font-size:11px;color:#888;width:36px;flex-shrink:0;}
+.trend-bar-wrap{flex:1;height:8px;background:#f0f0f0;border-radius:4px;}
+.trend-bar{height:8px;border-radius:4px;}
+.trend-val{font-size:11px;font-weight:700;width:40px;text-align:right;flex-shrink:0;}
+.h2h-table{width:100%;border-collapse:collapse;font-size:11px;}
+.h2h-table th,.h2h-table td{padding:5px 7px;border:0.5px solid #eee;text-align:center;}
+.h2h-table th{background:#f5f5f3;font-weight:700;font-size:10px;}
+.h2h-win{background:#e8f5e9;font-weight:700;}
+.h2h-loss{background:#fff0f0;}
+.h2h-self{background:#f5f5f3;color:#ccc;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">Sylvie Ratner Golf Bet</div>
+  <div class="topbar-nav">
+    <a href="index.html">🏀 NBA</a>
+    <a href="draft.html">⛳ Draft</a>
+    <a href="golf.html" class="active">📋 History</a>
+  </div>
+</div>
+<div class="main">
+  <div class="page-title">Major History</div>
+  <div class="page-sub" id="page-sub">Loading...</div>
+
+  <div class="tab-row">
+    <button class="tab-btn active" onclick="showTab('results')">Results</button>
+    <button class="tab-btn" onclick="showTab('stats')">Stats</button>
+  </div>
+
+  <!-- Results tab -->
+  <div id="tab-results">
+    <div class="jump-nav">
+      <div class="jump-nav-title">Jump to year</div>
+      <div class="jump-years" id="jump-years"></div>
+    </div>
+    <div class="section-label">All-time standings</div>
+    <div class="alltime" id="alltime"></div>
+    <div id="majors-container"></div>
+  </div>
+
+  <!-- Stats tab -->
+  <div id="tab-stats" style="display:none;">
+    <div id="stats-content"></div>
+  </div>
+</div>
+
+<script>
+const COLORS = {
+  Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',
+  Zach:'#1565C0',Ben:'#C62828',Matt:'#AD1457',Max:'#558B2F',Mike:'#00838F',Adam:'#4E342E'
+};
+const ALL_OWNERS = ['Andrew','Ben','Zach','Marc','Jared','Mark','Matt','Max'];
+
+const MAJORS = [
+  {
+    "slug": "masters-26",
+    "name": "2026 Masters",
+    "year": 2026,
+    "pot": 210,
+    "winner": "Marc",
+    "owners": {
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -11
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -5
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -5
+          },
+          {
+            "name": "Adam Scott",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Maverick McNealy",
+          "score": -4
+        },
+        "score": -8
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 1
+          },
+          {
+            "name": "Akshay Bhatia",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Robert MacIntyre",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Corey Conners",
+            "score": 6
+          }
+        ],
+        "alternate": {
+          "name": "Justin Thomas",
+          "score": 2
+        },
+        "score": -20
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -12
+          },
+          {
+            "name": "Justin Rose",
+            "score": -10
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -5
+          },
+          {
+            "name": "Wyndham Clark",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Sepp Straka",
+          "score": 2
+        },
+        "score": -25
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": -3
+          },
+          {
+            "name": "Cameron Smith",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -9
+          },
+          {
+            "name": "Sam Burns",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Min Woo Lee",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -21
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -5
+          },
+          {
+            "name": "Chris Gotterup",
+            "score": -2
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Jacob Bridgeman",
+          "score": 2
+        },
+        "score": -8
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -8
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 0
+          },
+          {
+            "name": "Jake Knapp",
+            "score": -7
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -5
+          }
+        ],
+        "alternate": {
+          "name": "Viktor Hovland",
+          "score": -4
+        },
+        "score": -20
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Cameron Young",
+            "score": -10
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -4
+          },
+          {
+            "name": "Jason Day",
+            "score": -5
+          },
+          {
+            "name": "Russell Henley",
+            "score": -10
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": 4
+        },
+        "score": -25
+      }
+    }
+  },
+  {
+    "slug": "open-2025",
+    "name": "2025 The Open Championship",
+    "year": 2025,
+    "pot": 165,
+    "winner": "Andrew",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -17
+          },
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": -6
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -2
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Sahith Theegala",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -24
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -10
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -11
+          },
+          {
+            "name": "Robert MacIntyre",
+            "score": -10
+          },
+          {
+            "name": "Sam Burns",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Patrick Cantlay",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -25
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -3
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": 4
+          },
+          {
+            "name": "Adam Scott",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Ben Griffin",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Keegan Bradley",
+          "score": -4
+        },
+        "score": -11
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Bryson Dechambeau",
+            "score": -9
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Sepp Straka",
+            "score": 0
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Brooks Koepka",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -10
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": -7
+          },
+          {
+            "name": "Justin Rose",
+            "score": -7
+          },
+          {
+            "name": "Justin Thomas",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Patrick Reed",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -24
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Tommy Fleetwood",
+            "score": -7
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -2
+          },
+          {
+            "name": "Russell Henley",
+            "score": -9
+          },
+          {
+            "name": "Corey Conners",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Cameron Young",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -25
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Cheater",
+            "score": -4
+          },
+          {
+            "name": "Liar",
+            "score": 1
+          },
+          {
+            "name": "Fraud",
+            "score": -3
+          },
+          {
+            "name": "Sandbagger",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Eric",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -11
+      }
+    }
+  },
+  {
+    "slug": "us-open-2025",
+    "name": "2025 US Open",
+    "year": 2025,
+    "pot": 215,
+    "winner": "Ben",
+    "owners": {
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": 4
+          },
+          {
+            "name": "Corey Conners",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Russell Henley",
+            "score": 5
+          },
+          {
+            "name": "Taylor Pendrith",
+            "score": 11
+          }
+        ],
+        "alternate": {
+          "name": "Matt Fitzpatrick",
+          "score": 11
+        },
+        "score": 14
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Bryson Dechambeau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": 8
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Young",
+            "score": 3
+          }
+        ],
+        "alternate": {
+          "name": "Wyndham Clark",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 31
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 4
+          },
+          {
+            "name": "Nick Taylor",
+            "score": 8
+          },
+          {
+            "name": "Sam Burns",
+            "score": 4
+          },
+          {
+            "name": "Keegan Bradley",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Shane Lowry",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 7
+          },
+          {
+            "name": "Maverick McNealy",
+            "score": 10
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": 2
+          },
+          {
+            "name": "Harris English",
+            "score": 18
+          }
+        ],
+        "alternate": {
+          "name": "Sepp Straka",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 19
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": 6
+          },
+          {
+            "name": "Aaron Rai",
+            "score": 9
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 3
+          },
+          {
+            "name": "Ben Griffin",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Justin Thomas",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 14
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Collin Morikawa",
+            "score": 8
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 12
+          },
+          {
+            "name": "Tony Finau",
+            "score": 11
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": 12
+        },
+        "score": 31
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": 6
+          },
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Thorbj\u00f8rn Olesen",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      }
+    }
+  },
+  {
+    "slug": "pga-2025",
+    "name": "2025 PGA Championship",
+    "year": 2025,
+    "pot": 175,
+    "winner": "Zach",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -11
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 6
+          },
+          {
+            "name": "Tony Finau",
+            "score": -2
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Jordan Spieth",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 3
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": -4
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Russell Henley",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Sungjae Im",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": -6
+          },
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Min Woo Lee",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Rickie Fowler",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -4
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -1
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 2
+          },
+          {
+            "name": "Sepp Straka",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Mackenzie Hughes",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -1
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Young",
+            "score": 3
+          }
+        ],
+        "alternate": {
+          "name": "Dustin Johnson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Shane Lowry",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Patrick Reed",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Corey Conners",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Daniel Berger",
+          "score": 0
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -4
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": 4
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -4
+          },
+          {
+            "name": "Tom Kim",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Taylor Pendrith",
+          "score": -5
+        },
+        "score": -4
+      }
+    }
+  },
+  {
+    "slug": "masters-2025",
+    "name": "2025 Masters",
+    "year": 2025,
+    "pot": 175,
+    "winner": "Zach",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -8
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -2
+          },
+          {
+            "name": "Min Woo Lee",
+            "score": 6
+          },
+          {
+            "name": "Tom Kim",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Sahith Theegala",
+          "score": 0
+        },
+        "score": 1
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -12
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -2
+          },
+          {
+            "name": "Russell Henley",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Sepp Straka",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Billy Horschel",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -7
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -3
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": 0
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 4
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Sergio Garcia",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -14
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -3
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Robert MacIntyre",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Dustin Johnson",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Brian Harman",
+          "score": 2
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Collin Morikawa",
+            "score": -3
+          },
+          {
+            "name": "Justin Thomas",
+            "score": 2
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 2
+          },
+          {
+            "name": "Cameron Smith",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Maverick McNealy",
+          "score": 1
+        },
+        "score": 1
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -5
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": -7
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Wyndham Clark",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Keegan Bradley",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -7
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Akshay Bhatia",
+            "score": 4
+          },
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": -6
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": -3
+          },
+          {
+            "name": "Corey Conners",
+            "score": -5
+          }
+        ],
+        "alternate": {
+          "name": "Brooks Koepka",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -14
+      }
+    }
+  },
+  {
+    "slug": "british-open-2024",
+    "name": "2024 The Open Championship",
+    "year": 2024,
+    "pot": 225,
+    "winner": "Andrew",
+    "owners": {
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Robert MacIntyre",
+            "score": 9
+          },
+          {
+            "name": "Davis Thompson",
+            "score": 12
+          }
+        ],
+        "alternate": {
+          "name": "Dean Burmester",
+          "score": 3
+        },
+        "score": 19
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -1
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tony Finau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Wyndham Clark",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Max Homa",
+          "score": 8
+        },
+        "score": 9
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Collin Morikawa",
+            "score": 2
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 5
+          },
+          {
+            "name": "Cameron Young",
+            "score": 6
+          },
+          {
+            "name": "Brian Harman",
+            "score": 11
+          }
+        ],
+        "alternate": {
+          "name": "Sam Burns",
+          "score": 6
+        },
+        "score": 28
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -9
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": 8
+          },
+          {
+            "name": "Alex Noren",
+            "score": 1
+          },
+          {
+            "name": "Sungjae Im",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Sahith Theegala",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -9
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jon Rahm",
+            "score": -1
+          },
+          {
+            "name": "Aaron Rai",
+            "score": 15
+          },
+          {
+            "name": "Corey Conners",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Cameron Smith",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 19
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -4
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 9
+          },
+          {
+            "name": "Sepp Straka",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Min Woo Lee",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 9
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Viktor Hovland",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Justin Thomas",
+            "score": 6
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 12
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": 10
+          }
+        ],
+        "alternate": {
+          "name": "Tom Kim",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 28
+      }
+    }
+  },
+  {
+    "slug": "us-open-2024",
+    "name": "2024 US Open",
+    "year": 2024,
+    "pot": 210,
+    "winner": "Ben",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": 8
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -4
+          },
+          {
+            "name": "Cameron Smith",
+            "score": 7
+          },
+          {
+            "name": "Wyndham Clark",
+            "score": 12
+          }
+        ],
+        "alternate": {
+          "name": "Dustin Johnson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 0
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -1
+          },
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tony Finau",
+            "score": -4
+          },
+          {
+            "name": "Cameron Young",
+            "score": 14
+          }
+        ],
+        "alternate": {
+          "name": "Jason Day",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 8
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Collin Morikawa",
+            "score": 2
+          },
+          {
+            "name": "Sahith Theegala",
+            "score": 7
+          },
+          {
+            "name": "Russell Henley",
+            "score": -1
+          },
+          {
+            "name": "Keegan Bradley",
+            "score": 7
+          }
+        ],
+        "alternate": {
+          "name": "Christiaan Bezuidenhout",
+          "score": 7
+        },
+        "score": 12
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -5
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 13
+          },
+          {
+            "name": "Min Woo Lee",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Sungjae Im",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -2
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": -6
+          },
+          {
+            "name": "Corey Conners",
+            "score": 0
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 6
+          },
+          {
+            "name": "Sepp Straka",
+            "score": 12
+          }
+        ],
+        "alternate": {
+          "name": "Viktor Hovland",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 0
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": 1
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 3
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Jordan Spieth",
+          "score": 8
+        },
+        "score": 8
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Max Homa",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": 6
+          },
+          {
+            "name": "Tom Kim",
+            "score": 6
+          },
+          {
+            "name": "Sam Burns",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Dean Burmester",
+          "score": 15
+        },
+        "score": 12
+      }
+    }
+  },
+  {
+    "slug": "pga-2024",
+    "name": "2024 PGA Championship",
+    "year": 2024,
+    "pot": 195,
+    "winner": "Marc",
+    "owners": {
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -12
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -5
+          },
+          {
+            "name": "Cameron Smith",
+            "score": -3
+          },
+          {
+            "name": "Sam Burns",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Talor Gooch",
+          "score": -4
+        },
+        "score": -23
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -13
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -19
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -8
+          },
+          {
+            "name": "Tom Kim",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Dustin Johnson",
+          "score": -6
+        },
+        "score": -37
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": -7
+          },
+          {
+            "name": "Justin Thomas",
+            "score": -13
+          },
+          {
+            "name": "Min Woo Lee",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Jordan Spieth",
+          "score": -6
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Bryson Dechambeau",
+            "score": -19
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -6
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": -3
+          },
+          {
+            "name": "Brian Harman",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Sungjae Im",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -34
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -9
+          },
+          {
+            "name": "Wyndham Clark",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Young",
+            "score": -3
+          },
+          {
+            "name": "Sahith Theegala",
+            "score": -11
+          }
+        ],
+        "alternate": {
+          "name": "Sepp Straka",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -23
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -20
+          },
+          {
+            "name": "Max Homa",
+            "score": -8
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -9
+          },
+          {
+            "name": "Jason Day",
+            "score": -6
+          }
+        ],
+        "alternate": {
+          "name": "Matt Fitzpatrick",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -37
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -14
+          },
+          {
+            "name": "Byeong Hun An",
+            "score": -6
+          },
+          {
+            "name": "Si Woo Kim",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Akshay Bhatia",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      }
+    }
+  },
+  {
+    "slug": "masters-2024",
+    "name": "2024 Masters",
+    "year": 2024,
+    "pot": 205,
+    "winner": "Mark",
+    "owners": {
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -11
+          },
+          {
+            "name": "Jason Day",
+            "score": 5
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Max Homa",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Dustin Johnson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -7
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 4
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 4
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 8
+          },
+          {
+            "name": "Cameron Young",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Russell Henley",
+          "score": 7
+        },
+        "score": 20
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 9
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": 0
+          },
+          {
+            "name": "Brian Harman",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Akshay Bhatia",
+          "score": 6
+        },
+        "score": -1
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": 9
+          },
+          {
+            "name": "Ludvig \u00c5berg",
+            "score": -7
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 4
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": 5
+        },
+        "score": -2
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -1
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -4
+          },
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Jordan Spieth",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -7
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Hideki Matsuyama",
+            "score": 7
+          },
+          {
+            "name": "Joaqu\u00edn Niemann",
+            "score": 4
+          },
+          {
+            "name": "Tony Finau",
+            "score": 13
+          },
+          {
+            "name": "Sahith Theegala",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Corey Conners",
+          "score": 7
+        },
+        "score": 20
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Wyndham Clark",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Smith",
+            "score": -2
+          },
+          {
+            "name": "Tom Kim",
+            "score": 5
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Sungjae Im",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -1
+      }
+    }
+  },
+  {
+    "slug": "british-open-2023",
+    "name": "2023 The Open Championship",
+    "year": 2023,
+    "pot": 220,
+    "winner": "Mark",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": 4
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": -1
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Robert MacIntyre",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Sam Burns",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -11
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -3
+          },
+          {
+            "name": "Max Homa",
+            "score": -2
+          },
+          {
+            "name": "Wyndham Clark",
+            "score": -1
+          },
+          {
+            "name": "Jason Day",
+            "score": -5
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -5
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Cameron Smith",
+            "score": -1
+          },
+          {
+            "name": "Min Woo Lee",
+            "score": -2
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -2
+          },
+          {
+            "name": "Cameron Young",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Rickie Fowler",
+          "score": -1
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Viktor Hovland",
+            "score": -5
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": 5
+          },
+          {
+            "name": "Shane Lowry",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Keegan Bradley",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Phil Mickelson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -6
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -1
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -2
+          },
+          {
+            "name": "Tom Kim",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Justin Thomas",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -11
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Tommy Fleetwood",
+            "score": -5
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": 2
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Adam Scott",
+            "score": 3
+          }
+        ],
+        "alternate": {
+          "name": "Dustin Johnson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -5
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": 4
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -1
+          },
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tony Finau",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Corey Conners",
+          "score": -1
+        },
+        "score": "OUT"
+      }
+    }
+  },
+  {
+    "slug": "us-open-2023",
+    "name": "2023 US Open",
+    "year": 2023,
+    "pot": 175,
+    "winner": "Zach",
+    "owners": {
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -7
+          },
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Kurt Kitayama",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Wyndham Clark",
+          "score": -10
+        },
+        "score": -10
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -3
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 2
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 8
+          }
+        ],
+        "alternate": {
+          "name": "Adam Scott",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -1
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -2
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -2
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": 4
+        },
+        "score": -4
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -9
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -3
+          },
+          {
+            "name": "Gary Woodland",
+            "score": 6
+          },
+          {
+            "name": "Sahith Theegala",
+            "score": 2
+          }
+        ],
+        "alternate": {
+          "name": "Tommy Fleetwood",
+          "score": -5
+        },
+        "score": -10
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Viktor Hovland",
+            "score": 0
+          },
+          {
+            "name": "Max Homa",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 3
+          },
+          {
+            "name": "Sungjae Im",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Joaquin Niemann",
+          "score": 3
+        },
+        "score": "OUT"
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Cameron Smith",
+            "score": -6
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -1
+          },
+          {
+            "name": "Cameron Young",
+            "score": 3
+          },
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Tom Kim",
+          "score": -4
+        },
+        "score": -4
+      }
+    }
+  },
+  {
+    "slug": "pga-2023",
+    "name": "2023 PGA Championship",
+    "year": 2023,
+    "pot": 175,
+    "winner": "Ben",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 7
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -9
+          },
+          {
+            "name": "Sahith Theegala",
+            "score": 6
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 2
+          }
+        ],
+        "alternate": {
+          "name": "Cameron Young",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -7
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": 2
+          },
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Rickie Fowler",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 21
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -2
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -1
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": 4
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Sam Burns",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -2
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 9
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": 5
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -7
+          },
+          {
+            "name": "Abraham Ancer",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Phil Mickelson",
+          "score": 10
+        },
+        "score": 7
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": 12
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Smith",
+            "score": -1
+          },
+          {
+            "name": "Sungjae Im",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Wyndham Clark",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Max Homa",
+            "score": 9
+          },
+          {
+            "name": "Tony Finau",
+            "score": 15
+          },
+          {
+            "name": "Si Woo Kim",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Kurt Kitayama",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Hideki Matsuyama",
+          "score": 5
+        },
+        "score": 21
+      }
+    }
+  },
+  {
+    "slug": "masters-23",
+    "name": "2023 Masters",
+    "year": 2023,
+    "pot": 175,
+    "winner": "Andrew",
+    "owners": {
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -2
+          },
+          {
+            "name": "Corey Conners",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Talor Gooch",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Mito Pereira",
+          "score": 6
+        },
+        "score": -19
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -4
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -3
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -4
+          },
+          {
+            "name": "Justin Rose",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Joaquin Niemann",
+          "score": -2
+        },
+        "score": -1
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -12
+          },
+          {
+            "name": "Tony Finau",
+            "score": 0
+          },
+          {
+            "name": "Max Homa",
+            "score": 6
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -8
+          }
+        ],
+        "alternate": {
+          "name": "Tommy Fleetwood",
+          "score": 3
+        },
+        "score": -20
+      },
+      "Mark": {
+        "golfers": [
+          {
+            "name": "Cameron Smith",
+            "score": 4
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -4
+          },
+          {
+            "name": "Dustin Johnson",
+            "score": 8
+          },
+          {
+            "name": "SungJae Im",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Abraham Ancer",
+          "score": 5
+        },
+        "score": -2
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -7
+          },
+          {
+            "name": "Cameron Young",
+            "score": -6
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -6
+          }
+        ],
+        "alternate": {
+          "name": "Tiger Woods",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -19
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jason Day",
+            "score": 5
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Sam Burns",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Sahith Theegala",
+          "score": -5
+        },
+        "score": -1
+      }
+    }
+  },
+  {
+    "slug": "british-22",
+    "name": "2022 The Open Championship",
+    "year": 2022,
+    "pot": 175,
+    "winner": "Andrew",
+    "owners": {
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -18
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -14
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -45
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -9
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -12
+          },
+          {
+            "name": "Dustin Johnson",
+            "score": -13
+          },
+          {
+            "name": "Tiger Woods",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Christiaan Bezuidenhout",
+          "score": -2
+        },
+        "score": -17
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -7
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -8
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Seamus Power",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Phil Mickelson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -12
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -9
+          },
+          {
+            "name": "Tony Finau",
+            "score": -8
+          },
+          {
+            "name": "Max Homa",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Ryan Fox",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -29
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -10
+          },
+          {
+            "name": "Cameron Smith",
+            "score": -20
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -14
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": -11
+          }
+        ],
+        "alternate": {
+          "name": "Sam Burns",
+          "score": -6
+        },
+        "score": -45
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -4
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -9
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Brooks Koepka",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -17
+      }
+    }
+  },
+  {
+    "slug": "uso-22",
+    "name": "2022 US Open",
+    "year": 2022,
+    "pot": 175,
+    "winner": "Ben",
+    "owners": {
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -1
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -4
+          },
+          {
+            "name": "Shane Lowry",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": 12
+          }
+        ],
+        "alternate": {
+          "name": "Corey Conners",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -1
+          },
+          {
+            "name": "Cameron Smith",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tony Finau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Davis Riley",
+            "score": 7
+          }
+        ],
+        "alternate": {
+          "name": "Tom Hoge",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 8
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": 7
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 2
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -5
+          },
+          {
+            "name": "Sungjae Im",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Louis Oosthuizen",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 4
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Collin Morikawa",
+            "score": -1
+          },
+          {
+            "name": "Dustin Johnson",
+            "score": 5
+          },
+          {
+            "name": "Daniel Berger",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Max Homa",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Phil Mickelson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 13
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -6
+          },
+          {
+            "name": "Sam Burns",
+            "score": 0
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Young",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Billy Horschel",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": 2
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": 8
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": 9
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Justin Rose",
+          "score": 7
+        },
+        "score": 8
+      }
+    }
+  },
+  {
+    "slug": "pga-22",
+    "name": "2022 PGA Championship",
+    "year": 2022,
+    "pot": 175,
+    "winner": "Jared",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -5
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": 8
+          },
+          {
+            "name": "Cameron Young",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Sebasti\u00e1n Mu\u00f1oz",
+          "score": 8
+        },
+        "score": 1
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 6
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 2
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": 2
+          },
+          {
+            "name": "Daniel Berger",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Alex Noren",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -5
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 9
+          },
+          {
+            "name": "Tony Finau",
+            "score": 3
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": 9
+        },
+        "score": 4
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Rory Mcilroy",
+            "score": -2
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": 0
+          },
+          {
+            "name": "Max Homa",
+            "score": 0
+          },
+          {
+            "name": "Tiger Woods",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Cameron Champ",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -2
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": 4
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -3
+          },
+          {
+            "name": "Corey Conners",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Russell Henley",
+          "score": 9
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Bubba Watson",
+            "score": 3
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": 8
+          },
+          {
+            "name": "Sam Burns",
+            "score": 1
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Dustin Johnson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 1
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Viktor Hovland",
+            "score": 5
+          },
+          {
+            "name": "Cameron Smith",
+            "score": 0
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 0
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Billy Horschel",
+          "score": 10
+        },
+        "score": 4
+      }
+    }
+  },
+  {
+    "slug": "masters-22",
+    "name": "2022 Masters",
+    "year": 2022,
+    "pot": 175,
+    "winner": "Marc",
+    "owners": {
+      "Max": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 4
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Sam Burns",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Corey Conners",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Tiger Woods",
+          "score": 13
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 1
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -5
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 2
+          },
+          {
+            "name": "Abraham Ancer",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Francesco Molinari",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -12
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -1
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": 4
+          },
+          {
+            "name": "Daniel Berger",
+            "score": 15
+          },
+          {
+            "name": "Russell Henley",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Billy Horschel",
+          "score": 8
+        },
+        "score": 3
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Scottie Scheffler",
+            "score": -10
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -3
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": 6
+          },
+          {
+            "name": "Webb Simpson",
+            "score": 6
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -7
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 7
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": 17
+          }
+        ],
+        "alternate": {
+          "name": "Cameron Young",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -7
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -4
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Sungjae Im",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Justin Rose",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -12
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Cameron Smith",
+            "score": -5
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 2
+          },
+          {
+            "name": "Tony Finau",
+            "score": 6
+          }
+        ],
+        "alternate": {
+          "name": "Si Woo Kim",
+          "score": 7
+        },
+        "score": 3
+      }
+    }
+  },
+  {
+    "slug": "british-open-2021",
+    "name": "2021 The Open Championship",
+    "year": 2021,
+    "pot": 175,
+    "winner": "TIE:Jared:Andrew",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -11
+          },
+          {
+            "name": "Patrick Reed",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Lee Westwood",
+            "score": 2
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": 2
+          }
+        ],
+        "alternate": {
+          "name": "Sergio Garcia",
+          "score": -4
+        },
+        "score": -7
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -3
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -6
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Daniel Berger",
+          "score": -7
+        },
+        "score": -11
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -8
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -15
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Webb Simpson",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Bryson DeChambeau",
+          "score": -2
+        },
+        "score": -27
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -13
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": -11
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": -3
+          },
+          {
+            "name": "Justin Rose",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Harris English",
+          "score": 0
+        },
+        "score": -27
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -7
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -6
+          },
+          {
+            "name": "Tony Finau",
+            "score": -5
+          },
+          {
+            "name": "Ian Poulter",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Abraham Ancer",
+          "score": 2
+        },
+        "score": -18
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 0
+          },
+          {
+            "name": "Justin Thomas",
+            "score": -1
+          },
+          {
+            "name": "Paul Casey",
+            "score": -5
+          },
+          {
+            "name": "Scottie Scheffler",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Branden Grace",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -13
+      }
+    }
+  },
+  {
+    "slug": "us-open-2021",
+    "name": "2021 US Open",
+    "year": 2021,
+    "pot": 175,
+    "winner": "Jared",
+    "owners": {
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -6
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 2
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 1
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 13
+          }
+        ],
+        "alternate": {
+          "name": "Matt Fitzpatrick",
+          "score": 9
+        },
+        "score": -3
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": 3
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jason Kokrak",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Abraham Ancer",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 2
+          },
+          {
+            "name": "Tony Finau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": -5
+          },
+          {
+            "name": "Marc Leishman",
+            "score": 12
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 9
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -2
+          },
+          {
+            "name": "Justin Thomas",
+            "score": 2
+          },
+          {
+            "name": "Paul Casey",
+            "score": -1
+          },
+          {
+            "name": "Rafa Cabrera Bello",
+            "score": 8
+          }
+        ],
+        "alternate": {
+          "name": "Garrick Higgo",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -1
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": 2
+          },
+          {
+            "name": "Rory McIlroy",
+            "score": -1
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 3
+          },
+          {
+            "name": "Daniel Berger",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "SungJae Im",
+          "score": 5
+        },
+        "score": 0
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -1
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -2
+          },
+          {
+            "name": "Scottie Scheffler",
+            "score": -1
+          },
+          {
+            "name": "Webb Simpson",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": 8
+        },
+        "score": -4
+      }
+    }
+  },
+  {
+    "slug": "pga-2021",
+    "name": "2021 PGA Championship",
+    "year": 2021,
+    "pot": 175,
+    "winner": "Matt",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": 2
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -1
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 1
+          },
+          {
+            "name": "SungJae Im",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Justin Rose",
+          "score": -1
+        },
+        "score": 0
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -1
+          },
+          {
+            "name": "Tony Finau",
+            "score": -1
+          },
+          {
+            "name": "Cameron Smith",
+            "score": 7
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Joaquin Niemann",
+          "score": 2
+        },
+        "score": -1
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 5
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -4
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 1
+          },
+          {
+            "name": "Paul Casey",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Emiliano Grillo",
+          "score": 3
+        },
+        "score": -5
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Daniel Berger",
+            "score": 10
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 0
+          },
+          {
+            "name": "Sam Burns",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Scottie Scheffler",
+          "score": -1
+        },
+        "score": "OUT"
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Dustin Johnson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Abraham Ancer",
+            "score": -1
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": 3
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": 3
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": 2
+          },
+          {
+            "name": "Webb Simpson",
+            "score": 2
+          },
+          {
+            "name": "Corey Conners",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Marc Leishman",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 4
+      }
+    }
+  },
+  {
+    "slug": "masters-2021",
+    "name": "2021 Masters",
+    "year": 2021,
+    "pot": 175,
+    "winner": "Marc",
+    "owners": {
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tony Finau",
+            "score": -3
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 2
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Max Homa",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 3
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": 5
+          },
+          {
+            "name": "Webb Simpson",
+            "score": -2
+          },
+          {
+            "name": "Daniel Berger",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Sergio Garcia",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 8
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -7
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -4
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -10
+          },
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Francesco Molinari",
+          "score": 9
+        },
+        "score": -21
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": 0
+          },
+          {
+            "name": "Cameron Smith",
+            "score": -3
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": 0
+          },
+          {
+            "name": "Tyrrell Hatton",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Adam Scott",
+          "score": 11
+        },
+        "score": -4
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -6
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -1
+          },
+          {
+            "name": "Will Zalatoris",
+            "score": -9
+          },
+          {
+            "name": "Scottie Scheffler",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Paul Casey",
+          "score": 1
+        },
+        "score": -16
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Patrick Cantlay",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -7
+          },
+          {
+            "name": "Sungjae Im",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Corey Conners",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Louis Oosthuizen",
+          "score": 1
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Rory McIlroy",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 0
+          },
+          {
+            "name": "Abraham Ancer",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Lee Westwood",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      }
+    }
+  },
+  {
+    "slug": "masters-2020",
+    "name": "2020 Masters",
+    "year": 2020,
+    "pot": 175,
+    "winner": "Jared",
+    "owners": {
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -14
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -9
+          },
+          {
+            "name": "Matthew Wolff",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Cameron Champ",
+            "score": -6
+          }
+        ],
+        "alternate": {
+          "name": "Brendon Todd",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -29
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": -1
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -1
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -1
+          },
+          {
+            "name": "Matthew Fitzpatrick",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -3
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -8
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -8
+          },
+          {
+            "name": "Tiger Woods",
+            "score": -5
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -5
+          }
+        ],
+        "alternate": {
+          "name": "Rafael Cabrera Bello",
+          "score": 1
+        },
+        "score": -21
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -8
+          },
+          {
+            "name": "Bernd Wiesberger",
+            "score": 4
+          },
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -11
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -12
+          },
+          {
+            "name": "Tony Finau",
+            "score": -2
+          },
+          {
+            "name": "Bubba Watson",
+            "score": -1
+          },
+          {
+            "name": "Justin Rose",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Francesco Molinari",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -18
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -8
+          },
+          {
+            "name": "Webb Simpson",
+            "score": -5
+          },
+          {
+            "name": "Adam Scott",
+            "score": -3
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Jason Kokrak",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -16
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -5
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -7
+          },
+          {
+            "name": "Rickie Fowler",
+            "score": -1
+          },
+          {
+            "name": "Scottie Scheffler",
+            "score": -5
+          }
+        ],
+        "alternate": {
+          "name": "Lee Westwood",
+          "score": -3
+        },
+        "score": -17
+      }
+    }
+  },
+  {
+    "slug": "us-open-2020",
+    "name": "2020 US Open",
+    "year": 2020,
+    "pot": 150,
+    "winner": "Zach",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 5
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": -6
+          },
+          {
+            "name": "Jason Day",
+            "score": 14
+          },
+          {
+            "name": "Marc Leishman",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Tiger Woods",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 13
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 6
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 8
+          },
+          {
+            "name": "Adam Scott",
+            "score": 14
+          },
+          {
+            "name": "Rafa Cabrera Bello",
+            "score": 10
+          }
+        ],
+        "alternate": {
+          "name": "Phil Mickelson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 24
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 10
+          },
+          {
+            "name": "Daniel Berger",
+            "score": 13
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 7
+          },
+          {
+            "name": "Joaquin Niemann",
+            "score": 10
+          }
+        ],
+        "alternate": {
+          "name": "Matthew Fitzpatrick",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 27
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": 6
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": 15
+          },
+          {
+            "name": "Brendon Todd",
+            "score": 10
+          },
+          {
+            "name": "Paul Casey",
+            "score": 8
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 24
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": 5
+          },
+          {
+            "name": "Tony Finau",
+            "score": 6
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": 7
+          },
+          {
+            "name": "Sungjae Im",
+            "score": 9
+          }
+        ],
+        "alternate": {
+          "name": "Justin Rose",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 18
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Collin Morikawa",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Webb Simpson",
+            "score": 6
+          },
+          {
+            "name": "Harris English",
+            "score": 3
+          },
+          {
+            "name": "Matthew Wolff",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Tommy Fleetwood",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 9
+      }
+    }
+  },
+  {
+    "slug": "pga-2020",
+    "name": "2020 PGA Championship",
+    "year": 2020,
+    "pot": 150,
+    "winner": "Marc",
+    "owners": {
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -1
+          },
+          {
+            "name": "Tony Finau",
+            "score": -10
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -3
+          },
+          {
+            "name": "Shane Lowry",
+            "score": 3
+          }
+        ],
+        "alternate": {
+          "name": "Henrik Stenson",
+          "score": 2
+        },
+        "score": -14
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -3
+          },
+          {
+            "name": "Daniel Berger",
+            "score": -7
+          },
+          {
+            "name": "Matt Fitzpatrick",
+            "score": 4
+          },
+          {
+            "name": "Chez Reavie",
+            "score": 6
+          }
+        ],
+        "alternate": {
+          "name": "Tom Lewis",
+          "score": 3
+        },
+        "score": -6
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Bryson DeChambeau",
+            "score": -10
+          },
+          {
+            "name": "Rickie Fowler",
+            "score": 2
+          },
+          {
+            "name": "Jason Day",
+            "score": -10
+          },
+          {
+            "name": "Justin Rose",
+            "score": -9
+          }
+        ],
+        "alternate": {
+          "name": "Marc Leishman",
+          "score": 2
+        },
+        "score": -29
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Patrick Cantlay",
+            "score": 0
+          },
+          {
+            "name": "Webb Simpson",
+            "score": -1
+          },
+          {
+            "name": "Brendon Todd",
+            "score": -6
+          },
+          {
+            "name": "Adam Scott",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": 3
+        },
+        "score": -11
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -7
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -13
+          },
+          {
+            "name": "Tiger Woods",
+            "score": -1
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Scottie Scheffler",
+          "score": -10
+        },
+        "score": -30
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -2
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -8
+          },
+          {
+            "name": "Gary Woodland",
+            "score": 2
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Rafa Cabrera Bello",
+          "score": 8
+        },
+        "score": -8
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -11
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -4
+          },
+          {
+            "name": "Viktor Hovland",
+            "score": -2
+          },
+          {
+            "name": "Abraham Ancer",
+            "score": 0
+          }
+        ],
+        "alternate": {
+          "name": "Matthew Wolff",
+          "score": -10
+        },
+        "score": -25
+      }
+    }
+  },
+  {
+    "slug": "charles-schwab-2020",
+    "name": "2020 Charles Schwab Challenge",
+    "year": 2020,
+    "pot": 150,
+    "winner": "Jared",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Sungjae Im",
+            "score": -11
+          },
+          {
+            "name": "Justin Rose",
+            "score": -14
+          },
+          {
+            "name": "Kevin Kisner",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Ryan Palmer",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -32
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Webb Simpson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -11
+          },
+          {
+            "name": "Collin Morikawa",
+            "score": -15
+          },
+          {
+            "name": "Scottie Scheffler",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Harris English",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -27
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -6
+          },
+          {
+            "name": "Sergio Garcia",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Rafa Cabrera Bello",
+            "score": -8
+          }
+        ],
+        "alternate": {
+          "name": "Alex Noren",
+          "score": 1
+        },
+        "score": "OUT"
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Bryson Dechambeau",
+            "score": -14
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -14
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -13
+          },
+          {
+            "name": "Kevin Na",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Tyrell Hatton",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -41
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -11
+          },
+          {
+            "name": "Ian Poulter",
+            "score": -7
+          },
+          {
+            "name": "Gary Woodland",
+            "score": -12
+          },
+          {
+            "name": "Bubba Watson",
+            "score": -13
+          }
+        ],
+        "alternate": {
+          "name": "Rickie Fowler",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -36
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rory Mcilroy",
+            "score": -6
+          },
+          {
+            "name": "Tony Finau",
+            "score": -8
+          },
+          {
+            "name": "Marc Leishman",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Jason Day",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      }
+    }
+  },
+  {
+    "slug": "british-2019",
+    "name": "2019 The Open Championship",
+    "year": 2019,
+    "pot": 175,
+    "winner": "Max",
+    "owners": {
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -9
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": -6
+          },
+          {
+            "name": "Matthew Fitzpatrick",
+            "score": -3
+          },
+          {
+            "name": "Eddie Pepperell",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Hidecki Matsuyama",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -18
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Erik Van Rooyen",
+            "score": -3
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -12
+          },
+          {
+            "name": "Rickie Fowler",
+            "score": -8
+          },
+          {
+            "name": "Paul Casey",
+            "score": 2
+          }
+        ],
+        "alternate": {
+          "name": "Rory McIlroy",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -23
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -2
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": -6
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -7
+          },
+          {
+            "name": "Bernd Wiesberger",
+            "score": 2
+          }
+        ],
+        "alternate": {
+          "name": "Graeme McDowell",
+          "score": -2
+        },
+        "score": -15
+      },
+      "Jared": {
+        "golfers": [
+          {
+            "name": "Xander Schauffele",
+            "score": -5
+          },
+          {
+            "name": "Tiger Woods",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Rafa Cabrera Bello",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Kevin Kisner",
+          "score": -2
+        },
+        "score": "OUT"
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Justin Rose",
+            "score": -9
+          },
+          {
+            "name": "Francesco Molinari",
+            "score": 2
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": 1
+          },
+          {
+            "name": "Patrick Reed",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Phil Mickelson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -12
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Adam Scott",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -1
+          },
+          {
+            "name": "Gary Woodland",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Tony Finau",
+          "score": -7
+        },
+        "score": "OUT"
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -7
+          },
+          {
+            "name": "Justin Thomas",
+            "score": -4
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -16
+          },
+          {
+            "name": "Matt Wallace",
+            "score": 2
+          }
+        ],
+        "alternate": {
+          "name": "Marc Leishman",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -27
+      }
+    }
+  },
+  {
+    "slug": "us-open-2019",
+    "name": "2019 US Open",
+    "year": 2019,
+    "pot": 175,
+    "winner": "Ben",
+    "owners": {
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 1
+          },
+          {
+            "name": "Francesco Molinari",
+            "score": -3
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Rafa Cabrera Bello",
+          "score": 6
+        },
+        "score": -4
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -10
+          },
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 6
+          },
+          {
+            "name": "Tony Finau",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Paul Casey",
+          "score": -2
+        },
+        "score": "OUT"
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -5
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -7
+          },
+          {
+            "name": "Jason Day",
+            "score": -2
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": -5
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": -2
+        },
+        "score": -17
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": 6
+          },
+          {
+            "name": "Rickie Fowler",
+            "score": 2
+          },
+          {
+            "name": "Jon Rahm",
+            "score": -7
+          },
+          {
+            "name": "Scott Piercy",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Marc Leishman",
+          "score": 1
+        },
+        "score": -1
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Tiger Woods",
+            "score": -2
+          },
+          {
+            "name": "Justin Rose",
+            "score": -7
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": -3
+          },
+          {
+            "name": "Shane Lowry",
+            "score": -1
+          }
+        ],
+        "alternate": {
+          "name": "Brandt Snedeker",
+          "score": 11
+        },
+        "score": -12
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Graeme McDowell",
+            "score": -3
+          },
+          {
+            "name": "Adam Scott",
+            "score": -6
+          },
+          {
+            "name": "Phil Mickelson",
+            "score": 4
+          },
+          {
+            "name": "Webb Simpson",
+            "score": -3
+          }
+        ],
+        "alternate": {
+          "name": "Patrick Cantlay",
+          "score": -2
+        },
+        "score": -12
+      }
+    }
+  },
+  {
+    "slug": "pga-2019",
+    "name": "2019 PGA Championship",
+    "year": 2019,
+    "pot": 175,
+    "winner": "Zach",
+    "owners": {
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jason Day",
+            "score": 4
+          },
+          {
+            "name": "Sergio Garcia",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Phil Mickelson",
+            "score": 12
+          }
+        ],
+        "alternate": {
+          "name": "Rafa Cabrera Bello",
+          "score": 12
+        },
+        "score": "OUT"
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Brooks Koepka",
+            "score": -8
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 3
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Patrick Reed",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Kevin Kisner",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": 1
+          },
+          {
+            "name": "Tony Finau",
+            "score": 11
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -2
+          },
+          {
+            "name": "Ian Poulter",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Henrik Stenson",
+          "score": 8
+        },
+        "score": 10
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -6
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 8
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": 3
+          },
+          {
+            "name": "Paul Casey",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": 1
+        },
+        "score": 2
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Tiger Woods",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Justin Rose",
+            "score": 5
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": 1
+          },
+          {
+            "name": "Jordan Spieth",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Bubba Watson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 4
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Rickie Fowler",
+            "score": 6
+          },
+          {
+            "name": "Francesco Molinari",
+            "score": 8
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": 10
+          },
+          {
+            "name": "Adam Scott",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Marc Leishman",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": 15
+      }
+    }
+  },
+  {
+    "slug": "masters-2019",
+    "name": "2019 Masters",
+    "year": 2019,
+    "pot": 175,
+    "winner": "Andrew",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": -10
+          },
+          {
+            "name": "Justin Thomas",
+            "score": -8
+          },
+          {
+            "name": "Adam Scott",
+            "score": -6
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": -8
+          }
+        ],
+        "alternate": {
+          "name": "Gary Woodland",
+          "score": -3
+        },
+        "score": -26
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -5
+          },
+          {
+            "name": "Bryson DeChambeau",
+            "score": -4
+          },
+          {
+            "name": "Paul Casey",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Marc Leishman",
+            "score": 1
+          }
+        ],
+        "alternate": {
+          "name": "Kevin Kisner",
+          "score": -5
+        },
+        "score": -8
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -12
+          },
+          {
+            "name": "Francesco Molinari",
+            "score": -11
+          },
+          {
+            "name": "Jason Day",
+            "score": -11
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -10
+          }
+        ],
+        "alternate": {
+          "name": "Rafa Cabrera Bello",
+          "score": -2
+        },
+        "score": -34
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -12
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -3
+          },
+          {
+            "name": "Phil Mickelson",
+            "score": -6
+          }
+        ],
+        "alternate": {
+          "name": "Sergio Garcia",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -21
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rickie Fowler",
+            "score": -10
+          },
+          {
+            "name": "Tiger Woods",
+            "score": -13
+          },
+          {
+            "name": "Bubba Watson",
+            "score": -8
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -12
+          }
+        ],
+        "alternate": {
+          "name": "Henrik Stenson",
+          "score": -2
+        },
+        "score": -35
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -5
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -2
+          },
+          {
+            "name": "Tony Finau",
+            "score": -11
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": -4
+          }
+        ],
+        "alternate": {
+          "name": "Patrick Reed",
+          "score": -2
+        },
+        "score": -20
+      }
+    }
+  },
+  {
+    "slug": "british-open-18",
+    "name": "2018 The Open Championship",
+    "year": 2018,
+    "pot": 175,
+    "winner": "Ben",
+    "owners": {
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Justin Rose",
+            "score": -6
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": 1
+          },
+          {
+            "name": "Phil Mickelson",
+            "score": -1
+          },
+          {
+            "name": "Zach Johnson",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Rafael Cabrera Bello",
+          "score": 8
+        },
+        "score": -9
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Tiger Woods",
+            "score": -5
+          },
+          {
+            "name": "Marc Leishman",
+            "score": 5
+          }
+        ],
+        "alternate": {
+          "name": "Russell Knox",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": "OUT"
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -6
+          },
+          {
+            "name": "Jon Rahm",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Alexander Noren",
+            "score": -2
+          },
+          {
+            "name": "Francesco Molinari",
+            "score": -8
+          }
+        ],
+        "alternate": {
+          "name": "Branden Grace",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -16
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -4
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -3
+          },
+          {
+            "name": "Sergio Garcia",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jason Day",
+            "score": -2
+          }
+        ],
+        "alternate": {
+          "name": "Hideki Matsuyama",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -9
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rickie Fowler",
+            "score": 0
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": 2
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 0
+          },
+          {
+            "name": "Paul Casey",
+            "score": 4
+          }
+        ],
+        "alternate": {
+          "name": "Tyrrell Hatton",
+          "score": 4
+        },
+        "score": 2
+      }
+    }
+  },
+  {
+    "slug": "us-open-18",
+    "name": "2018 US Open",
+    "year": 2018,
+    "pot": 175,
+    "winner": "Andrew",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Rahm",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Koepka",
+            "score": 1
+          },
+          {
+            "name": "S Garcia",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": "OUT"
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 3
+          },
+          {
+            "name": "Woods",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Mickelson",
+            "score": 16
+          },
+          {
+            "name": "Grace",
+            "score": 12
+          }
+        ],
+        "alternate": null,
+        "score": 31
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Day",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Fleetwood",
+            "score": 2
+          },
+          {
+            "name": "Kuchar",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": 12
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": 10
+          },
+          {
+            "name": "Douchmbeau",
+            "score": 12
+          },
+          {
+            "name": "Rafa",
+            "score": 13
+          }
+        ],
+        "alternate": null,
+        "score": 34
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Ricki Fowler",
+            "score": 11
+          },
+          {
+            "name": "Justin Rose",
+            "score": 7
+          },
+          {
+            "name": "Patrick Reed",
+            "score": 4
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": 6
+          }
+        ],
+        "alternate": null,
+        "score": 17
+      }
+    }
+  },
+  {
+    "slug": "masters-18",
+    "name": "2018 Masters",
+    "year": 2018,
+    "pot": 175,
+    "winner": "TIE:Marc:Andrew",
+    "owners": {
+      "Marc": {
+        "golfers": [
+          {
+            "name": "R. Fowler",
+            "score": -14
+          },
+          {
+            "name": "J. Day",
+            "score": -2
+          },
+          {
+            "name": "S Garcia",
+            "score": 15
+          },
+          {
+            "name": "Stenson",
+            "score": -9
+          }
+        ],
+        "alternate": null,
+        "score": -25
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "D. Johnson",
+            "score": -7
+          },
+          {
+            "name": "R. Cabrera Bello",
+            "score": 3
+          },
+          {
+            "name": "H. Matsuyama",
+            "score": -3
+          },
+          {
+            "name": "K. Kisner",
+            "score": 0
+          }
+        ],
+        "alternate": null,
+        "score": -10
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "J. Spieth",
+            "score": -13
+          },
+          {
+            "name": "P. Mickelson",
+            "score": 2
+          },
+          {
+            "name": "B. Watson",
+            "score": -9
+          },
+          {
+            "name": "A. Noren",
+            "score": 9
+          }
+        ],
+        "alternate": null,
+        "score": -20
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "T. Woods",
+            "score": 1
+          },
+          {
+            "name": "J. Rose",
+            "score": -6
+          },
+          {
+            "name": "M. Kuchar",
+            "score": 0
+          },
+          {
+            "name": "L. Oostheizen",
+            "score": -6
+          }
+        ],
+        "alternate": null,
+        "score": -12
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "J. Thomas",
+            "score": -4
+          },
+          {
+            "name": "R. McIlroy",
+            "score": -9
+          },
+          {
+            "name": "J. Rahm",
+            "score": -11
+          },
+          {
+            "name": "P. Casey",
+            "score": -5
+          }
+        ],
+        "alternate": null,
+        "score": -25
+      }
+    }
+  },
+  {
+    "slug": "pga-18",
+    "name": "2018 PGA Championship",
+    "year": 2018,
+    "pot": 175,
+    "winner": "Zach",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Justin Thomas",
+            "score": -10
+          },
+          {
+            "name": "Jason Day",
+            "score": -7
+          },
+          {
+            "name": "Tiger Woods",
+            "score": -14
+          },
+          {
+            "name": "Patrick Cantlay",
+            "score": -6
+          }
+        ],
+        "alternate": {
+          "name": "Paul Casey",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -31
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": -6
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": -4
+          },
+          {
+            "name": "Tony Finau",
+            "score": -3
+          },
+          {
+            "name": "Webb Simpson",
+            "score": -7
+          }
+        ],
+        "alternate": {
+          "name": "Louis Oosthuizen",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -17
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": -2
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -16
+          },
+          {
+            "name": "Patrick Reed",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Marc Leishman",
+          "score": 2
+        },
+        "score": "OUT"
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -8
+          },
+          {
+            "name": "Jon Rahm",
+            "score": -11
+          },
+          {
+            "name": "Xander Schauffele",
+            "score": -4
+          },
+          {
+            "name": "Alexander Noren",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Rafael Cabrera Bello",
+          "score": -9
+        },
+        "score": -23
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Rickie Fowler",
+            "score": -9
+          },
+          {
+            "name": "Justin Rose",
+            "score": -7
+          },
+          {
+            "name": "Francesco Molinari",
+            "score": -10
+          },
+          {
+            "name": "Sergio Garcia",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": {
+          "name": "Bubba Watson",
+          "score": "CUT",
+          "cut": true
+        },
+        "score": -26
+      }
+    }
+  },
+  {
+    "slug": "pga-championship-17",
+    "name": "2017 PGA Championship",
+    "year": 2017,
+    "pot": 150,
+    "winner": "Ben",
+    "owners": {
+      "Max": {
+        "golfers": [
+          {
+            "name": "R. McIlroy",
+            "score": 1
+          },
+          {
+            "name": "B. Koepka",
+            "score": 0
+          },
+          {
+            "name": "S. Garcia",
+            "score": 8
+          },
+          {
+            "name": "P. Casey",
+            "score": 0
+          }
+        ],
+        "alternate": null,
+        "score": 1
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "J. Spieth",
+            "score": 2
+          },
+          {
+            "name": "A. scott",
+            "score": 8
+          },
+          {
+            "name": "H. Stenson",
+            "score": 0
+          },
+          {
+            "name": "D. Berger",
+            "score": 7
+          }
+        ],
+        "alternate": null,
+        "score": 9
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "D. Johnson",
+            "score": 0
+          },
+          {
+            "name": "J. Day",
+            "score": -1
+          },
+          {
+            "name": "J. Thomas",
+            "score": -9
+          },
+          {
+            "name": "C. Hoffman",
+            "score": 5
+          }
+        ],
+        "alternate": null,
+        "score": -10
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "R. Fowler",
+            "score": -5
+          },
+          {
+            "name": "H. Matsuyama",
+            "score": -6
+          },
+          {
+            "name": "J. Rahm",
+            "score": 7
+          },
+          {
+            "name": "T. Pieters",
+            "score": 14
+          }
+        ],
+        "alternate": null,
+        "score": -4
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "J. Rose",
+            "score": 6
+          },
+          {
+            "name": "R. Cabrera Bello",
+            "score": 7
+          },
+          {
+            "name": "M. Kuchar",
+            "score": -1
+          },
+          {
+            "name": "P. Mickelson",
+            "score": 11
+          }
+        ],
+        "alternate": null,
+        "score": 12
+      }
+    }
+  },
+  {
+    "slug": "17-british-open",
+    "name": "2017 The Open Championship",
+    "year": 2017,
+    "pot": 150,
+    "winner": "TIE:Andrew:Matt",
+    "owners": {
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": -12
+          },
+          {
+            "name": "Tommy Fleetwood",
+            "score": 1
+          },
+          {
+            "name": "Phil Mickelson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Brandt Snedeker",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": 989
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": 4
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -2
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": -3
+          },
+          {
+            "name": "Branden Grace",
+            "score": -4
+          }
+        ],
+        "alternate": null,
+        "score": -9
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Jon Rahm",
+            "score": 3
+          },
+          {
+            "name": "Jason Day",
+            "score": 1
+          },
+          {
+            "name": "Thomas Pieters",
+            "score": 3
+          },
+          {
+            "name": "Louis Oosthuizen",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": 7
+      },
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Rory Mcilroy",
+            "score": -5
+          },
+          {
+            "name": "Rafael Cabrera-Bello",
+            "score": -5
+          },
+          {
+            "name": "Alex Noren",
+            "score": -4
+          },
+          {
+            "name": "Justin Thomas",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": -14
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Rickie Fowler",
+            "score": 0
+          },
+          {
+            "name": "Sergio Garcia",
+            "score": 2
+          },
+          {
+            "name": "Brooks Koepka",
+            "score": -4
+          },
+          {
+            "name": "Matt Kuchar",
+            "score": -10
+          }
+        ],
+        "alternate": null,
+        "score": -14
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Justin Rose",
+            "score": 4
+          },
+          {
+            "name": "Adam Scott",
+            "score": 0
+          },
+          {
+            "name": "Paul Casey",
+            "score": -3
+          },
+          {
+            "name": "Marc Leishman",
+            "score": -4
+          }
+        ],
+        "alternate": null,
+        "score": -7
+      }
+    }
+  },
+  {
+    "slug": "2017-open-tracker",
+    "name": "2017 US Open",
+    "year": 2017,
+    "pot": null,
+    "winner": "Andrew",
+    "owners": {
+      "Matt": {
+        "golfers": [
+          {
+            "name": "Dustin Johnson",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Justin Thomas",
+            "score": -8
+          }
+        ],
+        "alternate": null,
+        "score": -8
+      },
+      "Ben": {
+        "golfers": [
+          {
+            "name": "Rory McIlroy",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Henrik Stenson",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": 0
+      },
+      "Max": {
+        "golfers": [
+          {
+            "name": "Jordan Spieth",
+            "score": 1
+          },
+          {
+            "name": "Hideki Matsuyama",
+            "score": -12
+          }
+        ],
+        "alternate": null,
+        "score": -11
+      },
+      "Marc": {
+        "golfers": [
+          {
+            "name": "Justin Rose",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Adam Scott",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": 0
+      },
+      "Zach": {
+        "golfers": [
+          {
+            "name": "Jason Day",
+            "score": "CUT",
+            "cut": true
+          },
+          {
+            "name": "Jon Rahm",
+            "score": "CUT",
+            "cut": true
+          }
+        ],
+        "alternate": null,
+        "score": 0
+      },
+      "Andrew": {
+        "golfers": [
+          {
+            "name": "Sergio Garcia",
+            "score": -4
+          },
+          {
+            "name": "Rickie Fowler",
+            "score": -10
+          }
+        ],
+        "alternate": null,
+        "score": -14
+      }
+    }
+  }
+];
+
+function showTab(tab) {
+  document.getElementById('tab-results').style.display = tab==='results'?'block':'none';
+  document.getElementById('tab-stats').style.display = tab==='stats'?'block':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (i===0&&tab==='results')||(i===1&&tab==='stats'));
+  });
+}
+
+function scoreDisplay(score, isUsOpen) {
+  if(score==='OUT') return {txt:'OUT',cls:'out-txt'};
+  if(score===null||score===undefined) return {txt:'—',cls:''};
+  if(typeof score==='string') return {txt:score,cls:'out-txt'};
+  if(score===0) return {txt:'E',cls:''};
+  if(isUsOpen) return {txt:score>0?'+'+score:''+score,cls:score>0?'over':'under'};
+  return {txt:score>0?'+'+score:''+score,cls:score<0?'under':'over'};
+}
+
+// ── STATS ENGINE ──────────────────────────────────────────────────
+function computeStats() {
+  const owners = ALL_OWNERS;
+
+  // Per-owner finish tallies
+  const finishes = {}; // owner -> {1,2,3,last,out,total,scores:[]}
+  owners.forEach(o => finishes[o] = {1:0,2:0,3:0,last:0,out:0,total:0,scores:[],byYear:{}});
+
+  // Golfer draft counts
+  const golferDrafts = {}; // name -> {count, scores:[], owners:[]}
+  const golferOwners = {}; // name -> Set of owners who drafted them
+
+  // Head-to-head: h2h[a][b] = times a beat b (both active, not OUT)
+  const h2h = {};
+  owners.forEach(a => { h2h[a]={}; owners.forEach(b => h2h[a][b]=0); });
+
+  MAJORS.forEach(m => {
+    const isUsOpen = m.name.includes('US Open');
+    const ownerNames = Object.keys(m.owners);
+
+    // Rank active owners by score
+    const active = ownerNames.filter(o => {
+      const s = m.owners[o].score;
+      return typeof s === 'number';
+    }).sort((a,b) => m.owners[a].score - m.owners[b].score);
+    const out = ownerNames.filter(o => m.owners[o].score === 'OUT' || m.owners[o].score === null);
+    const ranked = [...active, ...out];
+
+    ranked.forEach((owner, idx) => {
+      if(!finishes[owner]) return;
+      finishes[owner].total++;
+      const s = m.owners[owner].score;
+      const isOut = s === 'OUT' || s === null;
+      if(isOut) {
+        finishes[owner].out++;
+      } else {
+        finishes[owner].scores.push(s);
+        if(!finishes[owner].byYear[m.year]) finishes[owner].byYear[m.year] = [];
+        finishes[owner].byYear[m.year].push(s);
+        const pos = active.indexOf(owner)+1;
+        if(pos===1) finishes[owner][1]++;
+        if(pos===2) finishes[owner][2]++;
+        if(pos===3) finishes[owner][3]++;
+        if(pos===active.length && active.length > 1) finishes[owner].last++;
+      }
+    });
+
+    // H2H: compare each pair of active owners
+    for(let i=0;i<active.length;i++) {
+      for(let j=i+1;j<active.length;j++) {
+        const a=active[i], b=active[j];
+        if(h2h[a]&&h2h[a][b]!==undefined) h2h[a][b]++;
+        if(h2h[b]&&h2h[b][a]!==undefined) {}
+      }
+    }
+
+    // Golfer stats
+    ownerNames.forEach(owner => {
+      const data = m.owners[owner];
+      [...data.golfers, ...(data.alternate?[data.alternate]:[])].forEach(p => {
+        if(!p||!p.name) return;
+        const key = p.name;
+        if(!golferDrafts[key]) golferDrafts[key] = {count:0, scores:[], owners:new Set()};
+        golferDrafts[key].count++;
+        golferDrafts[key].owners.add(owner);
+        if(typeof p.score === 'number') golferDrafts[key].scores.push(p.score);
+      });
+    });
+  });
+
+  return {finishes, golferDrafts, h2h};
+}
+
+// ── Sortable tendencies state ─────────────────────────────────────
+let tendencySortCol = '1', tendencySortDir = -1;
+
+function buildStats() {
+  const {finishes, golferDrafts, h2h} = computeStats();
+  const owners = ALL_OWNERS.filter(o => finishes[o].total > 0);
+
+  // ── Favorite golfers per owner ────────────────────────────────────
+  // For each owner, find golfers they've drafted most often
+  const ownerFavorites = {};
+  owners.forEach(o => {
+    const counts = {};
+    MAJORS.forEach(m => {
+      if(!m.owners[o]) return;
+      [...m.owners[o].golfers, ...(m.owners[o].alternate ? [m.owners[o].alternate] : [])].forEach(p => {
+        if(!p||!p.name) return;
+        counts[p.name] = (counts[p.name]||0) + 1;
+      });
+    });
+    ownerFavorites[o] = Object.entries(counts)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,3)
+      .map(([name,count]) => ({name, count}));
+  });
+
+  const favoritesHtml = `
+    <div class="stat-card" style="grid-column:1/-1;overflow-x:auto;">
+      <div class="stat-card-title">Each owner's most-drafted golfers</div>
+      <table class="golfer-table">
+        <thead><tr>
+          <th>Owner</th><th>#1 Pick</th><th>#2 Pick</th><th>#3 Pick</th>
+        </tr></thead>
+        <tbody>
+          ${owners.map(o => {
+            const favs = ownerFavorites[o] || [];
+            return `<tr>
+              <td><span style="color:${COLORS[o]||'#555'};font-weight:700">${o}</span></td>
+              ${[0,1,2].map(i => favs[i]
+                ? `<td><span style="font-weight:500">${favs[i].name}</span> <span style="color:#aaa;font-size:11px">(×${favs[i].count})</span></td>`
+                : `<td style="color:#ddd">—</td>`
+              ).join('')}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  renderStats(finishes, golferDrafts, h2h, owners, favoritesHtml);
+}
+
+function renderTendenciesTable(finishes, owners) {
+  const cols = {
+    'owner': (a,b) => a.o.localeCompare(b.o),
+    'total': (a,b) => b.f.total - a.f.total,
+    '1':     (a,b) => b.f[1] - a.f[1],
+    '2':     (a,b) => b.f[2] - a.f[2],
+    '3':     (a,b) => b.f[3] - a.f[3],
+    'last':  (a,b) => b.f.last - a.f.last,
+    'out':   (a,b) => b.f.out - a.f.out,
+    'avg':   (a,b) => parseFloat(a.avg||99) - parseFloat(b.avg||99),
+    'winpct':(a,b) => parseFloat(b.winRate) - parseFloat(a.winRate),
+  };
+
+  const rows = owners.map(o => {
+    const f = finishes[o];
+    const avg = f.scores.length ? (f.scores.reduce((a,b)=>a+b,0)/f.scores.length).toFixed(1) : '99';
+    const winRate = f.total ? ((f[1]/f.total)*100).toFixed(0) : '0';
+    return {o, f, avg, winRate};
+  }).sort((a,b) => tendencySortDir * (cols[tendencySortCol]||cols['1'])(a,b));
+
+  const arrow = col => tendencySortCol===col ? (tendencySortDir===-1?'↓':'↑') : '';
+  const th = (col, label, cls='r') =>
+    `<th class="${cls}" style="cursor:pointer;user-select:none;" onclick="sortTendencies('${col}')">${label} ${arrow(col)}</th>`;
+
+  return `
+    <div class="stat-card" style="grid-column:1/-1;">
+      <div class="stat-card-title">Owner Tendencies — all ${MAJORS.length} majors <span style="font-size:11px;color:#aaa;font-weight:400">(click columns to sort)</span></div>
+      <table class="golfer-table" id="tendencies-table">
+        <thead><tr>
+          ${th('owner','Owner','')}
+          ${th('total','Entries')}
+          ${th('1','🏆 Wins')}
+          ${th('2','2nd')}
+          ${th('3','3rd')}
+          ${th('last','Last')}
+          ${th('out','OUT')}
+          ${th('avg','Avg Score')}
+          ${th('winpct','Win %')}
+        </tr></thead>
+        <tbody>
+          ${rows.map(({o,f,avg,winRate}) => `<tr>
+            <td><span style="color:${COLORS[o]||'#555'};font-weight:700;">${o}</span></td>
+            <td class="r">${f.total}</td>
+            <td class="r" style="color:#2e7d32;font-weight:600">${f[1]}</td>
+            <td class="r">${f[2]}</td>
+            <td class="r">${f[3]}</td>
+            <td class="r" style="color:${f.last>3?'#c62828':'#666'}">${f.last}</td>
+            <td class="r" style="color:${f.out>4?'#c62828':'#666'}">${f.out}</td>
+            <td class="r" style="color:${parseFloat(avg)<0?'#2e7d32':'#c62828'}">${avg==='99'?'—':avg}</td>
+            <td class="r" style="color:#2e7d32;font-weight:700">${winRate}%</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function sortTendencies(col) {
+  if(tendencySortCol === col) tendencySortDir *= -1;
+  else { tendencySortCol = col; tendencySortDir = -1; }
+  // Re-render just the table
+  const {finishes} = computeStats();
+  const owners = ALL_OWNERS.filter(o => finishes[o].total > 0);
+  const wrap = document.querySelector('#tendencies-table').closest('.stat-card');
+  wrap.outerHTML = renderTendenciesTable(finishes, owners);
+}
+
+function renderStats(finishes, golferDrafts, h2h, owners, favoritesHtml) {
+
+  // ── Recent form — last 8 absolute majors ──────────────────────────
+  const last8 = MAJORS.slice(0, 8); // majors are newest-first, so first 8 = most recent
+  const recentFormHtml = owners.map(o => {
+    const dots = last8.map(m => {
+      if(!m.owners[o]) {
+        // Did not participate
+        return `<span title="${m.name}" style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#f0f0f0;border:1px dashed #ccc;font-size:9px;line-height:22px;text-align:center;color:#ccc;">—</span>`;
+      }
+      const s = m.owners[o].score;
+      const isOut = s==='OUT'||s===null;
+      if(isOut) return `<span title="${m.name} — OUT" style="display:inline-block;width:22px;height:22px;border-radius:50%;background:#eee;border:1px solid #ccc;font-size:9px;line-height:22px;text-align:center;color:#999;">X</span>`;
+      const active = Object.keys(m.owners).filter(x=>typeof m.owners[x].score==='number')
+        .sort((a,b)=>m.owners[a].score-m.owners[b].score);
+      const pos = active.indexOf(o)+1;
+      const bg = pos===1?COLORS[o]||'#2e7d32':pos===2?'#a5d6a7':pos===3?'#c8e6c9':'#eee';
+      const color = pos<=2?'#fff':pos===3?'#2e7d32':'#888';
+      const label = pos===1?'W':String(pos);
+      return `<span title="${m.name} — #${pos}" style="display:inline-block;width:22px;height:22px;border-radius:50%;background:${bg};font-size:9px;line-height:22px;text-align:center;color:${color};font-weight:${pos<=3?'700':'400'}">${label}</span>`;
+    }).join(' ');
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <span style="display:inline-block;width:64px;font-weight:700;font-size:12px;color:${COLORS[o]||'#555'};flex-shrink:0">${o}</span>
+      <div style="display:flex;gap:4px;">${dots}</div>
+    </div>`;
+  }).join('');
+
+  // Recent form column headers
+  const recentLabels = last8.map(m => {
+    const short = m.name.replace(/\d{4} /,'').replace('The Open Championship','Open').replace('PGA Championship','PGA').replace('Masters','Masters').replace('US Open','USO').replace('Charles Schwab Challenge','CS');
+    return `<span style="display:inline-block;width:22px;font-size:8px;color:#aaa;text-align:center;overflow:hidden;white-space:nowrap;">${short.slice(0,3)}</span>`;
+  }).join(' ');
+
+  // ── Most drafted golfers ──────────────────────────────────────────
+  const topGolfers = Object.entries(golferDrafts)
+    .filter(([,d]) => d.count >= 3)
+    .sort((a,b) => b[1].count-a[1].count)
+    .slice(0,20);
+
+  const golferTableHtml = `<table class="golfer-table">
+    <thead><tr>
+      <th>Golfer</th><th class="r">Times Drafted</th><th class="r">Avg Score</th><th class="r">Cut Rate</th><th>Drafted By</th>
+    </tr></thead>
+    <tbody>
+      ${topGolfers.map(([name,d]) => {
+        const avg = d.scores.length ? (d.scores.reduce((a,b)=>a+b,0)/d.scores.length).toFixed(1) : '—';
+        const cutRate = d.count > 0 ? (((d.count-d.scores.length)/d.count)*100).toFixed(0)+'%' : '—';
+        const ownerPills = [...d.owners].map(o => `<span class="owner-pill" style="background:${COLORS[o]||'#555'}">${o[0]}</span>`).join('');
+        return `<tr>
+          <td style="font-weight:500">${name}</td>
+          <td class="r">${d.count}</td>
+          <td class="r" style="color:${d.scores.length&&d.scores.reduce((a,b)=>a+b,0)/d.scores.length<0?'#2e7d32':'#c62828'}">${avg}</td>
+          <td class="r">${cutRate}</td>
+          <td>${ownerPills}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+
+  // ── Head-to-head ─────────────────────────────────────────────────
+  const h2hOwners = owners.filter(o => finishes[o].total >= 5);
+  const h2hHtml = `<table class="h2h-table">
+    <thead><tr><th></th>${h2hOwners.map(o=>`<th style="color:${COLORS[o]||'#555'}">${o}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${h2hOwners.map(a=>`<tr>
+        <th style="color:${COLORS[a]||'#555'};text-align:left">${a}</th>
+        ${h2hOwners.map(b=>{
+          if(a===b) return `<td class="h2h-self">—</td>`;
+          const w=h2h[a][b]||0, l=h2h[b][a]||0, t=w+l;
+          if(!t) return `<td>—</td>`;
+          return `<td class="${w/t>=0.5?'h2h-win':'h2h-loss'}">${w}-${l}</td>`;
+        }).join('')}
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  // ── Performance by year ───────────────────────────────────────────
+  const years = [...new Set(MAJORS.map(m=>m.year))].sort();
+  const yearPerf = owners.map(o => {
+    const byYear = {};
+    years.forEach(y => {
+      const ms = MAJORS.filter(m=>m.year===y&&m.owners[o]);
+      if(!ms.length) return;
+      const scores = ms.map(m=>m.owners[o].score).filter(s=>typeof s==='number');
+      const wins = ms.filter(m=>m.winner===o||(m.winner&&m.winner.includes(o))).length;
+      byYear[y] = {avg:scores.length?scores.reduce((a,b)=>a+b,0)/scores.length:null, wins};
+    });
+    return {o, byYear};
+  });
+
+  const yearPerfHtml = `<table class="golfer-table">
+    <thead><tr><th>Owner</th>${years.map(y=>`<th class="r">${y}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${yearPerf.map(({o,byYear})=>`<tr>
+        <td><span style="color:${COLORS[o]||'#555'};font-weight:700">${o}</span></td>
+        ${years.map(y=>{
+          const d=byYear[y];
+          if(!d) return `<td class="r" style="color:#ddd">—</td>`;
+          const avg=d.avg!==null?d.avg.toFixed(1):'OUT';
+          const col=d.wins>0?'#2e7d32':d.avg!==null&&d.avg<0?'#558b2f':d.avg!==null&&d.avg>5?'#c62828':'#666';
+          return `<td class="r" style="color:${col};font-weight:${d.wins?'700':'400'}">${d.wins?'🏆':avg}</td>`;
+        }).join('')}
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+
+  document.getElementById('stats-content').innerHTML = `
+    <div class="section-label">Owner tendencies</div>
+    <div class="stats-grid">${renderTendenciesTable(finishes, owners)}</div>
+
+    <div class="section-label">Each owner's favorite golfers (most times drafted)</div>
+    <div class="stats-grid">${favoritesHtml}</div>
+
+    <div class="section-label">Recent form — last 8 majors, newest left (— = didn't play)</div>
+    <div class="stat-card" style="margin-bottom:24px;">
+      <div style="display:flex;gap:10px;margin-bottom:8px;padding-left:74px;">
+        <div style="display:flex;gap:4px;">${recentLabels}</div>
+      </div>
+      ${recentFormHtml}
+    </div>
+
+    <div class="section-label">Performance by year (avg score or 🏆)</div>
+    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">${yearPerfHtml}</div>
+
+    <div class="section-label">Head-to-head records (when both active)</div>
+    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">
+      <div style="font-size:11px;color:#888;margin-bottom:10px;">W-L when facing each opponent in the same major</div>
+      ${h2hHtml}
+    </div>
+
+    <div class="section-label">Most drafted golfers (3+ times)</div>
+    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">${golferTableHtml}</div>
+  `;
+}
+
+// ── Results engine ────────────────────────────────────────────────
+function buildJumpNav(years) {
+  document.getElementById('jump-years').innerHTML = years.map(y =>
+    `<a class="jump-year" href="#year-${y}">${y}</a>`).join('');
+}
+
+function buildAllTime() {
+  const wins={},earnings={},wagered={},byT={};
+  ALL_OWNERS.forEach(o=>{wins[o]=0;earnings[o]=0;wagered[o]=0;byT[o]={M:0,O:0,U:0,P:0,X:0};});
+  MAJORS.forEach(m=>{
+    const w=m.winner; if(!w) return;
+    const participants = Object.keys(m.owners).length;
+    const entryFee = m.pot ? Math.round(m.pot / participants) : 25;
+    // Add wagered amount for each participant
+    Object.keys(m.owners).forEach(o => {
+      if(wagered[o]!==undefined) wagered[o] += entryFee;
+    });
+    const handle=(name,share)=>{
+      if(wins[name]===undefined) return;
+      wins[name]+=share; earnings[name]=(earnings[name]||0)+Math.round((m.pot||0)*share);
+      const n=m.name;
+      if(n.includes('Masters')) byT[name].M+=share;
+      else if(n.includes('Open Championship')||n.includes('British')) byT[name].O+=share;
+      else if(n.includes('US Open')) byT[name].U+=share;
+      else if(n.includes('PGA')) byT[name].P+=share;
+      else byT[name].X+=share;
+    };
+    if(w.startsWith('TIE:')) w.replace('TIE:','').split(':').forEach(n=>handle(n,1/w.replace('TIE:','').split(':').length));
+    else handle(w,1);
+  });
+  const allActive = ALL_OWNERS.filter(o => wagered[o] > 0).sort((a,b)=>wins[b]-wins[a]||earnings[b]-earnings[a]);
+  const maxW = Math.max(...allActive.map(o=>wins[o]));
+  document.getElementById('alltime').innerHTML=allActive.map(o=>{
+    const w=wins[o],bt=byT[o];
+    const net = earnings[o] - wagered[o];
+    const parts=[];
+    if(bt.M) parts.push(Math.round(bt.M*10)/10+'M');
+    if(bt.O) parts.push(Math.round(bt.O*10)/10+'O');
+    if(bt.U) parts.push(Math.round(bt.U*10)/10+'U');
+    if(bt.P) parts.push(Math.round(bt.P*10)/10+'P');
+    if(bt.X) parts.push(Math.round(bt.X*10)/10+'X');
+    return `<div class="at-card ${w>=maxW&&w>0?'top':''}">
+      <div class="at-name" style="color:${COLORS[o]||'#555'}">${o}</div>
+      <div class="at-wins">${w%1===0?w:w.toFixed(1)}</div>
+      <div class="at-lbl">major${w!==1?'s':''} won</div>
+      <div class="at-earnings">Won: $${earnings[o].toLocaleString()}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">Wagered: $${wagered[o].toLocaleString()}</div>
+      <div style="font-size:12px;font-weight:700;margin-top:3px;color:${net>=0?'#2e7d32':'#c62828'}">Net: ${net>=0?'+':''}$${net.toLocaleString()}</div>
+      ${parts.length?`<div class="at-breakdown">${parts.join(' · ')}</div>`:''}
+    </div>`;
+  }).join('');
+  document.getElementById('page-sub').textContent=MAJORS.length+' Majors · 2017–2026';
+}
+
+function buildMajors() {
+  const byYear={};
+  MAJORS.forEach(m=>{if(!byYear[m.year])byYear[m.year]=[];byYear[m.year].push(m);});
+  const years=Object.keys(byYear).sort((a,b)=>b-a);
+  buildJumpNav(years);
+  document.getElementById('majors-container').innerHTML=years.map(year=>`
+    <div class="year-group" id="year-${year}">
+      <div class="year-label">${year}</div>
+      ${byYear[year].map(buildMajorCard).join('')}
+    </div>`).join('');
+}
+
+function buildMajorCard(m) {
+  const isUsOpen=m.name.includes('US Open');
+  const isTie=m.winner&&m.winner.startsWith('TIE:');
+  const winners=isTie?m.winner.replace('TIE:','').split(':'):[m.winner];
+  const ranked=Object.keys(m.owners).sort((a,b)=>{
+    const sa=m.owners[a].score,sb=m.owners[b].score;
+    if(sa==='OUT'||sa===null) return 1;
+    if(sb==='OUT'||sb===null) return -1;
+    return typeof sa==='number'&&typeof sb==='number'?sa-sb:0;
+  });
+  const cards=ranked.map((owner,idx)=>{
+    const data=m.owners[owner];
+    const isOut=data.score==='OUT';
+    const isWinner=winners.includes(owner);
+    const sd=scoreDisplay(data.score,isUsOpen);
+    const players=data.golfers.map(p=>{
+      const ps=typeof p.score==='number'?(p.score===0?'E':p.score>0?'+'+p.score:''+p.score):(p.score||'—');
+      return `<div class="rc-player ${p.cut?'cut':''}"><span>${p.name}</span><span class="rc-score-val">${ps}</span></div>`;
+    }).join('');
+    const alt=data.alternate?`<div class="rc-player alt ${data.alternate.cut?'cut':''}"><span><span class="alt-lbl">A</span>${data.alternate.name}</span><span class="rc-score-val">${typeof data.alternate.score==='number'?(data.alternate.score===0?'E':data.alternate.score>0?'+'+data.alternate.score:''+data.alternate.score):(data.alternate.score||'—')}</span></div>`:'';
+    return `<div class="result-card ${isWinner?'won':''} ${isOut?'out':''}">
+      <div class="rc-header" style="color:${COLORS[owner]||'#555'};border-color:${COLORS[owner]||'#eee'}">${isWinner?'🏆 ':''}${owner}</div>
+      <div class="rc-score ${sd.cls}">${sd.txt}</div>
+      <div class="rc-rank">${isOut?'Eliminated':isWinner?'Winner':'#'+(idx+1)}</div>
+      ${players}${alt}
+    </div>`;
+  }).join('');
+  const winnerBadge=isTie
+    ?`<span class="tie-badge">🤝 Tie: ${winners.join(' & ')}</span>`
+    :`<span class="winner-badge" style="background:${COLORS[m.winner]||'#1a1a1a'}">${m.winner?'🏆 '+m.winner+(m.pot?' $'+m.pot:''):''}</span>`;
+  return `<div class="major-card">
+    <div class="major-header">
+      <div class="major-name">${m.name}</div>
+      <div class="major-meta">${m.pot?`<span class="pot-pill">Pot: $${m.pot}</span>`:''} ${winnerBadge}</div>
+    </div>
+    <div class="results-grid">${cards}</div>
+  </div>`;
+}
+
+buildAllTime();
+buildMajors();
+buildStats();
+</script>
+</body>
+</html>
