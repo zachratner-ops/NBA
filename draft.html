@@ -66,10 +66,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 
-<div class="topbar">
+<div class="topbar" style="justify-content:space-between;">
   <div>
     <div class="topbar-title" id="tb-title">Golf Draft Room</div>
     <div class="topbar-sub" id="tb-sub"></div>
+  </div>
+  <div style="display:flex;gap:16px;">
+    <a href="index.html" style="color:#aaa;font-size:13px;text-decoration:none;">← Home</a>
+    <a href="golf.html" style="color:#aaa;font-size:13px;text-decoration:none;">History</a>
+  </div>
   </div>
   <div style="display:flex;gap:8px;">
     <button class="btn btn-sm btn-outline" id="undo-btn" style="color:#fff;border-color:#555;" onclick="doUndo()" disabled>Undo</button>
