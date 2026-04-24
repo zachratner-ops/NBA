@@ -162,8 +162,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <script>
 const PROXY = 'https://nba-production-4b6c.up.railway.app';
-const OWNERS = ['Mark','Marc','Jared','Andrew','Zach','Ben','Matt'];
-const COLORS = {Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',Zach:'#1565C0',Ben:'#C62828',Matt:'#AD1457'};
+const ALL_COLORS = {Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',
+  Zach:'#1565C0',Ben:'#C62828',Matt:'#AD1457',Mike:'#00838F',Adam:'#4E342E',Max:'#558B2F'};
+
+function getAllColors() { return ALL_COLORS; }
+function getOwners() { return state?.owners || ['Mark','Marc','Jared','Andrew','Zach','Ben','Matt']; }
+function getColor(o) { return ALL_getColor(o) || '#555'; }
 
 const params = new URLSearchParams(location.search);
 const SLUG = params.get('slug') || 'pga-2026';
@@ -231,14 +235,14 @@ function updateDraft() {
   document.getElementById('round-label').textContent = isAlt ? 'ALTERNATE ROUND' : `Round ${cur?.round||''} of 4`;
   const cl = document.getElementById('clock-label');
   cl.textContent = cur ? `${cur.owner} is on the clock` : 'Draft complete!';
-  cl.style.color = cur ? COLORS[cur.owner] : '#2e7d32';
+  cl.style.color = cur ? getColor(cur.owner) : '#2e7d32';
 
   // Pick order
   document.getElementById('pick-order-list').innerHTML = allPicks.map((p,i) => {
     const done = i < globalIdx, current = i === globalIdx, isA = i >= seq.length;
     return `<div class="pick-item ${done?'done':current?'current':'upcoming'}">
       <span class="pick-num">${i+1}</span>
-      <span style="color:${COLORS[p.owner]};font-weight:${current?'700':'500'}">${p.owner}</span>
+      <span style="color:${getColor(p.owner)};font-weight:${current?'700':'500'}">${p.owner}</span>
       ${isA?'<span style="font-size:9px;background:#fff3cd;color:#856404;padding:1px 4px;border-radius:3px;margin-left:auto;">ALT</span>':''}
     </div>`;
   }).join('');
@@ -260,10 +264,10 @@ function updateDraft() {
   document.getElementById('avail-label').textContent = `Available (${state.field?.length||0})`;
 
   // Rosters
-  document.getElementById('roster-grid').innerHTML = OWNERS.map(o => {
+  document.getElementById('roster-grid').innerHTML = getOwners().map(o => {
     const picks = state.picks[o] || {golfers:[],alternate:null};
     return `<div class="roster-col">
-      <div class="owner-header" style="background:${COLORS[o]}">${o}</div>
+      <div class="owner-header" style="background:${getColor(o)}">${o}</div>
       ${Array(4).fill(0).map((_,i) => {
         const g = picks.golfers[i];
         return `<div class="roster-slot ${g?'':'empty'}"><span class="slot-label">${i+1}</span><span>${g?g.name:'—'}</span></div>`;
@@ -386,12 +390,23 @@ async function assignAP(name) {
 
 // ── Setup ─────────────────────────────────────────────────────────
 function renderSetup() {
+  const allOwners = ['Mark','Marc','Jared','Ben','Andrew','Zach','Matt','Mike','Adam','Max'];
   document.getElementById('main-content').innerHTML = `
     <div class="setup">
       <div class="card">
         <h2 style="font-size:22px;font-weight:700;margin-bottom:20px;">Commissioner Setup</h2>
         <div class="form-group"><label>Tournament name</label>
           <input type="text" id="s-name" placeholder="e.g. 2026 PGA Championship"></div>
+        <div class="form-group">
+          <label>Participants</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+            ${allOwners.map(o => `
+              <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f5f3;border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;">
+                <input type="checkbox" id="p-${o}" value="${o}" checked style="width:16px;height:16px;cursor:pointer;">
+                <span style="color:${getAllColors()[o]||'#1a1a1a'}">${o}</span>
+              </label>`).join('')}
+          </div>
+        </div>
         <div class="form-group"><label>Player field (one name per line)</label>
           <textarea id="s-field" placeholder="Scottie Scheffler&#10;Rory McIlroy&#10;..."></textarea></div>
         <div class="form-group"><label>Bad golfer / autopick list (one per line)</label>
@@ -401,11 +416,19 @@ function renderSetup() {
     </div>`;
 }
 
+function getAllColors() {
+  return {Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',
+    Zach:'#1565C0',Ben:'#C62828',Matt:'#AD1457',Mike:'#00838F',Adam:'#4E342E',Max:'#558B2F'};
+}
+
 async function submitSetup() {
   const name = document.getElementById('s-name').value.trim();
+  const allOwners = ['Mark','Marc','Jared','Ben','Andrew','Zach','Matt','Mike','Adam','Max'];
+  const owners = allOwners.filter(o => document.getElementById('p-'+o)?.checked);
+  if (owners.length < 2) { alert('Please select at least 2 participants.'); return; }
   const field = document.getElementById('s-field').value.trim().split('\n').filter(Boolean).map(l=>({name:l.trim()}));
   const autopickList = document.getElementById('s-auto').value.trim().split('\n').filter(Boolean).map(l=>({name:l.trim()}));
-  await api('/setup','POST',{name,field,autopickList});
+  await api('/setup','POST',{name,field,autopickList,owners});
 }
 
 // ── Lobby ─────────────────────────────────────────────────────────
@@ -416,15 +439,15 @@ function shuffle(arr) {
 }
 
 function renderLobby() {
-  const mainPrev = previewOrder ? previewOrder.map((o,i)=>`<span style="color:${COLORS[o]};font-weight:600;">${i+1}. ${o}</span>`).join('  ') : '';
-  const altPrev = previewAltOrder ? previewAltOrder.map((o,i)=>`<span style="color:${COLORS[o]};font-weight:600;">${i+1}. ${o}</span>`).join('  ') : '';
+  const mainPrev = previewOrder ? previewOrder.map((o,i)=>`<span style="color:${getColor(o)};font-weight:600;">${i+1}. ${o}</span>`).join('  ') : '';
+  const altPrev = previewAltOrder ? previewAltOrder.map((o,i)=>`<span style="color:${getColor(o)};font-weight:600;">${i+1}. ${o}</span>`).join('  ') : '';
   document.getElementById('main-content').innerHTML = `
     <div class="lobby">
       <div class="card">
         <h2 style="font-size:22px;font-weight:700;margin-bottom:8px;">${state.name||'Golf Draft'}</h2>
         <p style="color:#666;font-size:13px;margin-bottom:20px;">Share link: <code style="background:#f5f5f3;padding:2px 6px;border-radius:4px;font-size:11px;">${location.href}</code></p>
         <div style="margin-bottom:16px;">
-          ${OWNERS.map(o=>`<div class="owner-item"><div style="width:8px;height:8px;border-radius:50%;background:${COLORS[o]}"></div><span style="color:${COLORS[o]};font-weight:700;">${o}</span></div>`).join('')}
+          ${getOwners().map(o=>`<div class="owner-item"><div style="width:8px;height:8px;border-radius:50%;background:${getColor(o)}"></div><span style="color:${getColor(o)};font-weight:700;">${o}</span></div>`).join('')}
         </div>
         <button class="btn btn-outline" style="width:100%;margin-bottom:6px;" onclick="genMain()">
           ${previewOrder?'Re-randomize Main Order':'Randomize Main Order'}
@@ -442,8 +465,8 @@ function renderLobby() {
     </div>`;
 }
 
-function genMain() { previewOrder=shuffle(OWNERS); renderLobby(); }
-function genAlt() { previewAltOrder=shuffle(OWNERS); renderLobby(); }
+function genMain() { previewOrder=shuffle(getOwners()); renderLobby(); }
+function genAlt() { previewAltOrder=shuffle(getOwners()); renderLobby(); }
 async function startDraft() {
   if(!previewOrder||!previewAltOrder) return;
   await api('/start','POST',{pickOrder:previewOrder,altOrder:previewAltOrder});
@@ -453,10 +476,10 @@ async function startDraft() {
 function renderComplete() {
   document.getElementById('main-content').innerHTML = `
     <div class="complete-banner"><h2 style="font-size:22px;font-weight:700;">Draft Complete!</h2><p style="margin-top:6px;opacity:.85;">All picks locked.</p></div>
-    <div class="roster-grid">${OWNERS.map(o=>{
+    <div class="roster-grid">${getOwners().map(o=>{
       const picks=state.picks[o]||{golfers:[],alternate:null};
       return `<div class="roster-col">
-        <div class="owner-header" style="background:${COLORS[o]}">${o}</div>
+        <div class="owner-header" style="background:${getColor(o)}">${o}</div>
         ${picks.golfers.map((g,i)=>`<div class="roster-slot"><span class="slot-label">${i+1}</span><span>${g.name}</span></div>`).join('')}
         <div class="alt-divider"><div class="roster-slot ${picks.alternate?'':'empty'}">
           <span class="slot-label" style="color:#856404;">A</span><span>${picks.alternate?picks.alternate.name:'—'}</span>
