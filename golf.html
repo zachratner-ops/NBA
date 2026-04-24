@@ -6775,6 +6775,15 @@ function buildMajorCard(m) {
   </div>`;
 }
 
+function showTab(tab) {
+  document.getElementById('tab-results').style.display = tab === 'results' ? '' : 'none';
+  document.getElementById('tab-stats').style.display = tab === 'stats' ? '' : 'none';
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if (btn.getAttribute('onclick') === `showTab('${tab}')`) btn.classList.add('active');
+  });
+}
+
 buildAllTime();
 buildMajors();
 buildStats();
