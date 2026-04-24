@@ -167,7 +167,7 @@ const ALL_COLORS = {Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E6510
 
 function getAllColors() { return ALL_COLORS; }
 function getOwners() { return state?.owners || ['Mark','Marc','Jared','Andrew','Zach','Ben','Matt']; }
-function getColor(o) { return ALL_getColor(o) || '#555'; }
+function getColor(o) { return ALL_COLORS[o] || '#555'; }
 
 const params = new URLSearchParams(location.search);
 const SLUG = params.get('slug') || 'pga-2026';
