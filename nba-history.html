@@ -41,6 +41,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .at-wagered{font-size:10px;color:#aaa;margin-top:2px;}
 .at-net{font-size:12px;font-weight:700;margin-top:3px;}
 .at-pct{font-size:13px;font-weight:600;margin-top:4px;}
+.sort-toggle{display:flex;gap:2px;background:#f5f5f3;border-radius:6px;padding:2px;width:fit-content;}
+.sort-btn{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;border:none;background:transparent;color:#888;cursor:pointer;letter-spacing:.02em;}
+.sort-btn.active{background:#1a1a1a;color:#fff;}
+.alltime-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 
 /* Year groups */
 .year-group{margin-bottom:36px;}
@@ -118,6 +122,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="jump-years" id="jump-years"></div>
     </div>
     <div class="section-label">All-time standings</div>
+    <div class="alltime-header">
+      <div></div>
+      <div class="sort-toggle">
+        <button class="sort-btn active" id="at-sort-wins" onclick="sortAllTime('wins')">Wins</button>
+        <button class="sort-btn" id="at-sort-net" onclick="sortAllTime('net')">Net $</button>
+      </div>
+    </div>
     <div class="alltime" id="alltime"></div>
     <div id="seasons-container"></div>
   </div>
@@ -230,8 +241,9 @@ function showTab(tab) {
 // ── All-time standings ────────────────────────────────────────────────────────
 const BUY_IN = 50; // per year, winner take all
 
-function buildAllTime() {
-  const wins = {}, apps = {}, earnings = {}, wagered = {};
+// Pre-compute once
+const _atData = (()=>{
+  const wins={}, apps={}, earnings={}, wagered={};
   SEASONS.forEach(s => {
     const participants = Object.keys(s.owners).length;
     const pot = participants * BUY_IN;
@@ -244,14 +256,20 @@ function buildAllTime() {
     wins[w] = (wins[w]||0) + 1;
     earnings[w] = (earnings[w]||0) + pot;
   });
-  const players = Object.keys(apps).sort((a,b)=>(wins[b]||0)-(wins[a]||0)||apps[b]-apps[a]);
-  const maxW = Math.max(...players.map(p=>wins[p]||0));
-  document.getElementById('alltime').innerHTML = players.map(p=>{
-    const w=wins[p]||0, a=apps[p];
-    const earned = earnings[p]||0;
-    const spent = wagered[p]||0;
-    const net = earned - spent;
-    return `<div class="at-card ${w>=maxW&&w>0?'top':''}">
+  return Object.keys(apps).map(p => ({
+    p, w:wins[p]||0, a:apps[p],
+    earned:earnings[p]||0, spent:wagered[p]||0,
+    net:(earnings[p]||0)-(wagered[p]||0)
+  }));
+})();
+
+function renderAllTime(sortBy) {
+  const sorted = _atData.slice().sort(sortBy==='net'
+    ? (a,b)=>b.net-a.net||b.w-a.w
+    : (a,b)=>b.w-a.w||b.a-a.a);
+  const maxW = Math.max(...sorted.map(x=>x.w), 1);
+  document.getElementById('alltime').innerHTML = sorted.map(({p,w,a,earned,spent,net})=>`
+    <div class="at-card ${w>=maxW&&w>0?'top':''}">
       <div class="at-name" style="color:${COLORS[p]||'#555'}">${p}</div>
       <div class="at-wins">${w}</div>
       <div class="at-lbl">win${w!==1?'s':''}</div>
@@ -259,8 +277,17 @@ function buildAllTime() {
       <div class="at-earnings">Won: $${earned.toLocaleString()}</div>
       <div class="at-wagered">Spent: $${spent.toLocaleString()}</div>
       <div class="at-net" style="color:${net>=0?'#2e7d32':'#c62828'}">Net: ${net>=0?'+':''}$${net.toLocaleString()}</div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
+}
+
+function sortAllTime(by) {
+  document.getElementById('at-sort-wins').classList.toggle('active', by==='wins');
+  document.getElementById('at-sort-net').classList.toggle('active', by==='net');
+  renderAllTime(by);
+}
+
+function buildAllTime() {
+  renderAllTime('wins');
   document.getElementById('page-sub').textContent = `${SEASONS.length} seasons · 2018–2025`;
 }
 

@@ -40,6 +40,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .at-lbl{font-size:10px;color:#888;margin-top:2px;}
 .at-earnings{font-size:13px;font-weight:600;color:#2e7d32;margin-top:6px;}
 .at-breakdown{font-size:10px;color:#aaa;margin-top:3px;}
+.sort-toggle{display:flex;gap:2px;background:#f5f5f3;border-radius:6px;padding:2px;width:fit-content;}
+.sort-btn{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;border:none;background:transparent;color:#888;cursor:pointer;letter-spacing:.02em;}
+.sort-btn.active{background:#1a1a1a;color:#fff;}
+.alltime-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
 
 /* Results */
 .year-group{margin-bottom:36px;}
@@ -125,6 +129,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="jump-years" id="jump-years"></div>
     </div>
     <div class="section-label">All-time standings</div>
+    <div class="alltime-header">
+      <div></div>
+      <div class="sort-toggle">
+        <button class="sort-btn active" id="at-sort-wins" onclick="sortAllTime('wins')">Wins</button>
+        <button class="sort-btn" id="at-sort-net" onclick="sortAllTime('net')">Net $</button>
+      </div>
+    </div>
     <div class="alltime" id="alltime"></div>
     <div id="majors-container"></div>
   </div>
@@ -6681,7 +6692,6 @@ function buildAllTime() {
     const w=m.winner; if(!w) return;
     const participants = Object.keys(m.owners).length;
     const entryFee = m.pot ? Math.round(m.pot / participants) : 25;
-    // Add wagered amount for each participant
     Object.keys(m.owners).forEach(o => {
       if(wagered[o]!==undefined) wagered[o] += entryFee;
     });
@@ -6698,11 +6708,21 @@ function buildAllTime() {
     if(w.startsWith('TIE:')) w.replace('TIE:','').split(':').forEach(n=>handle(n,1/w.replace('TIE:','').split(':').length));
     else handle(w,1);
   });
-  const allActive = ALL_OWNERS.filter(o => wagered[o] > 0).sort((a,b)=>wins[b]-wins[a]||earnings[b]-earnings[a]);
-  const maxW = Math.max(...allActive.map(o=>wins[o]));
-  document.getElementById('alltime').innerHTML=allActive.map(o=>{
-    const w=wins[o],bt=byT[o];
-    const net = earnings[o] - wagered[o];
+  window._golfAtData = ALL_OWNERS.filter(o => wagered[o] > 0).map(o=>({
+    o, w:wins[o], net:earnings[o]-wagered[o], earned:earnings[o], wag:wagered[o], bt:byT[o]
+  }));
+  renderAllTime('wins');
+  document.getElementById('page-sub').textContent=MAJORS.length+' Majors · 2017–2026';
+}
+
+function renderAllTime(sortBy) {
+  const data = window._golfAtData;
+  if (!data) return;
+  const sorted = data.slice().sort(sortBy==='net'
+    ? (a,b)=>b.net-a.net||b.w-a.w
+    : (a,b)=>b.w-a.w||b.net-a.net);
+  const maxW = Math.max(...sorted.map(x=>x.w), 0.1);
+  document.getElementById('alltime').innerHTML=sorted.map(({o,w,net,earned,wag,bt})=>{
     const parts=[];
     if(bt.M) parts.push(Math.round(bt.M*10)/10+'M');
     if(bt.O) parts.push(Math.round(bt.O*10)/10+'O');
@@ -6713,13 +6733,18 @@ function buildAllTime() {
       <div class="at-name" style="color:${COLORS[o]||'#555'}">${o}</div>
       <div class="at-wins">${w%1===0?w:w.toFixed(1)}</div>
       <div class="at-lbl">major${w!==1?'s':''} won</div>
-      <div class="at-earnings">Won: $${earnings[o].toLocaleString()}</div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">Wagered: $${wagered[o].toLocaleString()}</div>
+      <div class="at-earnings">Won: $${earned.toLocaleString()}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">Wagered: $${wag.toLocaleString()}</div>
       <div style="font-size:12px;font-weight:700;margin-top:3px;color:${net>=0?'#2e7d32':'#c62828'}">Net: ${net>=0?'+':''}$${net.toLocaleString()}</div>
       ${parts.length?`<div class="at-breakdown">${parts.join(' · ')}</div>`:''}
     </div>`;
   }).join('');
-  document.getElementById('page-sub').textContent=MAJORS.length+' Majors · 2017–2026';
+}
+
+function sortAllTime(by) {
+  document.getElementById('at-sort-wins').classList.toggle('active', by==='wins');
+  document.getElementById('at-sort-net').classList.toggle('active', by==='net');
+  renderAllTime(by);
 }
 
 function buildMajors() {
