@@ -188,10 +188,27 @@ body{
   <!-- Portrait + bio stats -->
   <div class="hero-row">
     <div class="portrait-wrap">
-      <img class="portrait-img"
-           src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Bernie_Sanders_3.jpg/800px-Bernie_Sanders_3.jpg"
-           alt="Senator Bernie Sanders official portrait"
-           onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Bernie_Sanders.jpg/400px-Bernie_Sanders.jpg'">
+      <img class="portrait-img" id="bernie-img"
+           src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Bernie_Sanders.jpg/400px-Bernie_Sanders.jpg"
+           alt="Senator Bernie Sanders"
+           onerror="
+             const srcs = [
+               'https://upload.wikimedia.org/wikipedia/commons/2/26/Bernie_Sanders_3.jpg',
+               'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Bernie_Sanders_September_2020.jpg/400px-Bernie_Sanders_September_2020.jpg'
+             ];
+             const tried = parseInt(this.dataset.tried||0);
+             if (tried < srcs.length) {
+               this.dataset.tried = tried+1;
+               this.src = srcs[tried];
+             } else {
+               this.style.display='none';
+               document.getElementById('bernie-placeholder').style.display='flex';
+             }
+           ">
+      <div id="bernie-placeholder" style="display:none;width:100%;aspect-ratio:3/4;background:#2a2218;border-radius:6px;border:3px solid var(--border);align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+        <div style="font-size:72px;">👴</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:#7a6f5a;text-transform:uppercase;letter-spacing:.08em;">Sen. Bernie Sanders</div>
+      </div>
       <div class="portrait-cap">Sen. Bernie Sanders (I-VT)</div>
     </div>
     <div class="bio-stats">
