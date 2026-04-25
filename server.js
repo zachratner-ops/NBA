@@ -126,64 +126,80 @@ async function fetchGolfScores(eventId) {
 }
 
 // ── NBA BBRef scraper ─────────────────────────────────────────────
-// Fetches playoff player stats from Basketball Reference
+// Fetches total playoff points from Basketball Reference totals page
 async function fetchNBAScores() {
   try {
     const { status, body } = await httpsGet(
       'www.basketball-reference.com',
-      '/playoffs/NBA_2026_per_game.html',
+      '/playoffs/NBA_2026_totals.html',
       {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.basketball-reference.com/',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Referer': 'https://www.basketball-reference.com/playoffs/',
+        'Cache-Control': 'no-cache',
       }
     );
 
     if (status !== 200) return { error: `BBRef returned ${status}` };
 
-    // Parse player points from HTML table
     const players = {};
+
+    // BBRef totals table rows look like:
+    // <tr ><td class="left " data-stat="player"><a href="/players/...">Name</a></td>
+    // ... <td class="right " data-stat="pts" >123</td>
+    // Split on <tr to process row by row
+    const rows = body.split('<tr');
+
+    rows.forEach(row => {
+      // Skip header rows and separator rows
+      if (!row.includes('data-stat="player"') || !row.includes('data-stat="pts"')) return;
+      if (row.includes('thead') || row.includes('>Player<')) return;
+
+      // Extract player name
+      const nameMatch = row.match(/data-stat="player"[^>]*><a[^>]*>([^<]+)<\/a>/);
+      if (!nameMatch) return;
+      const name = nameMatch[1].trim();
+      if (!name || name === 'Player') return;
+
+      // Extract total points — in totals table this is an integer
+      const ptsMatch = row.match(/data-stat="pts"[^>]*>\s*(\d+)\s*<\/td>/);
+      if (!ptsMatch) return;
+      const pts = parseInt(ptsMatch[1], 10);
+      if (isNaN(pts)) return;
+
+      // Players can appear multiple times if traded mid-season
+      // Keep the highest total (which will be their full-season TOT row)
+      if (!players[name] || pts > players[name]) {
+        players[name] = pts;
+      }
+    });
+
+    // Also try to parse series standings from the active playoff bracket
+    // For now return empty — can enhance later
+    const seriesStandings = {};
+    const seriesWins = {};
     const eliminated = [];
     const injured = [];
 
-    // Extract per-game stats table rows
-    // BBRef format: <td data-stat="player"><a href="...">Name</a></td> ... <td data-stat="pts">X.X</td>
-    const rowRegex = /<tr[^>]*>[\s\S]*?<\/tr>/g;
-    const rows = body.match(rowRegex) || [];
-
-    // We need total points not per-game — fetch totals page instead
-    // Actually scrape the totals table
-    const playerRegex = /data-stat="player"[^>]*><a[^>]*>([^<]+)<\/a>/;
-    const ptsRegex = /data-stat="pts"[^>]*>(\d+)<\/td>/;
-    const gamesRegex = /data-stat="g"[^>]*>(\d+)<\/td>/;
-
-    rows.forEach(row => {
-      if (row.includes('thead') || row.includes('over_header')) return;
-      const playerMatch = row.match(playerRegex);
-      const ptsMatch = row.match(ptsRegex);
-      if (playerMatch && ptsMatch) {
-        const name = playerMatch[1].trim();
-        const pts = parseInt(ptsMatch[1], 10);
-        if (name && !isNaN(pts) && name !== 'Player') {
-          // If player appears multiple times (traded), take the TOT row or latest
-          if (!players[name] || pts > players[name]) {
-            players[name] = pts;
-          }
-        }
-      }
-    });
+    console.log(`BBRef scrape: found ${Object.keys(players).length} players`);
+    if (Object.keys(players).length === 0) {
+      // Log first 500 chars of body to help debug if empty
+      console.log('BBRef body preview:', body.slice(0, 500));
+    }
 
     return {
       players,
       eliminated,
       injured,
-      seriesStandings: {},
-      seriesWins: {},
+      seriesStandings,
+      seriesWins,
       updated: new Date().toISOString(),
       source: 'basketball-reference.com'
     };
   } catch(e) {
+    console.error('fetchNBAScores error:', e);
     return { error: e.message };
   }
 }

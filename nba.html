@@ -242,6 +242,7 @@ var firebaseUnsub = null;
 
 
 window.applyFirebaseData = function applyFirebaseData(data) {
+  console.log('applyFirebaseData called, keys:', Object.keys(data || {}));
   if (!data) return;
   var scores = data.scores || {};
   pts         = scores.players         || {};
@@ -447,18 +448,31 @@ var NAME_MAP = {
 function nbaRefresh(){
   var btn = document.getElementById('nba-btn');
   var err = document.getElementById('nba-err');
-  btn.disabled=true; btn.innerHTML='<span class="nba-spinner"></span>Fetching…'; err.style.display='none';
+  btn.disabled=true; btn.innerHTML='<span class="nba-spinner"></span>Fetching…';
+  err.style.display='none'; err.textContent='';
+
+  var updEl = document.getElementById('nba-updated');
+  updEl.textContent = 'Calling proxy…';
 
   fetch(NBA_PROXY+'/nba/push', { method: 'POST' })
-    .then(function(r){ if(!r.ok) throw new Error('Proxy error '+r.status); return r.json(); })
-    .then(function(data){
-      if(data.error) throw new Error(data.error);
-      // Firebase onValue listener will fire and call applyFirebaseData automatically.
-      // Show a quick confirmation in the meantime.
-      document.getElementById('nba-updated').innerHTML =
-        '<span style="color:#2e7d32;">●</span> Scores pushed to Firebase — updating…';
+    .then(function(r){
+      updEl.textContent = 'Proxy responded: HTTP ' + r.status;
+      if(!r.ok) throw new Error('Proxy HTTP ' + r.status);
+      return r.json();
     })
-    .catch(function(e){ err.style.display=''; err.textContent='Error: '+e.message; })
+    .then(function(data){
+      console.log('Proxy response:', data);
+      if(data.error) throw new Error('Proxy error: ' + data.error);
+      updEl.innerHTML = '<span style="color:#2e7d32;">●</span> Proxy OK — ' +
+        (data.players || '?') + ' players pushed. Waiting for Firebase…';
+      // Firebase onValue listener will fire shortly and call applyFirebaseData
+    })
+    .catch(function(e){
+      console.error('Refresh error:', e);
+      err.style.display='';
+      err.textContent = 'Error: ' + e.message + ' — check console for details';
+      updEl.textContent = 'Failed — see error above';
+    })
     .finally(function(){ btn.disabled=false; btn.innerHTML='&#8635; Refresh'; });
 }
 
@@ -510,12 +524,15 @@ const db = getDatabase(app);
 // Listen for real-time updates — fires immediately on load if data exists,
 // then again whenever the proxy pushes new scores
 onValue(ref(db, 'nba26_live'), function(snapshot) {
+  console.log('Firebase onValue fired, has data:', !!snapshot.val());
   var data = snapshot.val();
   if (data) {
-    // applyFirebaseData is defined in the regular script above —
-    // expose it on window so this module can reach it
     window.applyFirebaseData(data);
+  } else {
+    console.log('Firebase node nba26_live is empty or does not exist yet');
   }
+}, function(error) {
+  console.error('Firebase onValue error:', error);
 });
 </script>
 
