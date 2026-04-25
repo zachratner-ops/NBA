@@ -56,11 +56,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lb-wagered{font-size:11px;color:#aaa;width:52px;text-align:right;}
 .lb-empty{color:#aaa;font-size:13px;padding:12px 0;}
 
+/* ── Leaderboard header ── */
+.lb-header{display:flex;align-items:center;padding:0 0 8px;border-bottom:.5px solid #e8e8e8;margin-bottom:2px;}
+.lb-header-col{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#bbb;}
+
 /* ── Bets list ── */
 .bets-section{margin-top:4px;}
-.bets-filter{display:flex;gap:6px;margin-bottom:14px;}
+.bets-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.bets-filter{display:flex;gap:6px;}
 .filter-btn{font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;border:1px solid #e0e0e0;background:#fff;color:#666;cursor:pointer;transition:all .15s;}
 .filter-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.filter-divider{width:1px;height:20px;background:#e0e0e0;flex-shrink:0;}
+.pf-chip{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;color:#666;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.pf-chip.active{color:#fff;border-color:transparent;}
 
 .bet-list{display:flex;flex-direction:column;gap:10px;}
 .bet-item{background:#fff;border-radius:12px;border:.5px solid #e0e0e0;overflow:hidden;transition:box-shadow .15s;}
@@ -197,10 +205,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div class="section-label">Bets</div>
   <div class="bets-section">
-    <div class="bets-filter">
-      <button class="filter-btn active" onclick="setFilter('open', this)">🟢 Open</button>
-      <button class="filter-btn" onclick="setFilter('closed', this)">✅ Settled</button>
-      <button class="filter-btn" onclick="setFilter('all', this)">All</button>
+    <div class="bets-filter-row">
+      <div class="bets-filter">
+        <button class="filter-btn active" id="filter-all" onclick="setFilter('all', this)">All</button>
+        <button class="filter-btn" id="filter-open" onclick="setFilter('open', this)">🟢 Open</button>
+        <button class="filter-btn" id="filter-closed" onclick="setFilter('closed', this)">✅ Settled</button>
+      </div>
+      <div class="filter-divider"></div>
+      <div id="participant-filters" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
     </div>
     <div class="bet-list" id="bet-list">
       <div class="loading">Loading…</div>
@@ -334,7 +346,8 @@ const COLORS = {
 
 let db, betsRef;
 let allBets = {};
-let currentFilter = 'open';
+let currentFilter = 'all';
+let participantFilter = new Set();
 let closingBetId = null;
 
 // Check if config is still placeholder
@@ -348,6 +361,7 @@ function init() {
     // Use demo/local mode
     renderLeaderboard({});
     renderBets({});
+    renderParticipantFilters();
     return;
   }
 
@@ -359,6 +373,7 @@ function init() {
       allBets = snap.val() || {};
       renderLeaderboard(allBets);
       renderBets(allBets);
+      renderParticipantFilters();
     });
   } catch(e) {
     console.error('Firebase init error:', e);
@@ -372,7 +387,7 @@ function init() {
 
 function renderLeaderboard(bets) {
   const stats = {}; // { name: { wagered, won, bets } }
-  MEMBERS.forEach(m => { stats[m] = { wagered: 0, won: 0, bets: 0 }; });
+  MEMBERS.forEach(m => { stats[m] = { wagered: 0, won: 0, bets: 0, wins: 0, losses: 0, ties: 0 }; });
 
   Object.values(bets).forEach(bet => {
     if (bet.status !== 'closed' || !bet.outcomes) return;
@@ -390,6 +405,9 @@ function renderLeaderboard(bets) {
       const outcome = bet.outcomes[p];
       if (!outcome) return;
       stats[p].bets++;
+      if (outcome === 'won') stats[p].wins++;
+      else if (outcome === 'lost') stats[p].losses++;
+      else if (outcome === 'push') stats[p].ties++;
       if (stakeNum > 0) {
         stats[p].wagered += stakeNum;
         if (outcome === 'won') {
@@ -403,9 +421,9 @@ function renderLeaderboard(bets) {
   });
 
   const rows = MEMBERS
-    .map(m => ({ name: m, ...stats[m], net: (stats[m].won - stats[m].wagered) }))
-    .filter(r => r.bets > 0 || r.wagered > 0)
-    .sort((a, b) => b.net - a.net || b.won - a.won);
+    .map(m => ({ name: m, ...stats[m], net: Math.round(stats[m].won - stats[m].wagered) }))
+    .filter(r => r.bets > 0)
+    .sort((a, b) => b.net - a.net || b.wins - a.wins);
 
   const el = document.getElementById('leaderboard');
   if (rows.length === 0) {
@@ -414,14 +432,23 @@ function renderLeaderboard(bets) {
   }
 
   const maxNet = Math.max(...rows.map(r => Math.abs(r.net)), 1);
-  el.innerHTML = rows.map((r, i) => `
+  const header = `
+    <div class="lb-header">
+      <div class="lb-rank"></div>
+      <div class="lb-name lb-header-col">Player</div>
+      <div class="lb-bar-wrap"></div>
+      <div class="lb-record lb-header-col" style="width:52px;text-align:right;font-size:10px;">W-L-T</div>
+      <div class="lb-wagered lb-header-col">Wagered</div>
+      <div class="lb-net lb-header-col">Net</div>
+    </div>`;
+  el.innerHTML = header + rows.map((r, i) => `
     <div class="lb-row">
       <div class="lb-rank ${i === 0 ? 'gold' : ''}">${i + 1}</div>
       <div class="lb-name" style="color:${COLORS[r.name] || '#1a1a1a'}">${r.name}</div>
       <div class="lb-bar-wrap">
         <div class="lb-bar" style="width:${Math.max(r.net, 0) / maxNet * 100}%;background:${COLORS[r.name] || '#1a1a1a'}"></div>
       </div>
-      <div class="lb-bets" title="Bets settled">${r.bets}b</div>
+      <div class="lb-record" style="width:52px;text-align:right;font-size:11px;color:#888;">${r.wins}-${r.losses}-${r.ties}</div>
       <div class="lb-wagered">$${r.wagered}</div>
       <div class="lb-net" style="color:${r.net >= 0 ? '#2e7d32' : '#c62828'}">${r.net >= 0 ? '+' : ''}$${r.net}</div>
     </div>`).join('');
@@ -434,14 +461,24 @@ function renderBets(bets) {
   if (currentFilter === 'open') entries = entries.filter(([, b]) => b.status === 'open');
   if (currentFilter === 'closed') entries = entries.filter(([, b]) => b.status === 'closed');
 
+  // Participant filter: show bets that include ALL selected people
+  if (participantFilter.size > 0) {
+    entries = entries.filter(([, b]) => {
+      const pp = b.participants || [];
+      return [...participantFilter].every(p => pp.includes(p));
+    });
+  }
+
   // Sort: open bets newest first; closed bets most recently settled
   entries.sort(([, a], [, b]) => (b.settledAt || b.createdAt || 0) - (a.settledAt || a.createdAt || 0));
 
   if (entries.length === 0) {
-    el.innerHTML = `<div class="bet-empty">
-      <div class="bet-empty-icon">${currentFilter === 'closed' ? '📭' : '🤝'}</div>
-      <div>${currentFilter === 'closed' ? 'No settled bets yet.' : currentFilter === 'open' ? 'No open bets. Add one!' : 'No bets yet.'}</div>
-    </div>`;
+    const msg = participantFilter.size > 0
+      ? 'No bets match the selected participants.'
+      : currentFilter === 'closed' ? 'No settled bets yet.'
+      : currentFilter === 'open' ? 'No open bets. Add one!'
+      : 'No bets yet.';
+    el.innerHTML = `<div class="bet-empty"><div class="bet-empty-icon">🔍</div><div>${msg}</div></div>`;
     return;
   }
 
@@ -776,6 +813,33 @@ window.deleteBet = function(id) {
 };
 
 // ── Filter ─────────────────────────────────────────────────────────
+function renderParticipantFilters() {
+  const container = document.getElementById('participant-filters');
+  if (!container) return;
+  container.innerHTML = MEMBERS.map(m => {
+    const isActive = participantFilter.has(m);
+    const color = COLORS[m] || '#888';
+    return `<button class="pf-chip${isActive ? ' active' : ''}"
+      style="${isActive ? `background:${color};border-color:${color};` : ''}"
+      onclick="toggleParticipantFilter('${m}', this)">${m}</button>`;
+  }).join('');
+}
+
+window.toggleParticipantFilter = function(name, btn) {
+  if (participantFilter.has(name)) {
+    participantFilter.delete(name);
+    btn.classList.remove('active');
+    btn.style.background = '';
+    btn.style.borderColor = '';
+  } else {
+    participantFilter.add(name);
+    btn.classList.add('active');
+    btn.style.background = COLORS[name] || '#888';
+    btn.style.borderColor = COLORS[name] || '#888';
+  }
+  renderBets(allBets);
+};
+
 window.setFilter = function(filter, btn) {
   currentFilter = filter;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
