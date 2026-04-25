@@ -62,6 +62,62 @@ function normalizeName(name) {
     .replace(/[#$\/\[\]]/g, '_');        // other Firebase-illegal chars
 }
 
+// ── BallDontLie API ──────────────────────────────────────────────
+const BDLK = 'a99fff51-9e0a-408a-a5d3-88b53588c599';
+
+function fetchBDL(path) {
+  return httpsGet('api.balldontlie.io', path, {
+    'Authorization': BDLK,
+    'Accept': 'application/json'
+  });
+}
+
+// ── Series standings from BallDontLie ────────────────────────────
+async function getSeriesStandings() {
+  try {
+    const result = await fetchBDL('/nba/v1/games?seasons[]=2025&postseason=true&per_page=100');
+    if (result.status !== 200) throw new Error('BDL games returned ' + result.status);
+    const data = JSON.parse(result.body);
+    const games = data.data || [];
+
+    const matchups = {};
+    games.forEach(function(g) {
+      if (g.status !== 'Final') return;
+      const home = g.home_team.abbreviation;
+      const away = g.visitor_team.abbreviation;
+      const key = [home, away].sort().join('-');
+      if (!matchups[key]) matchups[key] = {};
+      matchups[key][home] = (matchups[key][home] || 0);
+      matchups[key][away] = (matchups[key][away] || 0);
+      if (g.home_team_score > g.visitor_team_score) {
+        matchups[key][home]++;
+      } else {
+        matchups[key][away]++;
+      }
+    });
+
+    const standings = {};
+    const winsMap = {};
+    const eliminated = new Set();
+    Object.values(matchups).forEach(function(m) {
+      const teams = Object.keys(m);
+      const t1 = teams[0], t2 = teams[1];
+      const lead = m[t1] - m[t2];
+      standings[t1] = lead;
+      standings[t2] = -lead;
+      winsMap[t1] = { w: m[t1], l: m[t2] };
+      winsMap[t2] = { w: m[t2], l: m[t1] };
+      if (m[t1] === 4) eliminated.add(t2);
+      if (m[t2] === 4) eliminated.add(t1);
+    });
+
+    return { standings: standings, winsMap: winsMap, eliminated: [...eliminated] };
+  } catch(e) {
+    console.error('getSeriesStandings error:', e.message);
+    return { standings: {}, winsMap: {}, eliminated: [] };
+  }
+}
+
 // ── Golf state ────────────────────────────────────────────────────
 const drafts = {};
 const historyStore = {};
@@ -163,7 +219,8 @@ async function fetchNBAScores() {
       if (!ptsMatch) continue;
       const pts = parseInt(ptsMatch[1], 10);
       if (isNaN(pts)) continue;
-      if (!players[name] || pts > players[name]) players[name] = pts;
+      const mappedName = mapPlayerName(name);
+      if (!players[mappedName] || pts > players[mappedName]) players[mappedName] = pts;
     }
 
     console.log('BBRef scrape: found ' + Object.keys(players).length + ' players');
@@ -176,6 +233,17 @@ async function fetchNBAScores() {
   }
 }
 
+// ── NBA name map — BBRef spelling -> our canonical name ──────────
+// Add entries here whenever BBRef uses a different spelling
+const NBA_NAME_MAP = {
+  'Jabari Smith':      'Jabari Smith Jr.',
+  'Jabari Smith Jr.':  'Jabari Smith Jr.',
+};
+
+function mapPlayerName(bbrefName) {
+  return NBA_NAME_MAP[bbrefName] || bbrefName;
+}
+
 // ── NBA owners for snapshot totals ────────────────────────────────
 const NBA_OWNERS = [
   { name: 'Max',     players: ['Shai Gilgeous-Alexander', "De'Aaron Fox", 'Karl-Anthony Towns', 'Derrick White', 'James Harden', 'Cameron Johnson', 'Jabari Smith Jr.', 'Deni Avdija'] },
@@ -185,11 +253,49 @@ const NBA_OWNERS = [
   { name: 'Zach',    players: ['Victor Wembanyama', 'Jalen Brunson', 'Chet Holmgren', 'Anthony Edwards', 'Amen Thompson', 'Tobias Harris', 'Tyrese Maxey', 'LeBron James'] },
 ];
 
+// ── NBA injury scraper ───────────────────────────────────────────
+async function fetchNBAInjuries() {
+  try {
+    const result = await httpsGet(
+      'www.basketball-reference.com',
+      '/friv/injuries.fcgi',
+      {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Referer': 'https://www.basketball-reference.com/',
+      }
+    );
+    if (result.status !== 200) return [];
+    const body = result.body;
+    const injured = new Set();
+    const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+    let m;
+    while ((m = trRegex.exec(body)) !== null) {
+      const row = m[1];
+      const nameMatch = row.match(/data-stat="player"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/);
+      const noteMatch = row.match(/data-stat="note"[^>]*>([^<]+)<\/td>/);
+      if (nameMatch && noteMatch && noteMatch[1].trim().length > 0) {
+        const name = normalizeName(nameMatch[1].trim());
+        injured.add(name);
+      }
+    }
+    console.log('Injuries found: ' + injured.size);
+    return [...injured];
+  } catch(e) {
+    console.error('fetchNBAInjuries error:', e.message);
+    return [];
+  }
+}
+
 // ── Push NBA scores to Firebase ───────────────────────────────────
 async function pushNBAToFirebase() {
   if (!firebaseReady) return { error: 'Firebase not initialized' };
-  console.log('Fetching NBA scores from BBRef...');
-  const scoreData = await fetchNBAScores();
+  console.log('Fetching NBA scores, injuries, and series standings...');
+  const [scoreData, injuredList, seriesResult] = await Promise.all([
+    fetchNBAScores(),
+    fetchNBAInjuries(),
+    getSeriesStandings(),
+  ]);
   if (scoreData.error) return scoreData;
   try {
     const db = admin.database();
@@ -205,10 +311,10 @@ async function pushNBAToFirebase() {
 
     await db.ref('nba26_live/scores').set({
       players: sanitizedPlayers,
-      eliminated: scoreData.eliminated || [],
-      injured: scoreData.injured || [],
-      seriesStandings: scoreData.seriesStandings || {},
-      seriesWins: scoreData.seriesWins || {},
+      eliminated: seriesResult.eliminated || [],
+      injured: injuredList,
+      seriesStandings: seriesResult.standings || {},
+      seriesWins: seriesResult.winsMap || {},
       updated: now,
     });
     const totals = {};
