@@ -270,6 +270,17 @@ app.get('/nba/push', async (req, res) => {
   res.json(result);
 });
 
+// Scrape-only route — tests BBRef fetch without Firebase write
+app.get('/nba/scrape-only', async (req, res) => {
+  const result = await fetchNBAScores();
+  if (result.error) return res.status(502).json(result);
+  res.json({
+    playerCount: Object.keys(result.players).length,
+    sample: Object.entries(result.players).slice(0, 5),
+    updated: result.updated
+  });
+});
+
 // Legacy /all route — kept for backward compatibility
 // Now also writes to Firebase if available
 app.get('/all', async (req, res) => {
