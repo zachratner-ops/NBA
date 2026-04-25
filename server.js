@@ -146,90 +146,28 @@ async function fetchNBAScores() {
 
     const players = {};
 
-    // BBRef totals table rows look like:
-    // <tr ><td class="left " data-stat="player"><a href="/players/...">Name</a></td>
-    // ... <td class="right " data-stat="pts" >123</td>
-    // Match full <tr>...</tr> blocks — BBRef rows are long so we need complete rows
-    const rowRegex = /<tr[^>]*class="full_table"[^>]*>([\s\S]*?)<\/tr>/g;
-    let rowMatch;
-    while ((rowMatch = rowRegex.exec(body)) !== null) {
-      const row = rowMatch[1];
+    // Match full data rows using class="full_table" as the anchor
+    // This captures the entire <tr> block including pts which is the last column
+    const trRegex = /<tr[^>]*class="full_table"[^>]*>([\s\S]*?)<\/tr>/g;
+    let trMatch;
+    while ((trMatch = trRegex.exec(body)) !== null) {
+      const row = trMatch[1];
 
-      // Extract player name from: data-stat="player" csk="..."><a href="...">Name</a>
       const nameMatch = row.match(/data-stat="player"[^>]*><a[^>]*>([^<]+)<\/a>/);
       if (!nameMatch) continue;
       const name = nameMatch[1].trim();
       if (!name || name === 'Player') continue;
 
-      // Extract total points from: data-stat="pts" >123</td>
       const ptsMatch = row.match(/data-stat="pts"[^>]*>\s*(\d+)\s*<\/td>/);
       if (!ptsMatch) continue;
       const pts = parseInt(ptsMatch[1], 10);
       if (isNaN(pts)) continue;
 
-      // Keep highest total (handles traded players who appear twice)
+      // Keep highest total (handles traded players appearing multiple times)
       if (!players[name] || pts > players[name]) {
         players[name] = pts;
       }
     }
-
-    // Also try to parse series standings from the active playoff bracket
-    // For now return empty — can enhance later
-    const seriesStandings = {};
-    const seriesWins = {};
-    const eliminated = [];
-    const injured = [];
-
-    console.log(`BBRef scrape: found ${Object.keys(players).length} players`);
-    if (Object.keys(players).length === 0) {
-      // Log first 500 chars of body to help debug if empty
-      console.log('BBRef body preview:', body.slice(0, 500));
-    }
-
-    return {
-      players,
-      eliminated,
-      injured,
-      seriesStandings,
-      seriesWins,
-      updated: new Date().toISOString(),
-      source: 'basketball-reference.com'
-    };
-  } catch(e) {
-    console.error('fetchNBAScores error:', e);
-    return { error: e.message };
-  }
-}
-
-// ── Push NBA scores to Firebase ───────────────────────────────────
-async function pushNBAToFirebase() {
-  if (!firebaseReady) {
-    console.error('Firebase not ready — skipping NBA push');
-    return { error: 'Firebase not initialized' };
-  }
-
-  console.log('Fetching NBA scores from BBRef…');
-  const data = await fetchNBAScores();
-
-  if (data.error) {
-    console.error('NBA fetch error:', data.error);
-    return data;
-  }
-
-  try {
-    const db = fbDb();
-    const now = new Date().toISOString();
-    const today = now.slice(0, 10);
-
-    // Write current scores
-    await db.ref('nba26_live/scores').set({
-      players: data.players,
-      eliminated: data.eliminated || [],
-      injured: data.injured || [],
-      seriesStandings: data.seriesStandings || {},
-      seriesWins: data.seriesWins || {},
-      updated: now,
-    });
 
     // Append a daily snapshot for the chart
     // Key by date so same-day refreshes overwrite rather than pile up
@@ -302,24 +240,7 @@ app.get('/nba/debug', async (req, res) => {
     const tableSnippet = tableStart >= 0 ? body.slice(tableStart, tableStart + 2000) : 'TABLE NOT FOUND';
 
     // Find first actual data row (not header)
-    const rows = body.split('<tr');
-    let sampleRow = 'none found';
-    for (const row of rows) {
-      if (row.includes('data-stat="player"') && row.includes('data-stat="pts"') && !row.includes('>Player<')) {
-        sampleRow = row.slice(0, 1500);
-        break;
-      }
-    }
 
-    res.json({
-      status,
-      bodyLength: body.length,
-      hasPlayerStat: body.includes('data-stat="player"'),
-      hasPtsStat: body.includes('data-stat="pts"'),
-      hasTableId: body.includes('id="totals_stats"'),
-      tableSnippet,
-      sampleRow,
-    });
   } catch(e) {
     res.json({ error: e.message });
   }
