@@ -8,12 +8,32 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
 .topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
-.topbar-left{display:flex;align-items:center;gap:12px;}
-.topbar-back{color:#aaa;text-decoration:none;font-size:12px;display:flex;align-items:center;gap:4px;transition:color .15s;}
-.topbar-back:hover{color:#fff;}
 .topbar-title{font-size:16px;font-weight:700;letter-spacing:-.01em;}
-.new-bet-btn{background:#fff;color:#1a1a1a;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
-.new-bet-btn:hover{background:#ddd;}
+.topbar-nav{display:flex;gap:16px;align-items:center;}
+.topbar-nav a{color:#aaa;font-size:13px;text-decoration:none;}
+.topbar-nav a:hover{color:#fff;}
+.fb-link{font-size:12px;color:#aaa;text-decoration:none;white-space:nowrap;border:0.5px solid #444;border-radius:5px;padding:4px 10px;transition:color .15s,border-color .15s;}
+.fb-link:hover{color:#fff;border-color:#888;}
+.fb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+.fb-overlay.open{display:flex;}
+.fb-modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:420px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.fb-modal h2{font-size:18px;font-weight:700;margin-bottom:4px;}
+.fb-modal p{font-size:13px;color:#888;margin-bottom:20px;line-height:1.4;}
+.fb-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;}
+.fb-close:hover{color:#1a1a1a;}
+.fb-field{margin-bottom:14px;}
+.fb-field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:5px;}
+.fb-field input,.fb-field textarea,.fb-field select{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;color:#1a1a1a;background:#fff;transition:border-color .15s;}
+.fb-field input:focus,.fb-field textarea:focus,.fb-field select:focus{outline:none;border-color:#1a1a1a;}
+.fb-field textarea{height:100px;resize:vertical;}
+.fb-submit{width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;}
+.fb-submit:hover{background:#333;}
+.fb-submit:disabled{opacity:.5;cursor:not-allowed;}
+.fb-success{display:none;text-align:center;padding:12px 0;}
+.fb-success-icon{font-size:36px;margin-bottom:8px;}
+.fb-success p{font-size:14px;color:#2e7d32;font-weight:600;}
+.new-bet-btn{background:#1a1a1a;color:#fff;border:none;border-radius:9px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;white-space:nowrap;}
+.new-bet-btn:hover{background:#333;}
 
 .hero{padding:40px 20px 28px;max-width:860px;margin:0 auto;}
 .hero-title{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:6px;}
@@ -144,16 +164,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <div class="topbar">
-  <div class="topbar-left">
-    <a class="topbar-back" href="index.html">← Back</a>
-    <div class="topbar-title">One-Off Bets</div>
+  <div class="topbar-title">One-Off Bets</div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="topbar-nav">
+      <a href="index.html">← Home</a>
+    </div>
+    <a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a>
   </div>
-  <button class="new-bet-btn" onclick="openNewBet()">+ New Bet</button>
 </div>
 
 <div class="hero">
-  <div class="hero-title">Ongoing Bets 🤝</div>
-  <div class="hero-sub">Track any bet between group members — from bar arguments to long-running propositions. Anyone can add, anyone can settle.</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+    <div>
+      <div class="hero-title">Ongoing Bets 🤝</div>
+      <div class="hero-sub">Track any bet between group members — from bar arguments to long-running propositions. Anyone can add, anyone can settle.</div>
+    </div>
+    <button class="new-bet-btn" onclick="openNewBet()" style="flex-shrink:0;margin-top:6px;">+ New Bet</button>
+  </div>
 </div>
 
 <div class="main">
@@ -243,6 +270,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- Edit Bet Modal -->
+<div class="modal-overlay" id="edit-bet-overlay" onclick="overlayClose(event,'edit-bet-overlay')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditBet()">×</button>
+    <h2>Edit Bet</h2>
+    <div class="modal-sub">Update the details below.</div>
+
+    <div class="field">
+      <label>Participants <span style="font-weight:400;text-transform:none;letter-spacing:0">(select all involved)</span></label>
+      <div class="participants-grid" id="eb-participants"></div>
+      <div class="field-hint">Pick at least 2 people.</div>
+    </div>
+
+    <div class="field">
+      <label>Bet Description</label>
+      <textarea id="eb-desc" placeholder="Describe what the bet is…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Stakes</label>
+      <input type="text" id="eb-stakes" placeholder="e.g. $50 each, loser buys dinner…">
+    </div>
+
+    <div class="field">
+      <label>Odds</label>
+      <input type="text" id="eb-odds" placeholder="Even odds">
+    </div>
+
+    <button class="modal-submit" onclick="submitEditBet()">Save Changes →</button>
+  </div>
+</div>
+
 <!-- Firebase SDKs -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -318,22 +377,27 @@ function renderLeaderboard(bets) {
   Object.values(bets).forEach(bet => {
     if (bet.status !== 'closed' || !bet.outcomes) return;
     const participants = bet.participants || [];
+    const stakeNum = parseStake(bet.stakes);
+
+    // Winners split the losers' money evenly
+    const winners = participants.filter(p => bet.outcomes[p] === 'won');
+    const losers  = participants.filter(p => bet.outcomes[p] === 'lost');
+    const totalLost = losers.length * stakeNum;
+    const winnerPayout = winners.length > 0 ? totalLost / winners.length : 0;
+
     participants.forEach(p => {
       if (!stats[p]) return;
       const outcome = bet.outcomes[p];
       if (!outcome) return;
       stats[p].bets++;
-      // Parse stake per person if numeric, else track as 1 unit
-      const stakeNum = parseStake(bet.stakes, participants.length);
-      if (outcome === 'won') {
-        // winner gets net: stake * (participants-1) if even odds
+      if (stakeNum > 0) {
         stats[p].wagered += stakeNum;
-        stats[p].won += stakeNum * participants.length;
-      } else if (outcome === 'lost') {
-        stats[p].wagered += stakeNum;
-      } else if (outcome === 'push') {
-        stats[p].wagered += stakeNum;
-        stats[p].won += stakeNum; // push: get money back
+        if (outcome === 'won') {
+          stats[p].won += stakeNum + winnerPayout; // stake back + share of losers' pot
+        } else if (outcome === 'push') {
+          stats[p].won += stakeNum; // stake back, no gain/loss
+        }
+        // lost: won += 0, lost their stake
       }
     });
   });
@@ -424,6 +488,7 @@ function renderBets(bets) {
             ? `<button class="btn-close" onclick="openCloseout('${id}')">Settle Bet</button>`
             : `<button class="btn-reopen" onclick="reopenBet('${id}')">↩ Reopen</button>`
           }
+          <button class="btn-reopen" onclick="openEditBet('${id}')">✏️ Edit</button>
           <button class="btn-delete" onclick="deleteBet('${id}')">Delete</button>
         </div>
       </div>
@@ -432,7 +497,7 @@ function renderBets(bets) {
 }
 
 // ── Stake parser ───────────────────────────────────────────────────
-function parseStake(stakesStr, numParticipants) {
+function parseStake(stakesStr) {
   if (!stakesStr) return 0;
   const m = stakesStr.match(/\$?([\d,]+)/);
   if (m) return parseInt(m[1].replace(',', ''));
@@ -607,6 +672,81 @@ window.submitCloseout = function() {
   });
 };
 
+// ── Edit bet ───────────────────────────────────────────────────────
+let editingBetId = null;
+
+window.openEditBet = function(id) {
+  editingBetId = id;
+  const bet = allBets[id];
+  if (!bet) return;
+
+  // Populate participant chips
+  const grid = document.getElementById('eb-participants');
+  grid.innerHTML = MEMBERS.map(m => `
+    <label class="p-chip" id="echip-${m}">
+      <input type="checkbox" value="${m}" onchange="toggleEChip('${m}', this.checked)">
+      ${m}
+    </label>`).join('');
+
+  // Pre-select existing participants
+  (bet.participants || []).forEach(p => {
+    const chip = document.getElementById(`echip-${p}`);
+    if (chip) { chip.classList.add('selected'); chip.querySelector('input').checked = true; }
+  });
+
+  document.getElementById('eb-desc').value = bet.description || '';
+  document.getElementById('eb-stakes').value = bet.stakes || '';
+  document.getElementById('eb-odds').value = bet.odds || 'Even odds';
+
+  document.getElementById('edit-bet-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+window.toggleEChip = function(name, checked) {
+  document.getElementById(`echip-${name}`).classList.toggle('selected', checked);
+};
+
+window.closeEditBet = function() {
+  document.getElementById('edit-bet-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  editingBetId = null;
+};
+
+window.submitEditBet = function() {
+  if (!editingBetId) return;
+  const desc = document.getElementById('eb-desc').value.trim();
+  const stakes = document.getElementById('eb-stakes').value.trim();
+  const odds = document.getElementById('eb-odds').value.trim() || 'Even odds';
+  const participants = [...document.querySelectorAll('#eb-participants input:checked')].map(el => el.value);
+
+  if (participants.length < 2) { alert('Select at least 2 participants.'); return; }
+  if (!desc) { alert('Please describe the bet.'); return; }
+  if (!stakes) { alert('Please enter the stakes.'); return; }
+
+  const btn = document.querySelector('#edit-bet-overlay .modal-submit');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const updates = { description: desc, stakes, odds, participants };
+
+  if (!isConfigured()) {
+    Object.assign(allBets[editingBetId], updates);
+    renderLeaderboard(allBets);
+    renderBets(allBets);
+    closeEditBet();
+    btn.disabled = false; btn.textContent = 'Save Changes →';
+    return;
+  }
+
+  update(ref(db, `oneoff_bets/${editingBetId}`), updates).then(() => {
+    closeEditBet();
+    btn.disabled = false; btn.textContent = 'Save Changes →';
+  }).catch(err => {
+    alert('Error saving changes.');
+    console.error(err);
+    btn.disabled = false; btn.textContent = 'Save Changes →';
+  });
+};
+
 // ── Reopen / Delete ────────────────────────────────────────────────
 window.reopenBet = function(id) {
   if (!confirm('Reopen this bet and clear the results?')) return;
@@ -648,6 +788,7 @@ window.overlayClose = function(e, id) {
   if (e.target === document.getElementById(id)) {
     if (id === 'new-bet-overlay') closeNewBet();
     else if (id === 'closeout-overlay') closeCloseout();
+    else if (id === 'edit-bet-overlay') closeEditBet();
   }
 };
 
@@ -657,7 +798,7 @@ function escHtml(str) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeNewBet(); closeCloseout(); }
+  if (e.key === 'Escape') { closeNewBet(); closeCloseout(); closeEditBet(); }
 });
 
 // ── Password gate ──────────────────────────────────────────────────
@@ -691,6 +832,87 @@ window.pwCheck = function() {
 // Init (only runs if already authed)
 if (sessionStorage.getItem(PW_KEY) === 'ok') init();
 
+</script>
+
+<!-- Feedback modal -->
+<div class="fb-overlay" id="fb-overlay" onclick="fbClose(event)">
+  <div class="fb-modal">
+    <button class="fb-close" onclick="closeFeedback()">×</button>
+    <h2>Suggest a feature</h2>
+    <p>Got an idea for a new stat, bet, or fix? Send it in and we'll take a look.</p>
+    <div id="fb-form-wrap">
+      <form id="fb-form" onsubmit="fbSubmit(event)">
+        <input type="hidden" name="_subject" value="Sylvie Ratner Bets — Feature Request">
+        <input type="hidden" name="_replyto" id="fb-replyto-hidden">
+        <div class="fb-field">
+          <label>Your name</label>
+          <input type="text" name="name" placeholder="First name is fine" required>
+        </div>
+        <div class="fb-field">
+          <label>Type</label>
+          <select name="type">
+            <option value="Feature idea">Feature idea</option>
+            <option value="New stat">New stat</option>
+            <option value="New bet">New bet</option>
+            <option value="Bug / something broken">Bug / something broken</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="fb-field">
+          <label>Your request</label>
+          <textarea name="message" placeholder="Describe your idea..." required></textarea>
+        </div>
+        <div class="fb-field">
+          <label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — if you want a reply)</span></label>
+          <input type="email" name="email" placeholder="you@example.com" oninput="document.getElementById('fb-replyto-hidden').value=this.value">
+        </div>
+        <button class="fb-submit" type="submit" id="fb-submit-btn">Send request →</button>
+      </form>
+    </div>
+    <div class="fb-success" id="fb-success">
+      <div class="fb-success-icon">✅</div>
+      <p>Request sent! Thanks for the idea.</p>
+    </div>
+  </div>
+</div>
+<script>
+const FORMSPREE_ID = "mnjlwlgy";
+function openFeedback() {
+  document.getElementById("fb-overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeFeedback() {
+  document.getElementById("fb-overlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+function fbClose(e) {
+  if (e.target === document.getElementById("fb-overlay")) closeFeedback();
+}
+async function fbSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById("fb-submit-btn");
+  btn.disabled = true; btn.textContent = "Sending…";
+  const data = new FormData(e.target);
+  try {
+    const res = await fetch("https://formspree.io/f/" + FORMSPREE_ID, {
+      method: "POST", body: data, headers: { Accept: "application/json" }
+    });
+    if (res.ok) {
+      document.getElementById("fb-form-wrap").style.display = "none";
+      document.getElementById("fb-success").style.display = "block";
+      setTimeout(() => {
+        closeFeedback();
+        document.getElementById("fb-form-wrap").style.display = "";
+        document.getElementById("fb-success").style.display = "none";
+        e.target.reset(); btn.disabled = false; btn.textContent = "Send request →";
+      }, 2500);
+    } else { throw new Error(); }
+  } catch {
+    btn.disabled = false; btn.textContent = "Send request →";
+    alert("Something went wrong — try again.");
+  }
+}
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeFeedback(); });
 </script>
 </body>
 </html>
