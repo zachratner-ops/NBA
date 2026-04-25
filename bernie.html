@@ -386,102 +386,143 @@ async function fbSubmit(e) {
 }
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeFeedback(); });
 
-// ── Proof of Life RSS feed ─────────────────────────────────────
+// ── Proof of Life — live fetch with fallback ──────────────────
+// Tries multiple sources in order, falls back to curated headlines
+
+const POL_FALLBACK = [
+  { date: 'April 20, 2026', title: 'Sanders Announces Rochester, MN Rally on Fighting Oligarchy Tour', url: 'https://www.sanders.senate.gov/press-releases/' },
+  { date: 'April 15, 2026', title: 'Senate Votes to Block $295M in Bulldozers and $151M in Bombs to Israel', url: 'https://www.sanders.senate.gov/press-releases/' },
+  { date: 'April 14, 2026', title: 'Sanders to Force Senate Vote to Block Nearly $500M in Arms Sales to Israel', url: 'https://www.sanders.senate.gov/press-releases/' },
+  { date: 'April 16, 2026', title: 'AI Is Coming for the Working Class. We Must Fight Back.', url: 'https://www.sanders.senate.gov/press-releases/' },
+  { date: 'April 6, 2026',  title: 'Sanders Calls on RFK Jr. to Release $4M in Anti-Poverty Funding to Vermont', url: 'https://www.sanders.senate.gov/press-releases/' },
+  { date: 'April 2, 2026',  title: 'Sanders & Wyden Call for Senate Hearings on Broken Health Care System', url: 'https://www.sanders.senate.gov/press-releases/' },
+];
+const POL_FALLBACK_DATE = new Date('2026-04-20');
+
+function parseRssXml(xmlText) {
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(xmlText, 'text/xml');
+  const items = [...xml.querySelectorAll('item')].slice(0, 7);
+  if (!items.length) return null;
+  return items.map(el => ({
+    date: el.querySelector('pubDate')?.textContent || '',
+    title: (el.querySelector('title')?.textContent || '')
+      .replace(/<!\[CDATA\[|\]\]>/g, '')
+      .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#8217;/g, "'"),
+    url: el.querySelector('link')?.textContent || el.querySelector('guid')?.textContent || '#',
+  }));
+}
+
+async function tryFetch(url, timeout = 6000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    return res;
+  } catch(e) { clearTimeout(timer); throw e; }
+}
+
 async function loadProofOfLife() {
-  const RSS_URL = 'https://www.sanders.senate.gov/feed/';
+  let items = null;
 
-  // Try multiple proxy services in order
-  const proxies = [
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}&count=6`,
-    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.sanders.senate.gov/press-releases/feed/')}&count=6`,
-  ];
+  // Strategy 1: corsproxy.io wrapping the senate feed (most authoritative source)
+  try {
+    const res = await tryFetch('https://corsproxy.io/?' + encodeURIComponent('https://www.sanders.senate.gov/feed/'));
+    if (res.ok) {
+      const xml = await res.text();
+      const parsed = parseRssXml(xml);
+      if (parsed?.length) {
+        items = parsed.map(it => ({
+          ...it,
+          date: it.date ? new Date(it.date).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '',
+          rawDate: it.date ? new Date(it.date) : null,
+        }));
+      }
+    }
+  } catch(e) {}
 
-  let data = null;
-  for (const proxy of proxies) {
+  // Strategy 2: Google News RSS direct (CORS-open, always fresh)
+  if (!items) {
     try {
-      const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-      const json = await res.json();
-      if (json.status === 'ok' && json.items?.length) { data = json; break; }
-    } catch(e) { continue; }
-  }
-
-  // If RSS fails, try fetching raw XML via allorigins
-  if (!data) {
-    try {
-      const res = await fetch(
-        `https://api.allorigins.win/get?url=${encodeURIComponent(RSS_URL)}`,
-        { signal: AbortSignal.timeout(8000) }
-      );
-      const json = await res.json();
-      if (json.contents) {
-        // Parse RSS XML manually
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(json.contents, 'text/xml');
-        const xmlItems = [...xml.querySelectorAll('item')].slice(0, 6);
-        if (xmlItems.length) {
-          data = {
-            status: 'ok',
-            items: xmlItems.map(el => ({
-              title: el.querySelector('title')?.textContent || '',
-              link:  el.querySelector('link')?.textContent || '',
-              pubDate: el.querySelector('pubDate')?.textContent || '',
-            }))
-          };
+      const gnUrl = 'https://news.google.com/rss/search?q=%22Bernie+Sanders%22+senate&hl=en-US&gl=US&ceid=US:en';
+      const res = await tryFetch(gnUrl);
+      if (res.ok) {
+        const xml = await res.text();
+        const parsed = parseRssXml(xml);
+        if (parsed?.length) {
+          items = parsed.map(it => ({
+            ...it,
+            date: it.date ? new Date(it.date).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '',
+            rawDate: it.date ? new Date(it.date) : null,
+          }));
         }
       }
     } catch(e) {}
   }
 
-  if (!data) {
-    showPolError();
-    return;
+  // Strategy 3: rss2json with senate feed
+  if (!items) {
+    try {
+      const res = await tryFetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent('https://www.sanders.senate.gov/feed/') + '&count=7');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.status === 'ok' && json.items?.length) {
+          items = json.items.map(it => ({
+            date: new Date(it.pubDate).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}),
+            rawDate: new Date(it.pubDate),
+            title: (it.title || '').replace(/&amp;/g,'&'),
+            url: it.link || '#',
+          }));
+        }
+      }
+    } catch(e) {}
   }
 
-  renderPol(data.items);
+  // Render live items or fall back to curated
+  if (items?.length) {
+    renderPol(items, items[0].rawDate || new Date(), false);
+  } else {
+    renderPol(
+      POL_FALLBACK.map(it => ({ ...it, rawDate: new Date(it.date) })),
+      POL_FALLBACK_DATE,
+      true
+    );
+  }
 }
 
-function renderPol(items) {
-  const latest = new Date(items[0].pubDate);
-  const daysAgo = Math.floor((Date.now() - latest) / (1000*60*60*24));
+function renderPol(items, latestDate, isStatic) {
+  const daysAgo = Math.floor((Date.now() - latestDate) / (1000*60*60*24));
 
   const pulse = document.getElementById('pol-pulse');
   const statusEl = document.getElementById('pol-status-text');
-  if (daysAgo <= 7) {
+  if (daysAgo <= 14) {
     statusEl.textContent = 'STILL ALIVE ✅';
     statusEl.style.color = 'var(--green)';
-  } else if (daysAgo <= 30) {
+  } else if (daysAgo <= 60) {
     statusEl.textContent = 'Recently active';
     statusEl.style.color = 'var(--gold)';
     pulse.style.background = 'var(--gold)';
   } else {
-    statusEl.textContent = 'No recent activity ⚠️';
+    statusEl.textContent = '⚠️ No recent updates';
     statusEl.style.color = 'var(--red)';
     pulse.classList.add('dead');
   }
 
   const opts = { year:'numeric', month:'long', day:'numeric' };
+  const staticNote = isStatic ? ' &nbsp;<span style="font-size:9px;opacity:.6">(cached · <a href="https://www.sanders.senate.gov/press-releases/" target="_blank" style="color:var(--muted)">view live →</a>)</span>' : '';
   document.getElementById('pol-last-seen').innerHTML =
-    `Last confirmed alive: <span>${latest.toLocaleDateString('en-US', opts)}</span> · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo + ' days ago'}`;
+    `Last confirmed alive: <span>${latestDate.toLocaleDateString('en-US', opts)}</span> · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo + ' days ago'}${staticNote}`;
 
-  document.getElementById('pol-feed').innerHTML = items.map(item => {
-    const date = new Date(item.pubDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-    const title = (item.title||'').replace(/&amp;/g,'&').replace(/&#8217;/g,"'").replace(/&#8216;/g,"'").replace(/&quot;/g,'"');
-    return `<div class="pol-item">
+  document.getElementById('pol-feed').innerHTML = items.map(item =>
+    `<div class="pol-item">
       <div class="pol-item-dot"></div>
       <div class="pol-item-body">
-        <div class="pol-item-date">${date}</div>
-        <div class="pol-item-title"><a href="${item.link}" target="_blank" rel="noopener">${title}</a></div>
+        <div class="pol-item-date">${item.date}</div>
+        <div class="pol-item-title"><a href="${item.url}" target="_blank" rel="noopener">${item.title}</a></div>
       </div>
-    </div>`;
-  }).join('');
-}
-
-function showPolError() {
-  document.getElementById('pol-pulse').classList.add('dead');
-  document.getElementById('pol-status-text').textContent = 'Feed unavailable';
-  document.getElementById('pol-last-seen').textContent = '';
-  document.getElementById('pol-feed').innerHTML =
-    '<div class="pol-error">Could not reach senate feed. <a href="https://www.sanders.senate.gov/press-releases/" target="_blank" style="color:var(--ink)">Check manually →</a></div>';
+    </div>`
+  ).join('');
 }
 
 loadProofOfLife();
