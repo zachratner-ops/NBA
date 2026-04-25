@@ -6824,8 +6824,9 @@ function renderStats(finishes, golferDrafts, h2h, owners, favoritesHtml) {
       '</div>';
   }
   const golfStealBustHtml =
-    '<div class="stat-card"><div class="stat-card-title">🏆 Biggest steals</div>' + gBiggestSteals.map(gStealRow).join('') + '</div>' +
-    '<div class="stat-card"><div class="stat-card-title">💀 Biggest busts</div>' + gBiggestBusts.map(gStealRow).join('') + '</div>';
+    '<div class="stat-card"><div class="stat-card-title">🏆 Biggest steals</div>' + gBiggestSteals.map(gStealRow).join('') +
+    '<div style="height:1px;background:#f0f0f0;margin:12px 0"></div>' +
+    '<div class="stat-card-title" style="margin-bottom:10px">💀 Biggest busts</div>' + gBiggestBusts.map(gStealRow).join('') + '</div>';
 
     document.getElementById('stats-content').innerHTML = `
     <div class="section-label">Owner tendencies</div>
