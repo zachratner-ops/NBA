@@ -149,32 +149,29 @@ async function fetchNBAScores() {
     // BBRef totals table rows look like:
     // <tr ><td class="left " data-stat="player"><a href="/players/...">Name</a></td>
     // ... <td class="right " data-stat="pts" >123</td>
-    // Split on <tr to process row by row
-    const rows = body.split('<tr');
+    // Match full <tr>...</tr> blocks — BBRef rows are long so we need complete rows
+    const rowRegex = /<tr[^>]*class="full_table"[^>]*>([\s\S]*?)<\/tr>/g;
+    let rowMatch;
+    while ((rowMatch = rowRegex.exec(body)) !== null) {
+      const row = rowMatch[1];
 
-    rows.forEach(row => {
-      if (!row.includes('data-stat="player"') || !row.includes('data-stat="pts"')) return;
-      if (row.includes('thead') || row.includes('>Player<') || row.includes('class="thead"')) return;
-
-      // Actual BBRef format:
-      // <td class="left " data-append-csv="..." data-stat="player" csk="..."><a href="...">Name</a></td>
+      // Extract player name from: data-stat="player" csk="..."><a href="...">Name</a>
       const nameMatch = row.match(/data-stat="player"[^>]*><a[^>]*>([^<]+)<\/a>/);
-      if (!nameMatch) return;
+      if (!nameMatch) continue;
       const name = nameMatch[1].trim();
-      if (!name || name === 'Player') return;
+      if (!name || name === 'Player') continue;
 
-      // Actual BBRef format:
-      // <td class="right " data-stat="pts" >123</td>  (note space before >)
+      // Extract total points from: data-stat="pts" >123</td>
       const ptsMatch = row.match(/data-stat="pts"[^>]*>\s*(\d+)\s*<\/td>/);
-      if (!ptsMatch) return;
+      if (!ptsMatch) continue;
       const pts = parseInt(ptsMatch[1], 10);
-      if (isNaN(pts)) return;
+      if (isNaN(pts)) continue;
 
-      // Keep highest total (handles traded players who appear multiple times)
+      // Keep highest total (handles traded players who appear twice)
       if (!players[name] || pts > players[name]) {
         players[name] = pts;
       }
-    });
+    }
 
     // Also try to parse series standings from the active playoff bracket
     // For now return empty — can enhance later
@@ -309,7 +306,7 @@ app.get('/nba/debug', async (req, res) => {
     let sampleRow = 'none found';
     for (const row of rows) {
       if (row.includes('data-stat="player"') && row.includes('data-stat="pts"') && !row.includes('>Player<')) {
-        sampleRow = row.slice(0, 800);
+        sampleRow = row.slice(0, 1500);
         break;
       }
     }
