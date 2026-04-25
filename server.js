@@ -253,6 +253,56 @@ const NBA_OWNERS = [
   { name: 'Zach',    players: ['Victor Wembanyama', 'Jalen Brunson', 'Chet Holmgren', 'Anthony Edwards', 'Amen Thompson', 'Tobias Harris', 'Tyrese Maxey', 'LeBron James'] },
 ];
 
+// ── GroupMe bot ──────────────────────────────────────────────────
+const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || '511b39cac7931f4f893e724ec2';
+const GROUPME_DRY_RUN = process.env.GROUPME_DRY_RUN === 'true';
+
+async function postGroupMe(totals) {
+  const ranked = Object.entries(totals)
+    .sort(function(a, b) { return b[1] - a[1]; });
+  const leader = ranked[0][1];
+  const medals = ['🏆','2️⃣ ','3️⃣ ','4️⃣ ','5️⃣ '];
+  const lines = ranked.map(function(entry, i) {
+    const name = entry[0], pts = entry[1];
+    const behind = i === 0 ? 'leading' : '-' + (leader - pts) + ' pts';
+    return medals[i] + ' ' + name + ' — ' + pts.toLocaleString() + ' pts  (' + behind + ')';
+  });
+  const now = new Date();
+  const dateStr = (now.getMonth()+1) + '/' + now.getDate();
+  const msg = [
+    '🏀 Playoff Standings — ' + dateStr,
+    '',
+    ...lines,
+    '',
+    '💰 $50 pot · Winner takes all',
+  ].join('\n');
+
+  if (GROUPME_DRY_RUN || !GROUPME_BOT_ID) {
+    console.log('[GroupMe DRY RUN] Would post:\n' + msg);
+    return;
+  }
+  try {
+    const body = JSON.stringify({ bot_id: GROUPME_BOT_ID, text: msg });
+    await new Promise(function(resolve, reject) {
+      const req = https.request({
+        hostname: 'api.groupme.com',
+        path: '/v3/bots/post',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+      }, function(r) {
+        r.resume();
+        r.on('end', resolve);
+      });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    console.log('GroupMe post sent OK');
+  } catch(e) {
+    console.error('GroupMe post failed:', e.message);
+  }
+}
+
 // ── NBA injury scraper ───────────────────────────────────────────
 async function fetchNBAInjuries() {
   try {
@@ -329,6 +379,10 @@ async function pushNBAToFirebase() {
     await db.ref('nba26_live/snapshots/' + snapKey).set({ date: now, totals: totals });
     const playerCount = Object.keys(scoreData.players).length;
     console.log('NBA push complete — ' + playerCount + ' players, snapshot ' + snapKey);
+
+    // Post daily standings to GroupMe (fire-and-forget, won't block the response)
+    postGroupMe(totals).catch(function(e) { console.error('GroupMe post error:', e.message); });
+
     return { ok: true, players: playerCount, snapshot: snapKey, updated: now };
   } catch(e) {
     console.error('Firebase write error:', e.message);
