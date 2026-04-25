@@ -60,7 +60,7 @@ body{
 /* ── Actuarial bar ── */
 .actuarial-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:28px;}
 .actuarial-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
-.actuarial-bar-track{height:18px;background:#e8e0cc;border-radius:4px;position:relative;overflow:hidden;margin-bottom:8px;}
+.actuarial-bar-track{height:18px;background:#e8e0cc;border-radius:4px;position:relative;overflow:visible;margin-bottom:24px;}
 .actuarial-bar-lived{height:100%;background:var(--ink);border-radius:4px 0 0 4px;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
 .actuarial-bar-remaining{height:100%;background:var(--gold);border-radius:0;position:absolute;top:0;}
 .actuarial-bar-bet{position:absolute;top:0;height:100%;width:3px;background:var(--red);z-index:2;}
@@ -456,11 +456,13 @@ function update() {
   }
 }
 
-// Animate bars on load
-window.addEventListener('load', () => {
-  setTimeout(update, 100);
+// Init — run immediately on DOM ready, don't wait for fonts/images
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => { update(); setInterval(update, 1000); });
+} else {
+  update();
   setInterval(update, 1000);
-});
+}
 </script>
 </body>
 </html>
