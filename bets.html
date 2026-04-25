@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-Off Bets · Giesener, Are You In?</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
+.topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-back{color:#aaa;text-decoration:none;font-size:12px;display:flex;align-items:center;gap:4px;transition:color .15s;}
+.topbar-back:hover{color:#fff;}
+.topbar-title{font-size:16px;font-weight:700;letter-spacing:-.01em;}
+.new-bet-btn{background:#fff;color:#1a1a1a;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s;}
+.new-bet-btn:hover{background:#ddd;}
+
+.hero{padding:40px 20px 28px;max-width:860px;margin:0 auto;}
+.hero-title{font-size:28px;font-weight:800;letter-spacing:-.02em;line-height:1.1;margin-bottom:6px;}
+.hero-sub{font-size:14px;color:#666;max-width:500px;}
+
+.main{max-width:860px;margin:0 auto;padding:0 20px 60px;}
+
+/* ── Leaderboard ── */
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:12px;margin-top:32px;}
+.lb-card{background:#fff;border-radius:14px;border:.5px solid #e0e0e0;padding:20px;margin-bottom:24px;}
+.lb-row{display:flex;align-items:center;padding:7px 0;border-bottom:.5px solid #f5f5f3;}
+.lb-row:last-child{border-bottom:none;}
+.lb-rank{font-size:12px;font-weight:700;color:#ccc;width:22px;flex-shrink:0;}
+.lb-rank.gold{color:#f9a825;}
+.lb-name{font-size:13px;font-weight:600;flex:1;}
+.lb-bar-wrap{flex:1;max-width:80px;margin:0 10px;height:4px;background:#f0f0f0;border-radius:2px;}
+.lb-bar{height:4px;border-radius:2px;background:#1a1a1a;}
+.lb-bets{font-size:11px;color:#aaa;width:36px;text-align:right;}
+.lb-net{font-size:12px;font-weight:700;width:60px;text-align:right;}
+.lb-wagered{font-size:11px;color:#aaa;width:52px;text-align:right;}
+.lb-empty{color:#aaa;font-size:13px;padding:12px 0;}
+
+/* ── Bets list ── */
+.bets-section{margin-top:4px;}
+.bets-filter{display:flex;gap:6px;margin-bottom:14px;}
+.filter-btn{font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;border:1px solid #e0e0e0;background:#fff;color:#666;cursor:pointer;transition:all .15s;}
+.filter-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+
+.bet-list{display:flex;flex-direction:column;gap:10px;}
+.bet-item{background:#fff;border-radius:12px;border:.5px solid #e0e0e0;overflow:hidden;transition:box-shadow .15s;}
+.bet-item:hover{box-shadow:0 3px 14px rgba(0,0,0,.07);}
+.bet-stripe{height:3px;}
+.bet-body{padding:14px 16px;}
+.bet-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px;}
+.bet-title{font-size:15px;font-weight:700;letter-spacing:-.01em;flex:1;}
+.bet-status{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+.status-open{background:#e8f5e9;color:#2e7d32;}
+.status-closed{background:#f5f5f3;color:#888;}
+.bet-desc{font-size:12px;color:#666;line-height:1.45;margin-bottom:10px;}
+.bet-meta{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.bet-meta-item{font-size:11px;color:#888;}
+.bet-meta-item strong{color:#1a1a1a;font-weight:600;}
+.bet-participants{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.participant-tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;background:#f0f0f0;color:#444;}
+.bet-actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:.5px solid #f0f0f0;}
+.btn-close{font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px;border:none;background:#1a1a1a;color:#fff;cursor:pointer;transition:background .15s;}
+.btn-close:hover{background:#333;}
+.btn-reopen{font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px;border:1px solid #ddd;background:#fff;color:#666;cursor:pointer;transition:all .15s;}
+.btn-reopen:hover{border-color:#999;color:#1a1a1a;}
+.btn-delete{font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px;border:1px solid #fdd;background:#fff;color:#c62828;cursor:pointer;transition:all .15s;}
+.btn-delete:hover{background:#fdd;}
+.bet-result{margin-top:8px;padding:8px 12px;background:#f5f5f3;border-radius:8px;font-size:12px;}
+.bet-result strong{font-weight:700;}
+.bet-empty{text-align:center;padding:48px 20px;color:#aaa;}
+.bet-empty-icon{font-size:32px;margin-bottom:10px;}
+.bet-date{font-size:10px;color:#bbb;}
+
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:18px;padding:28px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h2{font-size:19px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:#888;margin-bottom:22px;}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;}
+.modal-close:hover{color:#1a1a1a;}
+.field{margin-bottom:16px;}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:5px;}
+.field input,.field textarea,.field select{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;color:#1a1a1a;background:#fff;transition:border-color .15s;}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1a1a1a;}
+.field textarea{height:80px;resize:vertical;}
+.field-hint{font-size:11px;color:#aaa;margin-top:4px;}
+
+/* Multi-select participants */
+.participants-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px;}
+.p-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;color:#555;user-select:none;}
+.p-chip.selected{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.p-chip input{display:none;}
+
+.modal-submit{width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;margin-top:4px;}
+.modal-submit:hover{background:#333;}
+.modal-submit:disabled{opacity:.5;cursor:not-allowed;}
+
+/* Close-out modal */
+.winner-grid{display:flex;flex-direction:column;gap:6px;}
+.winner-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:#f9f9f9;border:1.5px solid transparent;transition:border-color .15s;}
+.winner-row.won{border-color:#2e7d32;background:#f1f8f2;}
+.winner-row.lost{border-color:#c62828;background:#fdf3f3;}
+.winner-label{font-size:12px;font-weight:600;flex:1;}
+.outcome-btns{display:flex;gap:5px;}
+.outcome-btn{font-size:11px;font-weight:700;padding:3px 9px;border-radius:6px;border:1.5px solid #e0e0e0;background:#fff;cursor:pointer;transition:all .15s;}
+.outcome-btn.won{border-color:#2e7d32;background:#e8f5e9;color:#2e7d32;}
+.outcome-btn.lost{border-color:#c62828;background:#fdf3f3;color:#c62828;}
+.outcome-btn.push{border-color:#f9a825;background:#fffde7;color:#f9a825;}
+
+/* Password gate */
+.pw-gate{display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;align-items:center;justify-content:center;}
+.pw-gate.show{display:flex;}
+.pw-box{text-align:center;padding:40px 20px;max-width:340px;width:100%;}
+.pw-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
+.pw-sub{font-size:14px;color:#666;margin-bottom:32px;}
+.pw-input{width:100%;background:#2a2a2a;border:1px solid #333;border-radius:10px;padding:13px 16px;font-size:16px;color:#fff;font-family:inherit;text-align:center;letter-spacing:.08em;transition:border-color .15s;}
+.pw-input:focus{outline:none;border-color:#555;}
+.pw-input::placeholder{color:#555;letter-spacing:0;}
+.pw-btn{margin-top:12px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;}
+.pw-btn:hover{background:#ddd;}
+.pw-error{font-size:12px;color:#e53935;margin-top:10px;min-height:16px;}
+
+/* Loading */
+.loading{text-align:center;padding:40px;color:#aaa;font-size:13px;}
+
+@media(max-width:600px){
+  .bet-header{flex-direction:column;align-items:flex-start;gap:6px;}
+  .bet-actions{flex-wrap:wrap;}
+}
+</style>
+</head>
+<body>
+
+<!-- Password gate -->
+<div class="pw-gate" id="pw-gate">
+  <div class="pw-box">
+    <div class="pw-title">Giesener...<br>Are you In?</div>
+    <div class="pw-sub">Enter the password to continue</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')pwCheck()">
+    <button class="pw-btn" onclick="pwCheck()">Enter →</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <a class="topbar-back" href="index.html">← Back</a>
+    <div class="topbar-title">One-Off Bets</div>
+  </div>
+  <button class="new-bet-btn" onclick="openNewBet()">+ New Bet</button>
+</div>
+
+<div class="hero">
+  <div class="hero-title">Ongoing Bets 🤝</div>
+  <div class="hero-sub">Track any bet between group members — from bar arguments to long-running propositions. Anyone can add, anyone can settle.</div>
+</div>
+
+<div class="main">
+
+  <!-- Firebase config warning -->
+  <div id="firebase-warning" style="display:none;background:#fff3cd;border:.5px solid #ffc107;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;line-height:1.5;">
+    ⚠️ <strong>Firebase not configured yet.</strong> Open <code>bets.html</code> and replace the Firebase config at the top of the script with your project's config. See the setup instructions in the README.
+  </div>
+
+  <div class="section-label">Leaderboard</div>
+  <div class="lb-card" id="leaderboard">
+    <div class="loading">Loading…</div>
+  </div>
+
+  <div class="section-label">Bets</div>
+  <div class="bets-section">
+    <div class="bets-filter">
+      <button class="filter-btn active" onclick="setFilter('open', this)">🟢 Open</button>
+      <button class="filter-btn" onclick="setFilter('closed', this)">✅ Settled</button>
+      <button class="filter-btn" onclick="setFilter('all', this)">All</button>
+    </div>
+    <div class="bet-list" id="bet-list">
+      <div class="loading">Loading…</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- New Bet Modal -->
+<div class="modal-overlay" id="new-bet-overlay" onclick="overlayClose(event,'new-bet-overlay')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeNewBet()">×</button>
+    <h2>Add a New Bet</h2>
+    <div class="modal-sub">Fill in the details. Once added it'll show as Open.</div>
+
+    <div class="field">
+      <label>Who are you?</label>
+      <select id="nb-submitter">
+        <option value="">— Select your name —</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Participants <span style="font-weight:400;text-transform:none;letter-spacing:0">(select all involved)</span></label>
+      <div class="participants-grid" id="nb-participants"></div>
+      <div class="field-hint">Pick at least 2 people.</div>
+    </div>
+
+    <div class="field">
+      <label>Bet Description</label>
+      <textarea id="nb-desc" placeholder="Describe what the bet is…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Stakes</label>
+      <input type="text" id="nb-stakes" placeholder="e.g. $50 each, loser buys dinner…">
+    </div>
+
+    <div class="field">
+      <label>Odds</label>
+      <input type="text" id="nb-odds" placeholder="Even odds" value="Even odds">
+      <div class="field-hint">Leave as "Even odds" if it's a straight up bet.</div>
+    </div>
+
+    <button class="modal-submit" onclick="submitNewBet()">Add Bet →</button>
+  </div>
+</div>
+
+<!-- Close-Out Modal -->
+<div class="modal-overlay" id="closeout-overlay" onclick="overlayClose(event,'closeout-overlay')">
+  <div class="modal">
+    <button class="modal-close" onclick="closeCloseout()">×</button>
+    <h2>Settle the Bet</h2>
+    <div class="modal-sub" id="co-desc-label">Mark who won and who lost.</div>
+
+    <div class="field">
+      <label>Results</label>
+      <div class="winner-grid" id="co-winner-grid"></div>
+    </div>
+
+    <div class="field">
+      <label>Notes <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+      <textarea id="co-notes" placeholder="Any context on how it resolved…" style="height:60px;"></textarea>
+    </div>
+
+    <button class="modal-submit" onclick="submitCloseout()">Settle Bet →</button>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ─────────────────────────────────────────────────────────────────
+// 🔥 FIREBASE CONFIG — Replace this with your project's config
+//    Firebase Console → Project Settings → Your Apps → SDK setup
+// ─────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "REPLACE_WITH_YOUR_API_KEY",
+  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+  databaseURL: "REPLACE_WITH_YOUR_DATABASE_URL",
+  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+  appId: "REPLACE_WITH_YOUR_APP_ID"
+};
+// ─────────────────────────────────────────────────────────────────
+
+const MEMBERS = [
+  'Adam','Andrew','Ben','Jared','Marc','Mark','Matt','Mike','Zach'
+];
+
+// Stripe colors per person
+const COLORS = {
+  Adam:'#455A64', Andrew:'#E65100', Ben:'#C62828', Jared:'#2E7D32',
+  Marc:'#F9A825', Mark:'#7B1FA2', Matt:'#AD1457', Mike:'#0277BD', Zach:'#1565C0'
+};
+
+let db, betsRef;
+let allBets = {};
+let currentFilter = 'open';
+let closingBetId = null;
+
+// Check if config is still placeholder
+function isConfigured() {
+  return firebaseConfig.apiKey !== "REPLACE_WITH_YOUR_API_KEY";
+}
+
+function init() {
+  if (!isConfigured()) {
+    document.getElementById('firebase-warning').style.display = 'block';
+    // Use demo/local mode
+    renderLeaderboard({});
+    renderBets({});
+    return;
+  }
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    betsRef = ref(db, 'oneoff_bets');
+    onValue(betsRef, snap => {
+      allBets = snap.val() || {};
+      renderLeaderboard(allBets);
+      renderBets(allBets);
+    });
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    document.getElementById('firebase-warning').style.display = 'block';
+    renderLeaderboard({});
+    renderBets({});
+  }
+}
+
+// ── Rendering ──────────────────────────────────────────────────────
+
+function renderLeaderboard(bets) {
+  const stats = {}; // { name: { wagered, won, bets } }
+  MEMBERS.forEach(m => { stats[m] = { wagered: 0, won: 0, bets: 0 }; });
+
+  Object.values(bets).forEach(bet => {
+    if (bet.status !== 'closed' || !bet.outcomes) return;
+    const participants = bet.participants || [];
+    participants.forEach(p => {
+      if (!stats[p]) return;
+      const outcome = bet.outcomes[p];
+      if (!outcome) return;
+      stats[p].bets++;
+      // Parse stake per person if numeric, else track as 1 unit
+      const stakeNum = parseStake(bet.stakes, participants.length);
+      if (outcome === 'won') {
+        // winner gets net: stake * (participants-1) if even odds
+        stats[p].wagered += stakeNum;
+        stats[p].won += stakeNum * participants.length;
+      } else if (outcome === 'lost') {
+        stats[p].wagered += stakeNum;
+      } else if (outcome === 'push') {
+        stats[p].wagered += stakeNum;
+        stats[p].won += stakeNum; // push: get money back
+      }
+    });
+  });
+
+  const rows = MEMBERS
+    .map(m => ({ name: m, ...stats[m], net: (stats[m].won - stats[m].wagered) }))
+    .filter(r => r.bets > 0 || r.wagered > 0)
+    .sort((a, b) => b.net - a.net || b.won - a.won);
+
+  const el = document.getElementById('leaderboard');
+  if (rows.length === 0) {
+    el.innerHTML = '<div class="lb-empty">No settled bets yet — start one!</div>';
+    return;
+  }
+
+  const maxNet = Math.max(...rows.map(r => Math.abs(r.net)), 1);
+  el.innerHTML = rows.map((r, i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${i === 0 ? 'gold' : ''}">${i + 1}</div>
+      <div class="lb-name" style="color:${COLORS[r.name] || '#1a1a1a'}">${r.name}</div>
+      <div class="lb-bar-wrap">
+        <div class="lb-bar" style="width:${Math.max(r.net, 0) / maxNet * 100}%;background:${COLORS[r.name] || '#1a1a1a'}"></div>
+      </div>
+      <div class="lb-bets" title="Bets settled">${r.bets}b</div>
+      <div class="lb-wagered">$${r.wagered}</div>
+      <div class="lb-net" style="color:${r.net >= 0 ? '#2e7d32' : '#c62828'}">${r.net >= 0 ? '+' : ''}$${r.net}</div>
+    </div>`).join('');
+}
+
+function renderBets(bets) {
+  const el = document.getElementById('bet-list');
+  let entries = Object.entries(bets);
+
+  if (currentFilter === 'open') entries = entries.filter(([, b]) => b.status === 'open');
+  if (currentFilter === 'closed') entries = entries.filter(([, b]) => b.status === 'closed');
+
+  // Sort: open bets newest first; closed bets most recently settled
+  entries.sort(([, a], [, b]) => (b.settledAt || b.createdAt || 0) - (a.settledAt || a.createdAt || 0));
+
+  if (entries.length === 0) {
+    el.innerHTML = `<div class="bet-empty">
+      <div class="bet-empty-icon">${currentFilter === 'closed' ? '📭' : '🤝'}</div>
+      <div>${currentFilter === 'closed' ? 'No settled bets yet.' : currentFilter === 'open' ? 'No open bets. Add one!' : 'No bets yet.'}</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = entries.map(([id, bet]) => {
+    const isOpen = bet.status === 'open';
+    const participants = bet.participants || [];
+    const color = COLORS[participants[0]] || '#888';
+
+    const resultHtml = !isOpen && bet.outcomes ? (() => {
+      const winners = participants.filter(p => bet.outcomes[p] === 'won');
+      const losers = participants.filter(p => bet.outcomes[p] === 'lost');
+      const pushers = participants.filter(p => bet.outcomes[p] === 'push');
+      let parts = [];
+      if (winners.length) parts.push(`<strong>🏆 Won:</strong> ${winners.join(', ')}`);
+      if (losers.length) parts.push(`<strong>💸 Lost:</strong> ${losers.join(', ')}`);
+      if (pushers.length) parts.push(`<strong>🤝 Push:</strong> ${pushers.join(', ')}`);
+      if (bet.closeNotes) parts.push(`<em>${escHtml(bet.closeNotes)}</em>`);
+      return `<div class="bet-result">${parts.join(' · ')}</div>`;
+    })() : '';
+
+    const dateStr = bet.createdAt ? new Date(bet.createdAt).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : '';
+    const settledStr = bet.settledAt ? `Settled ${new Date(bet.settledAt).toLocaleDateString('en-US', {month:'short', day:'numeric'})}` : '';
+
+    return `
+    <div class="bet-item" id="bet-${id}">
+      <div class="bet-stripe" style="background:${color}"></div>
+      <div class="bet-body">
+        <div class="bet-header">
+          <div class="bet-title">${escHtml(bet.description)}</div>
+          <span class="bet-status ${isOpen ? 'status-open' : 'status-closed'}">${isOpen ? '🟢 Open' : '✅ Settled'}</span>
+        </div>
+        <div class="bet-participants">
+          ${participants.map(p => `<span class="participant-tag" style="background:${COLORS[p]}18;color:${COLORS[p]}">${p}</span>`).join('')}
+        </div>
+        <div class="bet-meta">
+          <div class="bet-meta-item">💰 <strong>${escHtml(bet.stakes)}</strong></div>
+          ${bet.odds && bet.odds !== 'Even odds' ? `<div class="bet-meta-item">📊 <strong>${escHtml(bet.odds)}</strong></div>` : ''}
+          ${bet.submittedBy ? `<div class="bet-meta-item">Added by <strong>${escHtml(bet.submittedBy)}</strong></div>` : ''}
+          <div class="bet-date">${settledStr || dateStr}</div>
+        </div>
+        ${resultHtml}
+        <div class="bet-actions">
+          ${isOpen
+            ? `<button class="btn-close" onclick="openCloseout('${id}')">Settle Bet</button>`
+            : `<button class="btn-reopen" onclick="reopenBet('${id}')">↩ Reopen</button>`
+          }
+          <button class="btn-delete" onclick="deleteBet('${id}')">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Stake parser ───────────────────────────────────────────────────
+function parseStake(stakesStr, numParticipants) {
+  if (!stakesStr) return 0;
+  const m = stakesStr.match(/\$?([\d,]+)/);
+  if (m) return parseInt(m[1].replace(',', ''));
+  return 0;
+}
+
+// ── New bet ────────────────────────────────────────────────────────
+window.openNewBet = function() {
+  // Populate submitter dropdown
+  const sel = document.getElementById('nb-submitter');
+  sel.innerHTML = '<option value="">— Select your name —</option>' +
+    MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
+
+  // Populate participant chips
+  const grid = document.getElementById('nb-participants');
+  grid.innerHTML = MEMBERS.map(m => `
+    <label class="p-chip" id="chip-${m}">
+      <input type="checkbox" value="${m}" onchange="toggleChip('${m}', this.checked)">
+      ${m}
+    </label>`).join('');
+
+  document.getElementById('new-bet-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+window.toggleChip = function(name, checked) {
+  document.getElementById(`chip-${name}`).classList.toggle('selected', checked);
+};
+
+window.closeNewBet = function() {
+  document.getElementById('new-bet-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+};
+
+window.submitNewBet = function() {
+  const submitter = document.getElementById('nb-submitter').value;
+  const desc = document.getElementById('nb-desc').value.trim();
+  const stakes = document.getElementById('nb-stakes').value.trim();
+  const odds = document.getElementById('nb-odds').value.trim() || 'Even odds';
+  const participants = [...document.querySelectorAll('#nb-participants input:checked')].map(el => el.value);
+
+  if (!submitter) { alert('Please select who you are.'); return; }
+  if (participants.length < 2) { alert('Select at least 2 participants.'); return; }
+  if (!desc) { alert('Please describe the bet.'); return; }
+  if (!stakes) { alert('Please enter the stakes.'); return; }
+
+  const btn = document.querySelector('#new-bet-overlay .modal-submit');
+  btn.disabled = true; btn.textContent = 'Adding…';
+
+  const bet = {
+    description: desc,
+    stakes,
+    odds,
+    participants,
+    submittedBy: submitter,
+    status: 'open',
+    createdAt: Date.now()
+  };
+
+  if (!isConfigured()) {
+    // Demo mode: store locally
+    const id = 'local_' + Date.now();
+    allBets[id] = bet;
+    renderLeaderboard(allBets);
+    renderBets(allBets);
+    closeNewBet();
+    resetNewBetForm();
+    btn.disabled = false; btn.textContent = 'Add Bet →';
+    return;
+  }
+
+  const newRef = push(betsRef);
+  set(newRef, bet).then(() => {
+    closeNewBet();
+    resetNewBetForm();
+    btn.disabled = false; btn.textContent = 'Add Bet →';
+  }).catch(err => {
+    alert('Error saving bet. Check Firebase config.');
+    console.error(err);
+    btn.disabled = false; btn.textContent = 'Add Bet →';
+  });
+};
+
+function resetNewBetForm() {
+  document.getElementById('nb-submitter').value = '';
+  document.getElementById('nb-desc').value = '';
+  document.getElementById('nb-stakes').value = '';
+  document.getElementById('nb-odds').value = 'Even odds';
+  document.querySelectorAll('#nb-participants input').forEach(el => { el.checked = false; });
+  document.querySelectorAll('#nb-participants .p-chip').forEach(el => el.classList.remove('selected'));
+}
+
+// ── Close-out ──────────────────────────────────────────────────────
+window.openCloseout = function(id) {
+  closingBetId = id;
+  const bet = allBets[id];
+  if (!bet) return;
+  document.getElementById('co-desc-label').textContent = bet.description;
+  document.getElementById('co-notes').value = '';
+
+  const grid = document.getElementById('co-winner-grid');
+  grid.innerHTML = (bet.participants || []).map(p => `
+    <div class="winner-row" id="wr-${p}">
+      <div class="winner-label" style="color:${COLORS[p]||'#1a1a1a'}">${p}</div>
+      <div class="outcome-btns">
+        <button class="outcome-btn" onclick="setOutcome('${p}','won')">🏆 Won</button>
+        <button class="outcome-btn" onclick="setOutcome('${p}','lost')">💸 Lost</button>
+        <button class="outcome-btn" onclick="setOutcome('${p}','push')">🤝 Push</button>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('closeout-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+
+const outcomeState = {};
+window.setOutcome = function(person, outcome) {
+  outcomeState[person] = outcome;
+  const row = document.getElementById(`wr-${person}`);
+  row.className = `winner-row ${outcome}`;
+  row.querySelectorAll('.outcome-btn').forEach(btn => {
+    btn.className = 'outcome-btn';
+    if (btn.textContent.toLowerCase().includes(outcome) ||
+        (outcome === 'won' && btn.textContent.includes('Won')) ||
+        (outcome === 'lost' && btn.textContent.includes('Lost')) ||
+        (outcome === 'push' && btn.textContent.includes('Push'))) {
+      btn.classList.add(outcome);
+    }
+  });
+};
+
+window.closeCloseout = function() {
+  document.getElementById('closeout-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  closingBetId = null;
+  Object.keys(outcomeState).forEach(k => delete outcomeState[k]);
+};
+
+window.submitCloseout = function() {
+  if (!closingBetId) return;
+  const bet = allBets[closingBetId];
+  const participants = bet.participants || [];
+  const missing = participants.filter(p => !outcomeState[p]);
+  if (missing.length) { alert(`Please set an outcome for: ${missing.join(', ')}`); return; }
+
+  const btn = document.querySelector('#closeout-overlay .modal-submit');
+  btn.disabled = true; btn.textContent = 'Settling…';
+
+  const updates = {
+    status: 'closed',
+    outcomes: { ...outcomeState },
+    closeNotes: document.getElementById('co-notes').value.trim(),
+    settledAt: Date.now()
+  };
+
+  if (!isConfigured()) {
+    Object.assign(allBets[closingBetId], updates);
+    renderLeaderboard(allBets);
+    renderBets(allBets);
+    closeCloseout();
+    btn.disabled = false; btn.textContent = 'Settle Bet →';
+    return;
+  }
+
+  update(ref(db, `oneoff_bets/${closingBetId}`), updates).then(() => {
+    closeCloseout();
+    btn.disabled = false; btn.textContent = 'Settle Bet →';
+  }).catch(err => {
+    alert('Error settling bet.');
+    console.error(err);
+    btn.disabled = false; btn.textContent = 'Settle Bet →';
+  });
+};
+
+// ── Reopen / Delete ────────────────────────────────────────────────
+window.reopenBet = function(id) {
+  if (!confirm('Reopen this bet and clear the results?')) return;
+  const updates = { status: 'open', outcomes: null, closeNotes: null, settledAt: null };
+
+  if (!isConfigured()) {
+    Object.assign(allBets[id], updates);
+    renderLeaderboard(allBets);
+    renderBets(allBets);
+    return;
+  }
+
+  update(ref(db, `oneoff_bets/${id}`), updates);
+};
+
+window.deleteBet = function(id) {
+  if (!confirm('Permanently delete this bet?')) return;
+
+  if (!isConfigured()) {
+    delete allBets[id];
+    renderLeaderboard(allBets);
+    renderBets(allBets);
+    return;
+  }
+
+  set(ref(db, `oneoff_bets/${id}`), null);
+};
+
+// ── Filter ─────────────────────────────────────────────────────────
+window.setFilter = function(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBets(allBets);
+};
+
+// ── Helpers ────────────────────────────────────────────────────────
+window.overlayClose = function(e, id) {
+  if (e.target === document.getElementById(id)) {
+    if (id === 'new-bet-overlay') closeNewBet();
+    else if (id === 'closeout-overlay') closeCloseout();
+  }
+};
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeNewBet(); closeCloseout(); }
+});
+
+// ── Password gate ──────────────────────────────────────────────────
+const PW_KEY = 'srb_auth';
+const PW_CORRECT = 'rudygobert';
+(function() {
+  if (sessionStorage.getItem(PW_KEY) !== 'ok') {
+    document.getElementById('pw-gate').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('pw-input').focus(), 50);
+  }
+})();
+
+window.pwCheck = function() {
+  const val = document.getElementById('pw-input').value.trim().toLowerCase();
+  if (val === PW_CORRECT.toLowerCase()) {
+    sessionStorage.setItem(PW_KEY, 'ok');
+    document.getElementById('pw-gate').classList.remove('show');
+    document.body.style.overflow = '';
+    init();
+  } else {
+    const err = document.getElementById('pw-error');
+    const input = document.getElementById('pw-input');
+    err.textContent = 'Wrong password — try again.';
+    input.value = ''; input.focus();
+    input.style.borderColor = '#e53935';
+    setTimeout(() => { err.textContent = ''; input.style.borderColor = ''; }, 2000);
+  }
+};
+
+// Init (only runs if already authed)
+if (sessionStorage.getItem(PW_KEY) === 'ok') init();
+
+</script>
+</body>
+</html>
