@@ -1,7 +1,12 @@
 {
-  "name": "nba-proxy",
+  "name": "golf-proxy",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": { "start": "node server.js" },
-  "dependencies": { "express": "^4.18.2", "node-fetch": "^2.7.0" }
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "firebase-admin": "^12.0.0",
+    "node-cron": "^3.0.3"
+  }
 }
