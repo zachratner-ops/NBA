@@ -391,7 +391,7 @@ async function pushNBAToFirebase() {
 }
 
 // ── 7am ET daily cron (11:00 UTC) ────────────────────────────────
-cron.schedule('50 20 * * *', async function() {
+cron.schedule('0 11 * * *', async function() {
   console.log('Cron: daily NBA push starting...');
   const result = await pushNBAToFirebase();
   console.log('Cron: NBA push result:', result);
