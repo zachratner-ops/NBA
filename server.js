@@ -46,7 +46,7 @@ function fbDb() {
 }
 
 // ── HTTP helper ───────────────────────────────────────────────────
-function httpsGet(hostname, path, headers) {
+function httpsGet(hostname, path, headers, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const req = https.request({ hostname, path, method: 'GET', headers }, (r) => {
       let data = '';
@@ -54,6 +54,10 @@ function httpsGet(hostname, path, headers) {
       r.on('end', () => resolve({ status: r.statusCode, body: data }));
     });
     req.on('error', reject);
+    req.setTimeout(timeoutMs, () => {
+      req.destroy();
+      reject(new Error(`Request to ${hostname} timed out after ${timeoutMs}ms`));
+    });
     req.end();
   });
 }
