@@ -254,7 +254,7 @@ const NBA_OWNERS = [
 ];
 
 // ── GroupMe bot ──────────────────────────────────────────────────
-const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || '511b39cac7931f4f893e724ec2';
+const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || '45b2dc67de23cb67d9990a9555';
 const GROUPME_DRY_RUN = process.env.GROUPME_DRY_RUN === 'true';
 
 async function postGroupMe(totals) {
