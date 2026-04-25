@@ -647,6 +647,20 @@ function buildStats() {
   }).join('');
   const slotHtml = '<div class="stat-card"><div class="stat-card-title">Most common draft slot</div>' + slotRows + '</div>';
 
+  // Times picked first
+  const pick1Counts = {};
+  draftFinishes.forEach(({owner, pick}) => { if (pick === 1) pick1Counts[owner] = (pick1Counts[owner]||0) + 1; });
+  const pick1Rows = Object.entries(pick1Counts).sort((a,b) => b[1]-a[1]).map(([o, count]) => {
+    const total = (draftPositions[o]||[]).length;
+    const pct = Math.round(count/total*100);
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div style="width:70px;flex-shrink:0;color:' + (COLORS[o]||'#555') + ';font-weight:600;font-size:13px">' + o + '</div>' +
+      '<div class="stat-bar-wrap"><div class="stat-bar" style="width:' + pct + '%;background:' + (COLORS[o]||'#aaa') + '"></div></div>' +
+      '<div class="stat-row-val" style="flex-shrink:0">' + count + 'x <span style="font-size:10px;color:#aaa">(' + pct + '%)</span></div>' +
+      '</div>';
+  }).join('');
+  const pick1Html = '<div class="stat-card"><div class="stat-card-title">Times drafting first overall</div>' + pick1Rows + '</div>';
+
   // Win rate by pick
   const byPickWins = {}, byPickTotal = {};
   draftFinishes.forEach(({pick, won}) => {
@@ -698,7 +712,7 @@ function buildStats() {
     '<div class="stat-card" style="margin-bottom:24px;overflow-x:auto">' + mostDraftedHtml + '</div>' +
     '<div class="section-label">Draft order analysis</div>' +
     '<div class="stats-grid">' + winRateByPickHtml + slotHtml + '</div>' +
-    '<div class="stats-grid">' + stealBustHtml + '</div>';
+    '<div class="stats-grid">' + pick1Html + stealBustHtml + '</div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
