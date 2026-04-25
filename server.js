@@ -286,6 +286,33 @@ app.get('/health', (req, res) => res.json({ ok: true, service: 'golf', firebaseR
 
 // ── NBA Routes ────────────────────────────────────────────────────
 
+// Debug route — returns raw BBRef HTML snippet so we can check structure
+app.get('/nba/debug', async (req, res) => {
+  try {
+    const { status, body } = await httpsGet(
+      'www.basketball-reference.com',
+      '/playoffs/NBA_2026_totals.html',
+      {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.basketball-reference.com/playoffs/',
+      }
+    );
+    // Return status + first 3000 chars of body so we can see what BBRef is sending
+    res.json({
+      status,
+      bodyLength: body.length,
+      preview: body.slice(0, 3000),
+      hasPlayerStat: body.includes('data-stat="player"'),
+      hasPtsStat: body.includes('data-stat="pts"'),
+      hasTableId: body.includes('id="totals_stats"'),
+    });
+  } catch(e) {
+    res.json({ error: e.message });
+  }
+});
+
 // Manual trigger: fetch from BBRef and push to Firebase
 // Called by the Refresh button in nba.html
 app.post('/nba/push', async (req, res) => {
