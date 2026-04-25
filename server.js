@@ -51,6 +51,17 @@ function httpsGet(hostname, path, headers, timeoutMs) {
   });
 }
 
+// ── Name normalizer ──────────────────────────────────────────────
+// Strips diacritics so BBRef's "Nikola Jokić" matches our "Nikola Jokic"
+// and sanitizes Firebase key-illegal characters
+function normalizeName(name) {
+  return name
+    .normalize('NFD')                    // decompose accents
+    .replace(/[̀-ͯ]/g, '')     // strip combining diacritics
+    .replace(/\./g, '_')                 // dots -> underscore (Jr. etc)
+    .replace(/[#$\/\[\]]/g, '_');        // other Firebase-illegal chars
+}
+
 // ── Golf state ────────────────────────────────────────────────────
 const drafts = {};
 const historyStore = {};
@@ -184,11 +195,11 @@ async function pushNBAToFirebase() {
     const db = admin.database();
     const now = new Date().toISOString();
     const today = now.slice(0, 10);
-    // Firebase keys can't contain . # $ / [ ]
-    // Sanitize player names by replacing dots and other invalid chars
+    // Normalize names: strip accents + sanitize Firebase-illegal chars
+    // e.g. "Nikola Jokić" -> "Nikola Jokic", "Jabari Smith Jr." -> "Jabari Smith Jr_"
     const sanitizedPlayers = {};
     Object.keys(scoreData.players).forEach(function(name) {
-      const safeKey = name.replace(/\./g, '_').replace(/[#$\/\[\]]/g, '_');
+      const safeKey = normalizeName(name);
       sanitizedPlayers[safeKey] = scoreData.players[name];
     });
 
@@ -204,7 +215,7 @@ async function pushNBAToFirebase() {
     NBA_OWNERS.forEach(function(o) {
       totals[o.name] = o.players.reduce(function(sum, p) {
         // Look up using sanitized key to match what we wrote to Firebase
-        const safeP = p.replace(/\./g, '_').replace(/[#$\/\[\]]/g, '_');
+        const safeP = normalizeName(p);
         return sum + (sanitizedPlayers[safeP] || 0);
       }, 0);
     });

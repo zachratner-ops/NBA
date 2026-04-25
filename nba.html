@@ -264,8 +264,17 @@ window.applyFirebaseData = function applyFirebaseData(data) {
   }
 };
 
+// Match the proxy's normalization: strip diacritics + replace Firebase-illegal chars
+function normalizeName(name) {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\./g, '_')
+    .replace(/[#$\/\[\]]/g, '_');
+}
+
 function ownerTotal(o){
-  return o.players.reduce(function(s,p){ return s+(pts[p.name]||0); }, 0);
+  return o.players.reduce(function(s,p){ return s+(pts[normalizeName(p.name)]||0); }, 0);
 }
 
 // ── Leaderboard cards ────────────────────────────────────────────
@@ -304,7 +313,7 @@ function renderTable(){
     OWNERS.forEach(function(o){
       var p = o.players[r];
       if(!p){ h+='<td colspan="3"></td>'; return; }
-      var v = pts[p.name];
+      var v = pts[normalizeName(p.name)];
       var disp = (v===undefined) ? '—' : v.toLocaleString();
       var elim = isElim(p.team);
       var inj = isInjured(p.name);
