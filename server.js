@@ -153,24 +153,24 @@ async function fetchNBAScores() {
     const rows = body.split('<tr');
 
     rows.forEach(row => {
-      // Skip header rows and separator rows
       if (!row.includes('data-stat="player"') || !row.includes('data-stat="pts"')) return;
-      if (row.includes('thead') || row.includes('>Player<')) return;
+      if (row.includes('thead') || row.includes('>Player<') || row.includes('class="thead"')) return;
 
-      // Extract player name
+      // Actual BBRef format:
+      // <td class="left " data-append-csv="..." data-stat="player" csk="..."><a href="...">Name</a></td>
       const nameMatch = row.match(/data-stat="player"[^>]*><a[^>]*>([^<]+)<\/a>/);
       if (!nameMatch) return;
       const name = nameMatch[1].trim();
       if (!name || name === 'Player') return;
 
-      // Extract total points — in totals table this is an integer
+      // Actual BBRef format:
+      // <td class="right " data-stat="pts" >123</td>  (note space before >)
       const ptsMatch = row.match(/data-stat="pts"[^>]*>\s*(\d+)\s*<\/td>/);
       if (!ptsMatch) return;
       const pts = parseInt(ptsMatch[1], 10);
       if (isNaN(pts)) return;
 
-      // Players can appear multiple times if traded mid-season
-      // Keep the highest total (which will be their full-season TOT row)
+      // Keep highest total (handles traded players who appear multiple times)
       if (!players[name] || pts > players[name]) {
         players[name] = pts;
       }
