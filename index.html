@@ -6563,7 +6563,7 @@ function loadLiveLeader() {
       {name:'Jared',   players:['Donovan Mitchell','Nikola Jokic','Kevin Durant','Stephon Castle','Payton Pritchard','Jalen Johnson','Paolo Banchero','Julius Randle']},
       {name:'Zach',    players:['Victor Wembanyama','Jalen Brunson','Chet Holmgren','Anthony Edwards','Amen Thompson','Tobias Harris','Tyrese Maxey','LeBron James']},
     ];
-    const totals=OWNERS.map(o=>({name:o.name,pts:o.players.reduce((s,p)=>s+(s.p[p]||0),0)}));
+    const totals=OWNERS.map(o=>({name:o.name,pts:o.players.reduce((acc,p)=>acc+(s.p[p]||0),0)}));
     totals.sort((a,b)=>b.pts-a.pts);
     document.getElementById('nba-leader').innerHTML=`<span>Leading:</span> ${totals[0].name} (${totals[0].pts.toLocaleString()} pts)`;
   } catch(e){}
