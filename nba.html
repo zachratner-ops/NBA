@@ -454,7 +454,7 @@ function nbaRefresh(){
   var updEl = document.getElementById('nba-updated');
   updEl.textContent = 'Calling proxy…';
 
-  fetch(NBA_PROXY+'/nba/push', { method: 'POST' })
+  fetch(NBA_PROXY+'/nba/push')
     .then(function(r){
       updEl.textContent = 'Proxy responded: HTTP ' + r.status;
       if(!r.ok) throw new Error('Proxy HTTP ' + r.status);

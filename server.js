@@ -251,8 +251,16 @@ app.get('/nba/debug', async (req, res) => {
 });
 
 // Manual trigger: fetch from BBRef and push to Firebase
-// Called by the Refresh button in nba.html
+// POST version (called by nba.html Refresh button)
 app.post('/nba/push', async (req, res) => {
+  const result = await pushNBAToFirebase();
+  if (result.error) return res.status(502).json(result);
+  res.json(result);
+});
+
+// GET version — open this URL directly in a browser tab to trigger a push
+// No CORS issues since it's a direct navigation, not a fetch()
+app.get('/nba/push', async (req, res) => {
   const result = await pushNBAToFirebase();
   if (result.error) return res.status(502).json(result);
   res.json(result);
