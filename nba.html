@@ -123,7 +123,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nba-table td.sep { border-left: 2px solid #eee; }
 .nba-table td.pts { text-align: right; font-weight: 700; padding-right: 12px; }
 .nba-table td.pts.z { color: #ccc; font-weight: 400; }
-.nba-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 5px; border-radius: 3px; letter-spacing: .04em; }
+.nba-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 0; border-radius: 3px; letter-spacing: .04em; width: 36px; text-align: center; }
 .nba-elim { opacity: 0.38; text-decoration: line-through; }
 .nba-elim-badge { font-size: 9px; background: #eee; color: #999; border-radius: 3px; padding: 1px 4px; margin-left: 4px; font-weight: 600; vertical-align: middle; }
 .nba-err { background: #fff0f0; border: 1px solid #fcc; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #900; margin-bottom: 12px; display: none; }
@@ -138,6 +138,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .t-MIN{background:#0C2340;color:#78BE20}.t-PHI{background:#ED174C;color:#006BB6}.t-ATL{background:#E03A3E;color:#fff}
 .t-ORL{background:#0077C0;color:#C4D600}.t-POR{background:#1D1160;color:#E03A3E}.t-TOR{background:#000;color:#CE1141}
 .t-ELIM{background:#ddd;color:#999}
+
+/* ── Team filter pills ─────────────────────────────────────────── */
+.team-pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  font-size: 11px; font-weight: 500; letter-spacing: .05em;
+  background: #fff; border: 2.5px solid currentColor;
+  transition: opacity .15s, transform .1s, box-shadow .15s;
+  user-select: none; text-align: center;
+}
+.team-pill:hover { transform: scale(1.06); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.team-pill.active { box-shadow: 0 0 0 3px currentColor, 0 2px 8px rgba(0,0,0,.15); }
+.team-pill { min-width: 70px; }
+.team-pill img { width: 18px; height: 18px; object-fit: contain; }
+
+/* dimmed cells when a filter is active */
+.nba-table.filtered td { opacity: 0.18; transition: opacity .15s; }
+.nba-table.filtered td.team-match,
+.nba-table.filtered td.team-match + td,
+.nba-table.filtered td.team-match + td + td { opacity: 1; }
 </style>
 
 <div id="nba-tracker">
@@ -148,6 +168,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div class="nba-section-title">Roster</div>
   <div class="nba-wrap"><table class="nba-table" id="nba-table"></table></div>
+
+  <div class="nba-section-title">Teams</div>
+  <div id="nba-team-pills" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;justify-content:center;"></div>
 
   <div class="nba-section-title">Points over time</div>
   <div class="nba-chart-wrap"><div class="nba-chart-inner"><canvas id="nba-chart"></canvas></div></div>
@@ -328,7 +351,7 @@ function renderTable(){
       var teamBadge = elim
         ? '<span class="nba-badge t-ELIM">'+p.team+'</span><span class="nba-elim-badge">ELIMINATED</span>'
         : '<div style="display:inline-block;text-align:center;"><span class="nba-badge t-'+p.team+'">'+p.team+'</span>'+seriesScore+'</div>';
-      h += '<td class="sep" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+'</td>'+
+      h += '<td class="sep" data-team="'+p.team+'" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+'</td>'+
            '<td style="'+rowBg+'">'+teamBadge+'</td>'+
            '<td class="pts'+(v===0?' z':'')+(elim?' nba-elim':'')+'" style="'+rowBg+'">'+disp+'</td>';
     });
@@ -346,6 +369,15 @@ function renderTable(){
   });
   h += '</tr></tbody>';
   document.getElementById('nba-table').innerHTML = h;
+
+  // Re-apply active team filter if one is set
+  if (activeTeamFilter) {
+    var table = document.getElementById('nba-table');
+    table.classList.add('filtered');
+    table.querySelectorAll('td[data-team]').forEach(function(td) {
+      td.classList.toggle('team-match', td.getAttribute('data-team') === activeTeamFilter);
+    });
+  }
 }
 
 // ── Line chart ───────────────────────────────────────────────────
@@ -402,7 +434,90 @@ function renderChart(){
   });
 }
 
-function renderAll(){ renderCards(); renderTable(); renderChart(); }
+function renderAll(){ renderCards(); renderTable(); renderChart(); renderTeamPills(); }
+
+// ── Team filter pills ────────────────────────────────────────────
+var activeTeamFilter = null;
+
+// NBA CDN logo URL helper
+function teamLogoUrl(team) {
+  var teamIds = {
+    BOS:'1610612738',LAL:'1610612747',DEN:'1610612743',OKC:'1610612760',
+    NYK:'1610612752',SAS:'1610612759',CLE:'1610612739',HOU:'1610612745',
+    DET:'1610612765',MIN:'1610612750',PHI:'1610612755',ATL:'1610612737',
+    ORL:'1610612753',POR:'1610612757',TOR:'1610612761'
+  };
+  var id = teamIds[team];
+  return id ? 'https://cdn.nba.com/logos/nba/'+id+'/primary/L/logo.svg' : null;
+}
+
+function renderTeamPills() {
+  var container = document.getElementById('nba-team-pills');
+  if (!container) return;
+
+  // border color, text color per team
+  var TEAM_COLORS = {
+    BOS:['#007A33','#007A33'],
+    LAL:['#552583','#FDB927'],
+    DEN:['#0E2240','#FEC524'],
+    OKC:['#007AC1','#EF3B24'],
+    NYK:['#006BB6','#F58426'],
+    SAS:['#444','#444'],
+    CLE:['#860038','#FDBB30'],
+    HOU:['#CE1141','#CE1141'],
+    DET:['#1D42BA','#C8102E'],
+    MIN:['#0C2340','#78BE20'],
+    PHI:['#006BB6','#ED174C'],
+    ATL:['#E03A3E','#E03A3E'],
+    ORL:['#0077C0','#C4D600'],
+    POR:['#1D1160','#E03A3E'],
+    TOR:['#000','#CE1141']
+  };
+
+  // Collect all unique teams across all owners
+  var seen = {};
+  var teams = [];
+  OWNERS.forEach(function(o) {
+    o.players.forEach(function(p) {
+      if (!seen[p.team]) { seen[p.team] = true; teams.push(p.team); }
+    });
+  });
+
+  container.innerHTML = teams.map(function(team) {
+    var elim = isElim(team);
+    var colors = elim ? ['#bbb','#bbb'] : (TEAM_COLORS[team] || ['#444','#444']);
+    var borderColor = colors[0], textColor = colors[1];
+    var logo = teamLogoUrl(team);
+    var logoHtml = logo
+      ? '<img src="'+logo+'" onerror="this.style.display=\'none\'">'
+      : '';
+    var active = activeTeamFilter === team ? ' active' : '';
+    var elimStyle = elim ? 'opacity:.45;' : '';
+    return '<span class="team-pill'+active+'" style="color:'+borderColor+';--text-color:'+textColor+';'+elimStyle+'" onclick="toggleTeamFilter(\''+team+'\')" title="'+(elim?'ELIMINATED: ':'')+team+'">'+
+      logoHtml+'<span style="color:'+textColor+'">'+team+'</span></span>';
+  }).join('');
+}
+
+function toggleTeamFilter(team) {
+  activeTeamFilter = (activeTeamFilter === team) ? null : team;
+  var table = document.getElementById('nba-table');
+
+  if (!activeTeamFilter) {
+    table.classList.remove('filtered');
+  } else {
+    table.classList.add('filtered');
+    // Mark the team-badge cell for each matching player
+    var tds = table.querySelectorAll('td[data-team]');
+    tds.forEach(function(td) {
+      if (td.getAttribute('data-team') === activeTeamFilter) {
+        td.classList.add('team-match');
+      } else {
+        td.classList.remove('team-match');
+      }
+    });
+  }
+  renderTeamPills(); // re-render pills to update active state
+}
 
 // ── Name mapping for BBRef spellings ────────────────────────────
 var NAME_MAP = {
