@@ -274,7 +274,7 @@ async function postGroupMe(totals) {
     '',
     ...lines,
     '',
-    '💰 $50 pot · Winner takes all',
+    '💰 $250 pot · Winner takes all',
   ].join('\n');
 
   if (GROUPME_DRY_RUN || !GROUPME_BOT_ID) {
