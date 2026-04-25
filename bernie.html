@@ -140,6 +140,27 @@ body{
 .fb-success{display:none;text-align:center;padding:12px 0;}
 .fb-success-icon{font-size:36px;margin-bottom:8px;}
 .fb-success p{font-size:14px;color:#2e7d32;font-weight:600;}
+
+/* ── Proof of Life ────────────────────────────────────────────── */
+.pol-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 22px;margin-bottom:28px;}
+.pol-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
+.pol-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
+.pol-status{display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;}
+.pol-pulse{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(1.3);}}
+.pol-pulse.dead{background:var(--red);animation:none;}
+.pol-last-seen{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.pol-last-seen span{color:var(--green);font-weight:600;}
+.pol-item{display:flex;gap:12px;padding:10px 0;border-bottom:0.5px solid var(--border);}
+.pol-item:last-child{border-bottom:none;}
+.pol-item-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;margin-top:5px;}
+.pol-item-body{}
+.pol-item-date{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.pol-item-title{font-size:13px;color:var(--ink);line-height:1.4;}
+.pol-item-title a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--border);}
+.pol-item-title a:hover{border-color:var(--ink);}
+.pol-loading{text-align:center;padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+.pol-error{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px;}
 </style>
 </head>
 <body>
@@ -215,6 +236,19 @@ body{
         <div class="stat-block-sub">Based on SSA annual mortality probability for males age 84 (q₈₄ = 0.0975)</div>
       </div>
     </div>
+  </div>
+
+  <!-- Proof of Life -->
+  <div class="pol-card">
+    <div class="pol-header">
+      <div class="pol-title">Proof of Life · Official Senate Activity</div>
+      <div class="pol-status">
+        <div class="pol-pulse" id="pol-pulse"></div>
+        <span id="pol-status-text">Checking…</span>
+      </div>
+    </div>
+    <div class="pol-last-seen" id="pol-last-seen"></div>
+    <div id="pol-feed"><div class="pol-loading">Loading latest activity…</div></div>
   </div>
 
   <!-- Actuarial bar -->
@@ -351,6 +385,67 @@ async function fbSubmit(e) {
   } catch { btn.disabled=false; btn.textContent="Send request →"; alert("Something went wrong — try again."); }
 }
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeFeedback(); });
+
+// ── Proof of Life RSS feed ─────────────────────────────────────
+async function loadProofOfLife() {
+  const RSS_URL = 'https://www.sanders.senate.gov/feed/';
+  const PROXY   = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(RSS_URL);
+
+  try {
+    const res  = await fetch(PROXY);
+    const data = await res.json();
+
+    if (data.status !== 'ok' || !data.items?.length) throw new Error('No items');
+
+    const items = data.items.slice(0, 6);
+    const latest = new Date(items[0].pubDate);
+    const daysAgo = Math.floor((Date.now() - latest) / (1000*60*60*24));
+
+    // Status indicator
+    const pulse = document.getElementById('pol-pulse');
+    const statusEl = document.getElementById('pol-status-text');
+    if (daysAgo <= 7) {
+      statusEl.textContent = 'STILL ALIVE ✅';
+      statusEl.style.color = 'var(--green)';
+    } else if (daysAgo <= 30) {
+      statusEl.textContent = 'Recently active';
+      statusEl.style.color = 'var(--gold)';
+      pulse.style.background = 'var(--gold)';
+    } else {
+      statusEl.textContent = 'No recent activity ⚠️';
+      statusEl.style.color = 'var(--red)';
+      pulse.classList.add('dead');
+    }
+
+    // Last seen line
+    const opts = { year:'numeric', month:'long', day:'numeric' };
+    document.getElementById('pol-last-seen').innerHTML =
+      `Last confirmed alive: <span>${latest.toLocaleDateString('en-US', opts)}</span> · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo + ' days ago'}`;
+
+    // Feed items
+    document.getElementById('pol-feed').innerHTML = items.map(item => {
+      const date = new Date(item.pubDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+      const title = item.title.replace(/&amp;/g,'&').replace(/&#8217;/g,"'").replace(/&#8216;/g,"'");
+      return `<div class="pol-item">
+        <div class="pol-item-dot"></div>
+        <div class="pol-item-body">
+          <div class="pol-item-date">${date}</div>
+          <div class="pol-item-title"><a href="${item.link}" target="_blank" rel="noopener">${title}</a></div>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('pol-pulse').classList.add('dead');
+    document.getElementById('pol-status-text').textContent = 'Feed unavailable';
+    document.getElementById('pol-last-seen').textContent = '';
+    document.getElementById('pol-feed').innerHTML =
+      '<div class="pol-error">Could not load senate feed — check back later.</div>';
+  }
+}
+
+loadProofOfLife();
+
 
 // ── Core dates & actuarial data ────────────────────────────────
 const BET_START  = new Date('2016-10-22T00:00:00');
