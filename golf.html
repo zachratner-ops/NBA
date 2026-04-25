@@ -202,42 +202,42 @@ const COLORS = {
 
 // Golf draft order per tournament: { slug -> { ownerName -> pickNumber } }
 const GOLF_DRAFT = {
-  'pga-17':       { Max:1, Marc:2, Ben:3, Andrew:4, Matt:5 },
-  'us-open-17':   { Matt:1, Ben:2, Max:3, Marc:4, Zach:5, Andrew:6 },
-  'open-17':      { Zach:1, Max:2, Ben:3, Matt:4, Andrew:5, Marc:6 },
-  'masters-18':   { Matt:1, Ben:2, Marc:3, Zach:4, Andrew:5 },
-  'british-18':   { Zach:1, Ben:2, Marc:3, Matt:4, Andrew:5 },
-  'us-open-18':   { Ben:1, Marc:2, Zach:3, Matt:4, Andrew:5 },
-  'pga-18':       { Andrew:1, Ben:2, Matt:3, Marc:4, Zach:5 },
-  'masters-19':   { Ben:1, Matt:2, Max:3, Andrew:4, Marc:5, Zach:6 },
-  'british-19':   { Zach:1, Ben:2, Matt:3, Jared:4, Marc:5, Andrew:6, Max:7 },
-  'us-open-19':   { Matt:1, Zach:2, Ben:3, Marc:4, Max:5, Andrew:6 },
-  'pga-19':       { Max:1, Andrew:2, Zach:3, Ben:4, Matt:5, Marc:6 },
-  'masters-20':   { Jared:1, Marc:2, Matt:3, Max:4, Zach:5, Andrew:6, Ben:7 },
-  'us-open-20':   { Marc:1, Matt:2, Ben:3, Andrew:4, Jared:5, Zach:6 },
-  'pga-20':       { Jared:1, Ben:2, Marc:3, Andrew:4, Zach:5, Max:6, Matt:7 },
-  'charles-schwab-20': { Zach:1, Ben:2, Matt:3, Jared:4, Marc:5, Andrew:6 },
-  'masters-21':   { Jared:1, Ben:2, Marc:3, Max:4, Zach:5, Andrew:6, Matt:7 },
-  'us-open-21':   { Ben:1, Zach:2, Andrew:3, Matt:4, Marc:5, Jared:6 },
-  'pga-21':       { Marc:1, Jared:2, Matt:3, Ben:4, Zach:5, Andrew:6 },
-  'british-open-21': { Marc:1, Ben:2, Andrew:3, Jared:4, Matt:5, Zach:6 },
-  'masters-22':   { Max:1, Matt:2, Ben:3, Jared:4, Zach:5, Marc:6, Andrew:7 },
-  'uso-22':       { Andrew:1, Jared:2, Ben:3, Matt:4, Zach:5, Marc:6 },
-  'pga-22':       { Zach:1, Ben:2, Marc:3, Jared:4, Andrew:5, Matt:6, Max:7 },
-  'british-22':   { Jared:1, Zach:2, Matt:3, Ben:4, Andrew:5, Marc:6 },
-  'masters-23':   { Matt:1, Ben:2, Andrew:3, Mark:4, Jared:5, Zach:6 },
-  'us-open-23':   { Mark:1, Andrew:2, Ben:3, Matt:4, Zach:5, Marc:6, Jared:7 },
-  'pga-23':       { Zach:1, Andrew:2, Ben:3, Matt:4, Jared:5, Mark:6 },
-  'british-23':   { Zach:1, Mark:2, Jared:3, Matt:4, Andrew:5, Marc:6, Ben:7 },
-  'masters-24':   { Mark:1, Andrew:2, Matt:3, Jared:4, Ben:5, Zach:6, Marc:7 },
-  'us-open-24':   { Marc:1, Zach:2, Jared:3, Ben:4, Andrew:5, Mark:6, Matt:7 },
-  'pga-24':       { Mark:1, Marc:2, Ben:3, Matt:4, Zach:5, Andrew:6, Jared:7 },
-  'british-open-24': { Mark:1, Zach:2, Jared:3, Andrew:4, Ben:5, Matt:6, Marc:7 },
-  'masters-25':   { Marc:1, Mark:2, Ben:3, Matt:4, Andrew:5, Jared:6, Zach:7 },
-  'pga-25':       { Zach:1, Ben:2, Mark:3, Jared:4, Marc:5, Andrew:6, Matt:7 },
-  'us-open-25':   { Jared:1, Marc:2, Andrew:3, Mark:4, Ben:5, Zach:6, Matt:7 },
-  'open-25':      { Marc:1, Andrew:2, Jared:3, Ben:4, Zach:5, Matt:6, Mark:7 },
-  'masters-26':   { Ben:1, Jared:2, Marc:3, Matt:4, Zach:5, Andrew:6, Mark:7 },
+  'pga-championship-17': { Max:1, Marc:2, Ben:3, Andrew:4, Matt:5 },
+  '17-british-open':     { Zach:1, Max:2, Ben:3, Matt:4, Andrew:5, Marc:6 },
+  '2017-open-tracker':   { Matt:1, Ben:2, Max:3, Marc:4, Zach:5, Andrew:6 },
+  'masters-18':          { Matt:1, Ben:2, Marc:3, Zach:4, Andrew:5 },
+  'british-open-18':     { Zach:1, Ben:2, Marc:3, Matt:4, Andrew:5 },
+  'us-open-18':          { Ben:1, Marc:2, Zach:3, Matt:4, Andrew:5 },
+  'pga-18':              { Andrew:1, Ben:2, Matt:3, Marc:4, Zach:5 },
+  'masters-2019':        { Ben:1, Matt:2, Max:3, Andrew:4, Marc:5, Zach:6 },
+  'british-2019':        { Zach:1, Ben:2, Matt:3, Jared:4, Marc:5, Andrew:6, Max:7 },
+  'us-open-2019':        { Matt:1, Zach:2, Ben:3, Marc:4, Max:5, Andrew:6 },
+  'pga-2019':            { Max:1, Andrew:2, Zach:3, Ben:4, Matt:5, Marc:6 },
+  'masters-2020':        { Jared:1, Marc:2, Matt:3, Max:4, Zach:5, Andrew:6, Ben:7 },
+  'us-open-2020':        { Marc:1, Matt:2, Ben:3, Andrew:4, Jared:5, Zach:6 },
+  'pga-2020':            { Jared:1, Ben:2, Marc:3, Andrew:4, Zach:5, Max:6, Matt:7 },
+  'charles-schwab-2020': { Zach:1, Ben:2, Matt:3, Jared:4, Marc:5, Andrew:6 },
+  'masters-2021':        { Jared:1, Ben:2, Marc:3, Max:4, Zach:5, Andrew:6, Matt:7 },
+  'us-open-2021':        { Ben:1, Zach:2, Andrew:3, Matt:4, Marc:5, Jared:6 },
+  'pga-2021':            { Marc:1, Jared:2, Matt:3, Ben:4, Zach:5, Andrew:6 },
+  'british-open-2021':   { Marc:1, Ben:2, Andrew:3, Jared:4, Matt:5, Zach:6 },
+  'masters-22':          { Max:1, Matt:2, Ben:3, Jared:4, Zach:5, Marc:6, Andrew:7 },
+  'uso-22':              { Andrew:1, Jared:2, Ben:3, Matt:4, Zach:5, Marc:6 },
+  'pga-22':              { Zach:1, Ben:2, Marc:3, Jared:4, Andrew:5, Matt:6, Max:7 },
+  'british-22':          { Jared:1, Zach:2, Matt:3, Ben:4, Andrew:5, Marc:6 },
+  'masters-23':          { Matt:1, Ben:2, Andrew:3, Mark:4, Jared:5, Zach:6 },
+  'us-open-2023':        { Mark:1, Andrew:2, Ben:3, Matt:4, Zach:5, Marc:6, Jared:7 },
+  'pga-2023':            { Zach:1, Andrew:2, Ben:3, Matt:4, Jared:5, Mark:6 },
+  'british-open-2023':   { Zach:1, Mark:2, Jared:3, Matt:4, Andrew:5, Marc:6, Ben:7 },
+  'masters-2024':        { Mark:1, Andrew:2, Matt:3, Jared:4, Ben:5, Zach:6, Marc:7 },
+  'us-open-2024':        { Marc:1, Zach:2, Jared:3, Ben:4, Andrew:5, Mark:6, Matt:7 },
+  'pga-2024':            { Mark:1, Marc:2, Ben:3, Matt:4, Zach:5, Andrew:6, Jared:7 },
+  'british-open-2024':   { Mark:1, Zach:2, Jared:3, Andrew:4, Ben:5, Matt:6, Marc:7 },
+  'masters-2025':        { Marc:1, Mark:2, Ben:3, Matt:4, Andrew:5, Jared:6, Zach:7 },
+  'pga-2025':            { Zach:1, Ben:2, Mark:3, Jared:4, Marc:5, Andrew:6, Matt:7 },
+  'us-open-2025':        { Jared:1, Marc:2, Andrew:3, Mark:4, Ben:5, Zach:6, Matt:7 },
+  'open-2025':           { Marc:1, Andrew:2, Jared:3, Ben:4, Zach:5, Matt:6, Mark:7 },
+  'masters-26':          { Ben:1, Jared:2, Marc:3, Matt:4, Zach:5, Andrew:6, Mark:7 },
 };
 
 const ALL_OWNERS = ['Andrew','Ben','Zach','Marc','Jared','Mark','Matt','Max'];
@@ -6743,7 +6743,6 @@ function renderStats(finishes, golferDrafts, h2h, owners, favoritesHtml) {
   // ── Golf draft order stats ────────────────────────────────────
   const golfDraftPositions = {};
   const golfDraftFinishes = [];
-
   MAJORS.forEach(m => {
     const draft = GOLF_DRAFT[m.slug] || {};
     if (!Object.keys(draft).length) return;
@@ -6752,19 +6751,17 @@ function renderStats(finishes, golferDrafts, h2h, owners, favoritesHtml) {
       const sa = m.owners[a].score, sb = m.owners[b].score;
       if (sa === 'OUT' || sa === null) return 1;
       if (sb === 'OUT' || sb === null) return -1;
-      return typeof sa === 'number' && typeof sb === 'number' ? (isUsOpen ? sb - sa : sa - sb) : 0;
+      return typeof sa === 'number' && typeof sb === 'number' ? (isUsOpen ? sb-sa : sa-sb) : 0;
     });
     Object.entries(draft).forEach(([owner, pick]) => {
       if (!golfDraftPositions[owner]) golfDraftPositions[owner] = [];
       golfDraftPositions[owner].push(pick);
       const finishIdx = ranked.indexOf(owner);
       if (finishIdx >= 0) {
-        golfDraftFinishes.push({ owner, year: m.year, name: m.name, pick, finish: finishIdx + 1, won: m.winner === owner || (m.winner && m.winner.includes(owner)) });
+        golfDraftFinishes.push({ owner, year: m.year, name: m.name, pick, finish: finishIdx+1, won: m.winner===owner || (m.winner&&m.winner.includes(owner)) });
       }
     });
   });
-
-  // Most common draft slot per owner
   const golfMostCommonSlot = {};
   Object.entries(golfDraftPositions).forEach(([owner, picks]) => {
     const freq = {};
@@ -6772,68 +6769,49 @@ function renderStats(finishes, golferDrafts, h2h, owners, favoritesHtml) {
     const sorted = Object.entries(freq).sort((a,b) => b[1]-a[1] || a[0]-b[0]);
     golfMostCommonSlot[owner] = { pick: +sorted[0][0], count: sorted[0][1], total: picks.length };
   });
-
   const activeOwners = ALL_OWNERS.filter(o => finishes[o] && finishes[o].total > 0);
-  const golfSlotHtml = `<div class="stat-card">
-    <div class="stat-card-title">Most common draft slot</div>
-    ${activeOwners.filter(o => golfMostCommonSlot[o]).map(o => {
-      const {pick, count, total} = golfMostCommonSlot[o];
-      const pickClass = pick===1?'pick1':pick===2?'pick2':pick===3?'pick3':'';
-      return '<div class="stat-row">' +
-        '<div class="stat-row-name" style="color:' + (COLORS[o]||'#555') + ';font-weight:600">' + o + '</div>' +
-        '<div class="draft-badge ' + pickClass + '" style="margin:0">Pick #' + pick + '</div>' +
-        '<div class="stat-row-val" style="font-size:11px;color:#aaa">' + count + '/' + total + ' majors</div>' +
-        '</div>';
-    }).join('')}
-  </div>`;
+  const golfSlotRows = activeOwners.filter(o => golfMostCommonSlot[o]).map(o => {
+    const {pick, count, total} = golfMostCommonSlot[o];
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div style="width:60px;flex-shrink:0;color:' + (COLORS[o]||'#555') + ';font-weight:600;font-size:13px">' + o + '</div>' +
+      '<div class="draft-badge" style="margin:0;flex-shrink:0">Pick #' + pick + '</div>' +
+      '<div style="font-size:11px;color:#aaa;margin-left:auto">' + count + '/' + total + ' majors</div>' +
+      '</div>';
+  }).join('');
+  const golfSlotHtml = '<div class="stat-card"><div class="stat-card-title">Most common draft slot</div>' + golfSlotRows + '</div>';
 
-  // Win rate by draft position
   const gByPickWins = {}, gByPickTotal = {};
   golfDraftFinishes.forEach(({pick, won}) => {
     gByPickWins[pick] = (gByPickWins[pick]||0) + (won?1:0);
     gByPickTotal[pick] = (gByPickTotal[pick]||0) + 1;
   });
   const gPickNums = Object.keys(gByPickTotal).map(Number).sort((a,b)=>a-b);
-  const golfWinRateByPickHtml = `<div class="stat-card">
-    <div class="stat-card-title">Win rate by draft position</div>
-    ${gPickNums.map(pick => {
-      const w = gByPickWins[pick]||0;
-      const total = gByPickTotal[pick];
-      const pct = Math.round(w/total*100);
-      const pickClass = pick===1?'pick1':pick===2?'pick2':pick===3?'pick3':'';
-      return '<div class="stat-row">' +
-        '<div class="draft-badge ' + pickClass + '" style="margin:0;width:56px;text-align:center">Pick #' + pick + '</div>' +
-        '<div class="stat-bar-wrap"><div class="stat-bar" style="width:' + pct + '%;background:#2E7D32"></div></div>' +
-        '<div class="stat-row-val">' + pct + '% <span style="font-size:10px;color:#aaa">(' + w + '/' + total + ')</span></div>' +
-        '</div>';
-    }).join('')}
-  </div>`;
+  const golfPickRows = gPickNums.map(pick => {
+    const w = gByPickWins[pick]||0, total = gByPickTotal[pick];
+    const pct = Math.round(w/total*100);
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div class="draft-badge" style="margin:0;width:52px;text-align:center;flex-shrink:0">Pick #' + pick + '</div>' +
+      '<div class="stat-bar-wrap"><div class="stat-bar" style="width:' + pct + '%;background:#2E7D32"></div></div>' +
+      '<div class="stat-row-val" style="flex-shrink:0">' + pct + '% <span style="font-size:10px;color:#aaa">(' + w + '/' + total + ')</span></div>' +
+      '</div>';
+  }).join('');
+  const golfWinRateByPickHtml = '<div class="stat-card"><div class="stat-card-title">Win rate by draft position</div>' + golfPickRows + '</div>';
 
-  // Biggest steals & busts
-  const gSteals = golfDraftFinishes.map(d => ({...d, diff: d.finish - d.pick})).filter(d => d.diff !== 0);
-  const gBiggestSteals = gSteals.slice().sort((a,b) => a.diff - b.diff).slice(0, 5);
-  const gBiggestBusts  = gSteals.slice().sort((a,b) => b.diff - a.diff).slice(0, 5);
-
+  const gSteals = golfDraftFinishes.map(d => ({...d, diff: d.finish-d.pick})).filter(d => d.diff !== 0);
+  const gBiggestSteals = gSteals.slice().sort((a,b) => a.diff-b.diff).slice(0,5);
+  const gBiggestBusts  = gSteals.slice().sort((a,b) => b.diff-a.diff).slice(0,5);
   function gStealRow(d) {
     const sign = d.diff < 0 ? '↑' : '↓';
     const color = d.diff < 0 ? '#2e7d32' : '#c62828';
-    return '<div class="stat-row">' +
-      '<div class="stat-row-name" style="color:' + (COLORS[d.owner]||'#555') + ';font-weight:600">' + d.owner + '</div>' +
-      '<div style="font-size:11px;color:#aaa;flex:1">Pick #' + d.pick + ' → Finished #' + d.finish + ' (' + d.name + ')</div>' +
-      '<div class="stat-row-val" style="color:' + color + '">' + sign + Math.abs(d.diff) + '</div>' +
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div style="width:60px;flex-shrink:0;color:' + (COLORS[d.owner]||'#555') + ';font-weight:600;font-size:13px">' + d.owner + '</div>' +
+      '<div style="font-size:11px;color:#aaa;flex:1">Pick #' + d.pick + ' → #' + d.finish + ' (' + d.name + ')</div>' +
+      '<div style="font-weight:700;color:' + color + ';flex-shrink:0">' + sign + Math.abs(d.diff) + '</div>' +
       '</div>';
   }
-
-  const golfStealBustHtml = '<div class="stat-card">' +
-    '<div class="stat-card-title">🏆 Biggest steals (finished much better than drafted)</div>' +
-    gBiggestSteals.map(gStealRow).join('') +
-    '</div>' +
-    '<div class="stat-card">' +
-    '<div class="stat-card-title">💀 Biggest busts (finished much worse than drafted)</div>' +
-    gBiggestBusts.map(gStealRow).join('') +
-    '</div>';
-
-  // ── end draft stats
+  const golfStealBustHtml =
+    '<div class="stat-card"><div class="stat-card-title">🏆 Biggest steals</div>' + gBiggestSteals.map(gStealRow).join('') + '</div>' +
+    '<div class="stat-card"><div class="stat-card-title">💀 Biggest busts</div>' + gBiggestBusts.map(gStealRow).join('') + '</div>';
 
     document.getElementById('stats-content').innerHTML = `
     <div class="section-label">Owner tendencies</div>
@@ -6970,13 +6948,11 @@ function buildMajorCard(m) {
     const alt=data.alternate?`<div class="rc-player alt ${data.alternate.cut?'cut':''} ${data.alternate.sub?'sub':''}"><span><span class="alt-lbl">A</span>${data.alternate.name}</span><span class="rc-score-val">${typeof data.alternate.score==='number'?(data.alternate.score===0?'E':data.alternate.score>0?'+'+data.alternate.score:''+data.alternate.score):(data.alternate.score||'—')}</span></div>`:'';
     const draftMap = GOLF_DRAFT[m.slug] || {};
     const draftPick = draftMap[owner];
-    const pickClass = draftPick===1?'pick1':draftPick===2?'pick2':draftPick===3?'pick3':'';
-    const draftBadge = draftPick ? `<div class="draft-badge ${pickClass}">Pick #${draftPick}</div>` : '';
+    const draftBadge = draftPick ? `<span class="draft-badge" style="margin:0;float:right;margin-top:1px">Pick #${draftPick}</span>` : '';
     return `<div class="result-card ${isWinner?'won':''} ${isOut?'out':''}">
-      <div class="rc-header" style="color:${COLORS[owner]||'#555'};border-color:${COLORS[owner]||'#eee'}">${isWinner?'🏆 ':''}${owner}</div>
+      <div class="rc-header" style="color:${COLORS[owner]||'#555'};border-color:${COLORS[owner]||'#eee'};display:flex;align-items:center;justify-content:space-between">${isWinner?'🏆 ':''}${owner}${draftBadge}</div>
       <div class="rc-score ${sd.cls}">${sd.txt}</div>
       <div class="rc-rank">${isOut?'Eliminated':isWinner?'Winner':'#'+(idx+1)}</div>
-      ${draftBadge}
       ${players}${alt}
     </div>`;
   }).join('');

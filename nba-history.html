@@ -379,13 +379,11 @@ function buildSeasons() {
         `<div class="oc-player"><span>${p.name}</span><span class="oc-pts">${p.pts}</span></div>`
       ).join('');
       const draftPick = (NBA_DRAFT[s.year]||{})[o.displayName] || (NBA_DRAFT[s.year]||{})[o.name];
-      const pickClass = draftPick===1?'pick1':draftPick===2?'pick2':draftPick===3?'pick3':'';
-      const draftBadge = draftPick ? `<div class="draft-badge ${pickClass}">Pick #${draftPick}</div>` : '';
+      const draftBadge = draftPick ? `<span class="draft-badge" style="margin:0;float:right;margin-top:1px">Pick #${draftPick}</span>` : '';
       return `<div class="owner-card ${isWinner?'won':''}">
-        <div class="oc-header" style="color:${COLORS[o.displayName]||'#555'};border-color:${COLORS[o.displayName]||'#eee'}">${isWinner?'🏆 ':''}${o.displayName}</div>
+        <div class="oc-header" style="color:${COLORS[o.displayName]||'#555'};border-color:${COLORS[o.displayName]||'#eee'};display:flex;align-items:center;justify-content:space-between">${isWinner?'🏆 ':''}${o.displayName}${draftBadge}</div>
         <div class="oc-score">${o.score.toLocaleString()}</div>
         <div class="oc-rank">${isWinner?'Winner':'#'+(idx+1)}</div>
-        ${draftBadge}
         ${playerRows}
       </div>`;
     }).join('');
@@ -611,34 +609,9 @@ function buildStats() {
     </tbody>
   </table>`;
 
-  document.getElementById('stats-content').innerHTML = `
-    <div class="section-label">Win rate & scoring</div>
-    <div class="stats-grid">${tendenciesHtml}</div>
-
-    <div class="section-label">Best single season</div>
-    <div class="stat-card" style="margin-bottom:24px;">${bestSeasonHtml}</div>
-
-    <div class="section-label">Year-by-year results (🏆 = won, pts = score)</div>
-    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">${yearPerfHtml}</div>
-
-    <div class="section-label">Head-to-head records (when both playing)</div>
-    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">
-      <div style="font-size:11px;color:#888;margin-bottom:10px;">W-L record against each opponent</div>
-      ${h2hHtml}
-    </div>
-
-    <div class="section-label">Top individual player seasons (all-time)</div>
-    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">${topPlayersHtml}</div>
-
-    <div class="section-label">Most drafted players (3+ times)</div>
-    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">${mostDraftedHtml}</div>
-
-
   // ── Draft order stats ─────────────────────────────────────────
-  // Build per-owner draft positions across years
-  const draftPositions = {}; // owner -> [pickNum, ...]
-  const draftFinishes = [];  // {owner, year, pick, finish (1=won, 2=2nd etc)}
-
+  const draftPositions = {};
+  const draftFinishes = [];
   SEASONS.forEach(s => {
     const draft = NBA_DRAFT[s.year] || {};
     const owners_ranked = Object.entries(s.owners)
@@ -655,7 +628,7 @@ function buildStats() {
     });
   });
 
-  // Most common draft slot per owner
+  // Most common draft slot
   const mostCommonSlot = {};
   Object.entries(draftPositions).forEach(([owner, picks]) => {
     const freq = {};
@@ -664,75 +637,68 @@ function buildStats() {
     mostCommonSlot[owner] = { pick: +sorted[0][0], count: sorted[0][1], total: picks.length };
   });
 
-  const slotHtml = `<div class="stat-card">
-    <div class="stat-card-title">Most common draft slot</div>
-    ${sortedByWins.filter(o => mostCommonSlot[o]).map(o => {
-      const {pick, count, total} = mostCommonSlot[o];
-      const pickClass = pick===1?'pick1':pick===2?'pick2':pick===3?'pick3':'';
-      return \`<div class="stat-row">
-        <div class="stat-row-name" style="color:\${COLORS[o]||'#555'};font-weight:600">\${o}</div>
-        <div class="draft-badge \${pickClass}" style="margin:0">Pick #\${pick}</div>
-        <div class="stat-row-val" style="font-size:11px;color:#aaa">\${count}/\${total} yrs</div>
-      </div>\`;
-    }).join('')}
-  </div>`;
+  const slotRows = sortedByWins.filter(o => mostCommonSlot[o]).map(o => {
+    const {pick, count, total} = mostCommonSlot[o];
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div style="width:70px;flex-shrink:0;color:' + (COLORS[o]||'#555') + ';font-weight:600;font-size:13px">' + o + '</div>' +
+      '<div class="draft-badge" style="margin:0;flex-shrink:0">Pick #' + pick + '</div>' +
+      '<div style="font-size:11px;color:#aaa;margin-left:auto">' + count + '/' + total + ' yrs</div>' +
+      '</div>';
+  }).join('');
+  const slotHtml = '<div class="stat-card"><div class="stat-card-title">Most common draft slot</div>' + slotRows + '</div>';
 
-  // Win rate by draft position (across all years)
+  // Win rate by pick
   const byPickWins = {}, byPickTotal = {};
   draftFinishes.forEach(({pick, won}) => {
     byPickWins[pick] = (byPickWins[pick]||0) + (won?1:0);
     byPickTotal[pick] = (byPickTotal[pick]||0) + 1;
   });
   const pickNums = Object.keys(byPickTotal).map(Number).sort((a,b)=>a-b);
-  const winRateByPickHtml = `<div class="stat-card">
-    <div class="stat-card-title">Win rate by draft position</div>
-    ${pickNums.map(pick => {
-      const wins = byPickWins[pick]||0;
-      const total = byPickTotal[pick];
-      const pct = Math.round(wins/total*100);
-      const pickClass = pick===1?'pick1':pick===2?'pick2':pick===3?'pick3':'';
-      return \`<div class="stat-row">
-        <div class="draft-badge \${pickClass}" style="margin:0;width:56px;text-align:center">Pick #\${pick}</div>
-        <div class="stat-bar-wrap"><div class="stat-bar" style="width:\${pct}%;background:#1565C0"></div></div>
-        <div class="stat-row-val">\${pct}% <span style="font-size:10px;color:#aaa">(\${wins}/\${total})</span></div>
-      </div>\`;
-    }).join('')}
-  </div>`;
+  const pickRows = pickNums.map(pick => {
+    const w = byPickWins[pick]||0;
+    const total = byPickTotal[pick];
+    const pct = Math.round(w/total*100);
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div class="draft-badge" style="margin:0;width:52px;text-align:center;flex-shrink:0">Pick #' + pick + '</div>' +
+      '<div class="stat-bar-wrap"><div class="stat-bar" style="width:' + pct + '%;background:#1565C0"></div></div>' +
+      '<div class="stat-row-val" style="flex-shrink:0">' + pct + '% <span style="font-size:10px;color:#aaa">(' + w + '/' + total + ')</span></div>' +
+      '</div>';
+  }).join('');
+  const winRateByPickHtml = '<div class="stat-card"><div class="stat-card-title">Win rate by draft position</div>' + pickRows + '</div>';
 
-  // Biggest steal & bust: finish position - draft position (negative = overperformed)
-  const steals = draftFinishes.map(d => ({ ...d, diff: d.finish - d.pick })).filter(d => d.diff !== 0);
-  const biggestSteals = steals.slice().sort((a,b) => a.diff - b.diff).slice(0, 5); // most negative = best steal
-  const biggestBusts  = steals.slice().sort((a,b) => b.diff - a.diff).slice(0, 5); // most positive = biggest bust
-
+  // Steals & busts
+  const steals = draftFinishes.map(d => ({...d, diff: d.finish - d.pick})).filter(d => d.diff !== 0);
+  const biggestSteals = steals.slice().sort((a,b) => a.diff - b.diff).slice(0, 5);
+  const biggestBusts  = steals.slice().sort((a,b) => b.diff - a.diff).slice(0, 5);
   function stealRow(d) {
     const sign = d.diff < 0 ? '↑' : '↓';
     const color = d.diff < 0 ? '#2e7d32' : '#c62828';
-    return \`<div class="stat-row">
-      <div class="stat-row-name" style="color:\${COLORS[d.owner]||'#555'};font-weight:600">\${d.owner}</div>
-      <div style="font-size:11px;color:#aaa;flex:1">Pick #\${d.pick} → Finished #\${d.finish} (\${d.year})</div>
-      <div class="stat-row-val" style="color:\${color}">\${sign}\${Math.abs(d.diff)}</div>
-    </div>\`;
+    return '<div class="stat-row" style="gap:8px">' +
+      '<div style="width:70px;flex-shrink:0;color:' + (COLORS[d.owner]||'#555') + ';font-weight:600;font-size:13px">' + d.owner + '</div>' +
+      '<div style="font-size:11px;color:#aaa;flex:1">Pick #' + d.pick + ' → #' + d.finish + ' (' + d.year + ')</div>' +
+      '<div style="font-weight:700;color:' + color + ';flex-shrink:0">' + sign + Math.abs(d.diff) + '</div>' +
+      '</div>';
   }
+  const stealBustHtml =
+    '<div class="stat-card"><div class="stat-card-title">🏆 Biggest steals</div>' + biggestSteals.map(stealRow).join('') + '</div>' +
+    '<div class="stat-card"><div class="stat-card-title">💀 Biggest busts</div>' + biggestBusts.map(stealRow).join('') + '</div>';
 
-  const stealBustHtml = \`<div class="stat-card">
-    <div class="stat-card-title">🏆 Biggest steals (finished much better than drafted)</div>
-    \${biggestSteals.map(stealRow).join('')}
-  </div>
-  <div class="stat-card">
-    <div class="stat-card-title">💀 Biggest busts (finished much worse than drafted)</div>
-    \${biggestBusts.map(stealRow).join('')}
-  </div>\`;
-
-    <div class="section-label">Worst overall picks (top-3 draft slot, fewest points)</div>
-    <div class="stat-card" style="margin-bottom:24px;overflow-x:auto">
-      <div style="font-size:11px;color:#888;margin-bottom:10px;">Players picked #1–3 overall who scored the fewest playoff points</div>
-      ${worstPicksHtml}
-    </div>
-
-    <div class="section-label">Draft order analysis</div>
-    <div class="stats-grid">${winRateByPickHtml}${slotHtml}</div>
-    <div class="stats-grid">${stealBustHtml}</div>
-  `;
+  document.getElementById('stats-content').innerHTML =
+    '<div class="section-label">Win rate & scoring</div>' +
+    '<div class="stats-grid">' + tendenciesHtml + '</div>' +
+    '<div class="section-label">Best single season</div>' +
+    '<div class="stat-card" style="margin-bottom:24px">' + bestSeasonHtml + '</div>' +
+    '<div class="section-label">Year-by-year results (🏆 = won, pts = score)</div>' +
+    '<div class="stat-card" style="margin-bottom:24px;overflow-x:auto">' + yearPerfHtml + '</div>' +
+    '<div class="section-label">Head-to-head records (when both playing)</div>' +
+    '<div class="stat-card" style="margin-bottom:24px;overflow-x:auto"><div style="font-size:11px;color:#888;margin-bottom:10px">W-L record against each opponent</div>' + h2hHtml + '</div>' +
+    '<div class="section-label">Top individual player seasons (all-time)</div>' +
+    '<div class="stat-card" style="margin-bottom:24px;overflow-x:auto">' + topPlayersHtml + '</div>' +
+    '<div class="section-label">Most drafted players (3+ times)</div>' +
+    '<div class="stat-card" style="margin-bottom:24px;overflow-x:auto">' + mostDraftedHtml + '</div>' +
+    '<div class="section-label">Draft order analysis</div>' +
+    '<div class="stats-grid">' + winRateByPickHtml + slotHtml + '</div>' +
+    '<div class="stats-grid">' + stealBustHtml + '</div>';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
