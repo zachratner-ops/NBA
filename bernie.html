@@ -389,59 +389,99 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeFeedbac
 // ── Proof of Life RSS feed ─────────────────────────────────────
 async function loadProofOfLife() {
   const RSS_URL = 'https://www.sanders.senate.gov/feed/';
-  const PROXY   = 'https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(RSS_URL);
 
-  try {
-    const res  = await fetch(PROXY);
-    const data = await res.json();
+  // Try multiple proxy services in order
+  const proxies = [
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}&count=6`,
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent('https://www.sanders.senate.gov/press-releases/feed/')}&count=6`,
+  ];
 
-    if (data.status !== 'ok' || !data.items?.length) throw new Error('No items');
-
-    const items = data.items.slice(0, 6);
-    const latest = new Date(items[0].pubDate);
-    const daysAgo = Math.floor((Date.now() - latest) / (1000*60*60*24));
-
-    // Status indicator
-    const pulse = document.getElementById('pol-pulse');
-    const statusEl = document.getElementById('pol-status-text');
-    if (daysAgo <= 7) {
-      statusEl.textContent = 'STILL ALIVE ✅';
-      statusEl.style.color = 'var(--green)';
-    } else if (daysAgo <= 30) {
-      statusEl.textContent = 'Recently active';
-      statusEl.style.color = 'var(--gold)';
-      pulse.style.background = 'var(--gold)';
-    } else {
-      statusEl.textContent = 'No recent activity ⚠️';
-      statusEl.style.color = 'var(--red)';
-      pulse.classList.add('dead');
-    }
-
-    // Last seen line
-    const opts = { year:'numeric', month:'long', day:'numeric' };
-    document.getElementById('pol-last-seen').innerHTML =
-      `Last confirmed alive: <span>${latest.toLocaleDateString('en-US', opts)}</span> · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo + ' days ago'}`;
-
-    // Feed items
-    document.getElementById('pol-feed').innerHTML = items.map(item => {
-      const date = new Date(item.pubDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
-      const title = item.title.replace(/&amp;/g,'&').replace(/&#8217;/g,"'").replace(/&#8216;/g,"'");
-      return `<div class="pol-item">
-        <div class="pol-item-dot"></div>
-        <div class="pol-item-body">
-          <div class="pol-item-date">${date}</div>
-          <div class="pol-item-title"><a href="${item.link}" target="_blank" rel="noopener">${title}</a></div>
-        </div>
-      </div>`;
-    }).join('');
-
-  } catch(e) {
-    document.getElementById('pol-pulse').classList.add('dead');
-    document.getElementById('pol-status-text').textContent = 'Feed unavailable';
-    document.getElementById('pol-last-seen').textContent = '';
-    document.getElementById('pol-feed').innerHTML =
-      '<div class="pol-error">Could not load senate feed — check back later.</div>';
+  let data = null;
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+      const json = await res.json();
+      if (json.status === 'ok' && json.items?.length) { data = json; break; }
+    } catch(e) { continue; }
   }
+
+  // If RSS fails, try fetching raw XML via allorigins
+  if (!data) {
+    try {
+      const res = await fetch(
+        `https://api.allorigins.win/get?url=${encodeURIComponent(RSS_URL)}`,
+        { signal: AbortSignal.timeout(8000) }
+      );
+      const json = await res.json();
+      if (json.contents) {
+        // Parse RSS XML manually
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(json.contents, 'text/xml');
+        const xmlItems = [...xml.querySelectorAll('item')].slice(0, 6);
+        if (xmlItems.length) {
+          data = {
+            status: 'ok',
+            items: xmlItems.map(el => ({
+              title: el.querySelector('title')?.textContent || '',
+              link:  el.querySelector('link')?.textContent || '',
+              pubDate: el.querySelector('pubDate')?.textContent || '',
+            }))
+          };
+        }
+      }
+    } catch(e) {}
+  }
+
+  if (!data) {
+    showPolError();
+    return;
+  }
+
+  renderPol(data.items);
+}
+
+function renderPol(items) {
+  const latest = new Date(items[0].pubDate);
+  const daysAgo = Math.floor((Date.now() - latest) / (1000*60*60*24));
+
+  const pulse = document.getElementById('pol-pulse');
+  const statusEl = document.getElementById('pol-status-text');
+  if (daysAgo <= 7) {
+    statusEl.textContent = 'STILL ALIVE ✅';
+    statusEl.style.color = 'var(--green)';
+  } else if (daysAgo <= 30) {
+    statusEl.textContent = 'Recently active';
+    statusEl.style.color = 'var(--gold)';
+    pulse.style.background = 'var(--gold)';
+  } else {
+    statusEl.textContent = 'No recent activity ⚠️';
+    statusEl.style.color = 'var(--red)';
+    pulse.classList.add('dead');
+  }
+
+  const opts = { year:'numeric', month:'long', day:'numeric' };
+  document.getElementById('pol-last-seen').innerHTML =
+    `Last confirmed alive: <span>${latest.toLocaleDateString('en-US', opts)}</span> · ${daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : daysAgo + ' days ago'}`;
+
+  document.getElementById('pol-feed').innerHTML = items.map(item => {
+    const date = new Date(item.pubDate).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const title = (item.title||'').replace(/&amp;/g,'&').replace(/&#8217;/g,"'").replace(/&#8216;/g,"'").replace(/&quot;/g,'"');
+    return `<div class="pol-item">
+      <div class="pol-item-dot"></div>
+      <div class="pol-item-body">
+        <div class="pol-item-date">${date}</div>
+        <div class="pol-item-title"><a href="${item.link}" target="_blank" rel="noopener">${title}</a></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showPolError() {
+  document.getElementById('pol-pulse').classList.add('dead');
+  document.getElementById('pol-status-text').textContent = 'Feed unavailable';
+  document.getElementById('pol-last-seen').textContent = '';
+  document.getElementById('pol-feed').innerHTML =
+    '<div class="pol-error">Could not reach senate feed. <a href="https://www.sanders.senate.gov/press-releases/" target="_blank" style="color:var(--ink)">Check manually →</a></div>';
 }
 
 loadProofOfLife();
