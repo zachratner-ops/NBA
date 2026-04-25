@@ -300,13 +300,28 @@ app.get('/nba/debug', async (req, res) => {
       }
     );
     // Return status + first 3000 chars of body so we can see what BBRef is sending
+    // Find the totals_stats table and grab a sample row
+    const tableStart = body.indexOf('id="totals_stats"');
+    const tableSnippet = tableStart >= 0 ? body.slice(tableStart, tableStart + 2000) : 'TABLE NOT FOUND';
+
+    // Find first actual data row (not header)
+    const rows = body.split('<tr');
+    let sampleRow = 'none found';
+    for (const row of rows) {
+      if (row.includes('data-stat="player"') && row.includes('data-stat="pts"') && !row.includes('>Player<')) {
+        sampleRow = row.slice(0, 800);
+        break;
+      }
+    }
+
     res.json({
       status,
       bodyLength: body.length,
-      preview: body.slice(0, 3000),
       hasPlayerStat: body.includes('data-stat="player"'),
       hasPtsStat: body.includes('data-stat="pts"'),
       hasTableId: body.includes('id="totals_stats"'),
+      tableSnippet,
+      sampleRow,
     });
   } catch(e) {
     res.json({ error: e.message });
