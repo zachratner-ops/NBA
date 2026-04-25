@@ -184,8 +184,16 @@ async function pushNBAToFirebase() {
     const db = admin.database();
     const now = new Date().toISOString();
     const today = now.slice(0, 10);
+    // Firebase keys can't contain . # $ / [ ]
+    // Sanitize player names by replacing dots and other invalid chars
+    const sanitizedPlayers = {};
+    Object.keys(scoreData.players).forEach(function(name) {
+      const safeKey = name.replace(/\./g, '_').replace(/[#$\/\[\]]/g, '_');
+      sanitizedPlayers[safeKey] = scoreData.players[name];
+    });
+
     await db.ref('nba26_live/scores').set({
-      players: scoreData.players,
+      players: sanitizedPlayers,
       eliminated: scoreData.eliminated || [],
       injured: scoreData.injured || [],
       seriesStandings: scoreData.seriesStandings || {},
@@ -194,7 +202,11 @@ async function pushNBAToFirebase() {
     });
     const totals = {};
     NBA_OWNERS.forEach(function(o) {
-      totals[o.name] = o.players.reduce(function(sum, p) { return sum + (scoreData.players[p] || 0); }, 0);
+      totals[o.name] = o.players.reduce(function(sum, p) {
+        // Look up using sanitized key to match what we wrote to Firebase
+        const safeP = p.replace(/\./g, '_').replace(/[#$\/\[\]]/g, '_');
+        return sum + (sanitizedPlayers[safeP] || 0);
+      }, 0);
     });
     const snapKey = today.replace(/-/g, '');
     await db.ref('nba26_live/snapshots/' + snapKey).set({ date: now, totals: totals });
