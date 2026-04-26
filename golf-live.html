@@ -589,14 +589,17 @@ function renderDraft() {
   const draftMakeupPicks = draft.makeupPicks || {};
   const makeupOwners = Object.keys(draftMakeupPicks);
 
-  const pickOrderHtml = allPicks.map((p, i) => {
-    const done = i < globalIdx, current = i === globalIdx, isA = i >= seq.length;
-    return `<div class="pick-item ${done?'done':current?'current':'upcoming'}">
-      <span class="pick-num">${i+1}</span>
-      <span style="color:${color(p.owner)};font-weight:${current?'700':'500'}">${p.owner}</span>
-      ${isA ? '<span class="pick-phase-alt">ALT</span>' : ''}
-    </div>`;
-  }).join('');
+  const pickOrderHtml = allPicks
+    .map((p, i) => ({ p, i }))
+    .filter(({ i }) => i >= Math.max(0, globalIdx - 3))  // last 3 done + current + upcoming
+    .map(({ p, i }) => {
+      const done = i < globalIdx, current = i === globalIdx, isA = i >= seq.length;
+      return `<div class="pick-item ${done?'done':current?'current':'upcoming'}">
+        <span class="pick-num">${i+1}</span>
+        <span style="color:${done?'#aaa':color(p.owner)};font-weight:${current?'700':'500'}">${p.owner}</span>
+        ${isA ? '<span class="pick-phase-alt">ALT</span>' : ''}
+      </div>`;
+    }).join('');
 
   const makeupHtml = makeupOwners.length ? makeupOwners.map(o =>
     `<div class="pick-item makeup">
@@ -665,7 +668,7 @@ function renderDraft() {
         <div class="card">
           <div class="section-hdr">Pick Order</div>
           ${makeupHtml ? `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed #eee;">${makeupHtml}</div>` : ''}
-          <div id="pick-order-list" style="max-height:300px;overflow-y:auto;">${pickOrderHtml}</div>
+          <div id="pick-order-list">${pickOrderHtml}</div>
         </div>
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
