@@ -356,6 +356,7 @@ let previewOrder = null;
 let previewAltOrder = null;
 let subOwner = null;
 let subSwapOut = null;
+let subModalRound = 1;
 let makeupOwner = null;
 let makeupSlotIndex = null;
 let makeupSelected = null;
@@ -824,12 +825,16 @@ function renderLive(isFinal) {
   const subs = live.subs || [];
   const potSubText = subs.map(s => `${s.owner} subbed R${s.round} (+$${s.cost})`).join(' · ');
   const lbData = buildLeaderboard();
-  const subOpen = live.subWindowOpen;
-  const subRound = live.subWindowRound;
+  const subR1Open = live.subR1Open || false;
+  const subR2Open = live.subR2Open || false;
+  const subOpen = subR1Open || subR2Open;
+  const subRound = subR2Open ? 2 : 1;
 
-  const subBadge = subOpen
-    ? `<span class="sub-window-badge ${subRound===1?'sub-open-r1':'sub-open-r2'}">Sub Window Open — R${subRound} ($${subRound===1?5:15})</span>`
-    : `<span class="sub-window-badge sub-closed">${isFinal?'Final':'Sub Window Closed'}</span>`;
+  const badgeParts = [];
+  if (subR1Open) badgeParts.push(`<span class="sub-window-badge sub-open-r1">R1 Sub Open ($5)</span>`);
+  if (subR2Open) badgeParts.push(`<span class="sub-window-badge sub-open-r2">R2 Sub Open ($15)</span>`);
+  if (!subOpen) badgeParts.push(`<span class="sub-window-badge sub-closed">${isFinal?'Final':'Sub Windows Closed'}</span>`);
+  const subBadge = badgeParts.join(' ');
 
   const commHtml = isComm ? `
     <div class="comm-panel">
@@ -839,9 +844,10 @@ function renderLive(isFinal) {
           <input type="text" id="espn-id-input" value="${live.espnEventId||''}" placeholder="ESPN Event ID" style="border:1px solid #444;background:#2a2a2a;color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;width:150px;">
           <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.setEspnId()">Set</button>
         </div>
-        <button class="btn btn-sm ${subOpen?'btn-red':'btn-amber'}" onclick="window.toggleSubWindow()">${subOpen?'Close Sub Window':`Open R${subRound||1} Sub Window`}</button>
+        <button class="btn btn-sm ${subR1Open?'btn-red':'btn-amber'}" onclick="window.toggleSubR1()">${subR1Open?'Close R1 Window':'Open R1 Sub Window'} ($5)</button>
+        <button class="btn btn-sm ${subR2Open?'btn-red':'btn-amber'}" onclick="window.toggleSubR2()">${subR2Open?'Close R2 Window':'Open R2 Sub Window'} ($15)</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
-        ${!isFinal ? `<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>` : `<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Commit to History →</button>`}
+        ${!isFinal ? `<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>` : live.committedAt ? `<span style="font-size:11px;color:#aaa;">Committed ${new Date(live.committedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoCommit()">Undo Commit</button>` : `<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Commit to History →</button>`}
       </div>
     </div>` : '';
 
@@ -877,8 +883,11 @@ function renderLive(isFinal) {
       </div>`;
     }
 
-    const subBtnHtml = !isFinal && subOpen && !entry.hasSubbed && entry.alternate && !entry.alternate.subOut
-      ? `<div class="sub-btn-wrap"><button class="btn btn-sm btn-amber" onclick="window.openSubModal('${entry.owner}')">Sub In Alternate ($${subRound===1?5:15})</button></div>` : '';
+    const subBtnHtml = !isFinal && !entry.hasSubbed && entry.alternate && !entry.alternate.subOut && (subR1Open || subR2Open)
+      ? `<div class="sub-btn-wrap">
+          ${subR1Open ? `<button class="btn btn-sm btn-amber" onclick="window.openSubModal('${entry.owner}', 1)">Sub After R1 ($5)</button>` : ''}
+          ${subR2Open ? `<button class="btn btn-sm btn-amber" onclick="window.openSubModal('${entry.owner}', 2)">Sub After R2 ($15)</button>` : ''}
+        </div>` : '';
 
     // Draft pick number: first pick in pickSequence for this owner
     const pickSeq = draft?.pickSequence || [];
@@ -1076,21 +1085,19 @@ window.setEspnId = async function() {
 };
 
 // ── Sub window ─────────────────────────────────────────────────────
-window.toggleSubWindow = async function() {
-  if (live.subWindowOpen) {
-    await update(liveRef(), { subWindowOpen: false });
-  } else {
-    const usedRounds = (live.subs||[]).map(s => s.round);
-    const nextRound = usedRounds.includes(1) ? 2 : 1;
-    await update(liveRef(), { subWindowOpen: true, subWindowRound: nextRound });
-  }
+window.toggleSubR1 = async function() {
+  await update(liveRef(), { subR1Open: !live.subR1Open });
+};
+window.toggleSubR2 = async function() {
+  await update(liveRef(), { subR2Open: !live.subR2Open });
 };
 
 // ── Sub flow ───────────────────────────────────────────────────────
-window.openSubModal = function(owner) {
+window.openSubModal = function(owner, round) {
   subOwner = owner; subSwapOut = null;
   const picks = draft?.picks?.[owner] || { golfers: [] };
-  const subRound = live?.subWindowRound;
+  const subRound = round || 1;
+  subModalRound = subRound; // store for confirmSub
   const altName = picks.alternate?.name;
   document.getElementById('sub-modal-sub').textContent =
     `${owner} · After Round ${subRound} · $${subRound===1?5:15} added to pot`;
@@ -1120,7 +1127,7 @@ window.confirmSub = async function() {
   if (!subOwner || !subSwapOut) return;
   const alt = draft?.picks?.[subOwner]?.alternate;
   if (!alt) return;
-  const subRound = live?.subWindowRound;
+  const subRound = subModalRound || 1;
   const cost = subRound === 1 ? 5 : 15;
   const newSub = { owner: subOwner, from: subSwapOut, to: alt.name, round: subRound, cost, ts: new Date().toISOString() };
   await update(liveRef(), { subs: [...(live?.subs||[]), newSub], pot: (live?.pot||0) + cost });
@@ -1167,11 +1174,17 @@ window.doFinalize = async function() {
   const entry = { slug:SLUG, name:draft?.name||SLUG, year:new Date().getFullYear(), pot:live?.pot||(owners().length*25), winner, owners:ownersData };
   await set(histRef(), entry);
   await update(draftRef(), { status: 'final' });
+  await update(liveRef(), { committedAt: new Date().toISOString() });
   document.getElementById('finalize-modal').style.display = 'none';
   alert('Tournament committed to history ✅');
 };
 
-// ── Reset ──────────────────────────────────────────────────────────
+window.undoCommit = async function() {
+  if (!confirm('Undo the history commit? This will remove the entry from history and set the tournament back to "final" (not yet committed).')) return;
+  await set(histRef(), null);
+  await update(draftRef(), { status: 'final' });
+  await update(liveRef(), { committedAt: null });
+};
 window.doReset = async function() {
   document.getElementById('reset-modal').style.display = 'none';
   clearInterval(timerInterval); timerInterval = null;
