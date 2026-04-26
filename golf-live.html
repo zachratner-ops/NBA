@@ -617,7 +617,7 @@ function renderDraft() {
 
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
-    const hasMakeup = !!currentMakeupPicks[o];
+    const hasMakeup = currentMakeupPicks[o] !== undefined && currentMakeupPicks[o] !== null;
     console.log(`[rosterMap] ${o}: hasMakeup=${hasMakeup}, currentMakeupPicks[o]=${currentMakeupPicks[o]}, keys=${JSON.stringify(Object.keys(currentMakeupPicks))}`);
     return `<div class="roster-col">
       <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
@@ -827,7 +827,7 @@ function renderComplete() {
 
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
-    const hasMakeup = !!makeupPicks[o];
+    const hasMakeup = makeupPicks[o] !== undefined && makeupPicks[o] !== null;
     return `<div class="roster-col">
       <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
       ${picks.golfers.map((g,i) => {
@@ -951,7 +951,7 @@ function renderLive(isFinal) {
       </div>`;
     }
 
-    const hasMakeup = !!makeupPicks[entry.owner];
+    const hasMakeup = makeupPicks[entry.owner] !== undefined && makeupPicks[entry.owner] !== null;
     const makeupBtnHtml = hasMakeup && isComm
       ? `<div class="sub-btn-wrap"><button class="btn btn-sm" style="background:#c62828;color:#fff;width:100%;" onclick="window.openMakeupModal('${entry.owner}')">⚠ Make Pick for ${entry.owner}</button></div>`
       : hasMakeup
