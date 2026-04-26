@@ -577,6 +577,9 @@ window.startDraft = async function() {
 // ── DRAFT ──────────────────────────────────────────────────────────
 function renderDraft() {
   if (!ws) connectWS();
+  // Preserve scroll positions across re-renders
+  const pickOrderScroll = document.getElementById('pick-order-list')?.scrollTop || 0;
+  const poolScroll = document.getElementById('pool-list')?.scrollTop || 0;
   const cur = getCur();
   const isAlt = draft.currentPhase === 'alternate';
   const seq = draft.pickSequence || [];
@@ -662,7 +665,7 @@ function renderDraft() {
         <div class="card">
           <div class="section-hdr">Pick Order</div>
           ${makeupHtml ? `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed #eee;">${makeupHtml}</div>` : ''}
-          <div style="max-height:300px;overflow-y:auto;">${pickOrderHtml}</div>
+          <div id="pick-order-list" style="max-height:300px;overflow-y:auto;">${pickOrderHtml}</div>
         </div>
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -687,6 +690,10 @@ function renderDraft() {
       </div>
       <div class="roster-grid">${rosterHtml}</div>
     </div>`;
+
+  // Restore scroll positions
+  if (pickOrderScroll) { const el = document.getElementById('pick-order-list'); if (el) el.scrollTop = pickOrderScroll; }
+  if (poolScroll) { const el = document.getElementById('pool-list'); if (el) el.scrollTop = poolScroll; }
 
   if (!timerInterval) startTimer();
 }
