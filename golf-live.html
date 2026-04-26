@@ -575,7 +575,7 @@ function renderDraft() {
   const altSeq = draft.altSequence || [];
   const allPicks = [...seq, ...altSeq];
   const globalIdx = isAlt ? seq.length + draft.currentPickIndex : draft.currentPickIndex;
-  const makeupPicks = draft.makeupPicks || {}; // {owner: slotIndex} pending makeup picks
+  const makeupPicks = (draft.makeupPicks && typeof draft.makeupPicks === 'object') ? draft.makeupPicks : {};
 
   const makeupOwners = Object.keys(makeupPicks);
 
@@ -667,14 +667,14 @@ function renderDraft() {
           <input class="pool-search" id="search-input" placeholder="Search players…" value="${searchQuery}" oninput="window.onSearch(this.value)">
           <div class="pool-list">${poolHtml}</div>
         </div>
-        ${isComm ? `<div class="card">
+        <div class="card">
           <div class="section-hdr">Assign List</div>
           <p style="font-size:11px;color:#888;margin-bottom:10px;">Assign as placeholder — owner makes a real pick later.</p>
           ${(draft.autopickList || [])
             .filter(p => (draft.field || []).some(f => f.name === p.name))
             .map(p => `<div class="ap-item"><span>${p.name}</span>${cur?`<button class="btn btn-sm btn-red" onclick="window.assignAP('${p.name.replace(/'/g,"\\'")}')">Assign</button>`:''}</div>`)
             .join('') || '<div style="color:#aaa;font-size:12px;padding:4px;">All assigned or none set</div>'}
-        </div>` : ''}
+        </div>
       </div>
       <div class="roster-grid">${rosterHtml}</div>
     </div>`;
