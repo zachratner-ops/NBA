@@ -899,6 +899,10 @@ function renderLive(isFinal) {
           <input type="text" id="espn-id-input" value="${live.espnEventId||''}" placeholder="ESPN Event ID" style="border:1px solid #444;background:#2a2a2a;color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;width:150px;">
           <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.setEspnId()">Set</button>
         </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:#aaa;">Round</span>
+          ${[1,2,3,4].map(r => `<button class="btn btn-sm ${(live.round||1)===r?'btn-amber':'btn-outline'}" style="${(live.round||1)===r?'':'color:#fff;border-color:#444;'}" onclick="window.setRound(${r})">${r}</button>`).join('')}
+        </div>
         <button class="btn btn-sm ${subOpen&&subRound===1?'btn-red':subOpen&&subRound===2?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===2?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR1()" ${subOpen&&subRound===2?'disabled':''}>R1 Sub Window ($5) ${subOpen&&subRound===1?'— Close':subOpen&&subRound===2?'— Locked':'— Open'}</button>
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
@@ -1164,7 +1168,11 @@ window.setEspnId = async function() {
 };
 
 // ── Sub window ─────────────────────────────────────────────────────
-window.toggleSubR1 = async function() {
+window.setRound = async function(r) {
+  await update(liveRef(), { round: r });
+};
+
+
   if (live.subWindowOpen && live.subWindowRound === 1) {
     await update(liveRef(), { subWindowOpen: false });
   } else {
