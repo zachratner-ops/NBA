@@ -434,6 +434,7 @@ window.checkCommPw = function() {
 
 // ── Render router ──────────────────────────────────────────────────
 function renderScreen() {
+  try {
   if (!draft) return;
   const status = draft.status || 'setup';
   document.getElementById('tb-title').textContent = draft.name || 'Golf';
@@ -444,6 +445,10 @@ function renderScreen() {
   else if (status === 'complete') renderComplete();
   else if (status === 'live') renderLive(false);
   else if (status === 'final') renderLive(true);
+  } catch(e) {
+    console.error('[renderScreen] ERROR:', e);
+    document.getElementById('screen').innerHTML = '<div class="main"><p style="color:red;padding:40px;text-align:center;">Render error: ' + e.message + '</p></div>';
+  }
 }
 
 function color(o) { return ALL_COLORS[o] || '#555'; }
@@ -907,10 +912,10 @@ function renderLive(isFinal) {
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
         ${!isFinal
-          ? `<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>`
+          ? '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>'
           : live.committedAt
-            ? `<span style="font-size:11px;color:#aaa;">Committed ${new Date(live.committedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoCommit()">Undo Commit</button>`
-            : `<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Commit to History →</button><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoFinalize()">Undo Finalize</button>`
+            ? '<span style="font-size:11px;color:#aaa;">Committed ' + new Date(live.committedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</span><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoCommit()">Undo Commit</button>'
+            : '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Commit to History →</button><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoFinalize()">Undo Finalize</button>'
         }
       </div>
     </div>` : '';
