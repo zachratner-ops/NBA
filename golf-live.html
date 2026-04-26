@@ -577,7 +577,8 @@ window.startDraft = async function() {
 // ── DRAFT ──────────────────────────────────────────────────────────
 function renderDraft() {
   if (!ws) connectWS();
-  console.log('[renderDraft] makeupPicks:', JSON.stringify(makeupPicks), '| makeupOwners:', Object.keys(makeupPicks));
+  const currentMakeupPicks = { ...makeupPicks }; // snapshot — prevents mid-render mutation
+  console.log('[renderDraft] makeupPicks:', JSON.stringify(currentMakeupPicks), '| makeupOwners:', Object.keys(currentMakeupPicks));
   const cur = getCur();
   const isAlt = draft.currentPhase === 'alternate';
   const seq = draft.pickSequence || [];
@@ -585,7 +586,7 @@ function renderDraft() {
   const allPicks = [...seq, ...altSeq];
   const globalIdx = isAlt ? seq.length + draft.currentPickIndex : draft.currentPickIndex;
 
-  const makeupOwners = Object.keys(makeupPicks);
+  const makeupOwners = Object.keys(currentMakeupPicks);
 
   const pickOrderHtml = allPicks.map((p, i) => {
     const done = i < globalIdx, current = i === globalIdx, isA = i >= seq.length;
@@ -616,12 +617,12 @@ function renderDraft() {
 
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
-    const hasMakeup = !!makeupPicks[o];
+    const hasMakeup = !!currentMakeupPicks[o];
     return `<div class="roster-col">
       <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
       ${Array(4).fill(0).map((_,i) => {
         const g = picks.golfers[i];
-        const isMakeupSlot = hasMakeup && makeupPicks[o] === i;
+        const isMakeupSlot = hasMakeup && currentMakeupPicks[o] === i;
         return `<div class="roster-slot ${g?'':'empty'} ${isMakeupSlot?'makeup':''}">
           <span class="slot-label">${i+1}</span>
           <span>${g ? (g.isBadGolfer ? `⚠ ${g.name}` : g.name) : '—'}</span>
