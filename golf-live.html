@@ -576,6 +576,7 @@ window.startDraft = async function() {
 // ── DRAFT ──────────────────────────────────────────────────────────
 function renderDraft() {
   if (!ws) connectWS();
+  console.log('[renderDraft] makeupPicks:', JSON.stringify(makeupPicks), '| makeupOwners:', Object.keys(makeupPicks));
   const cur = getCur();
   const isAlt = draft.currentPhase === 'alternate';
   const seq = draft.pickSequence || [];
@@ -637,8 +638,8 @@ function renderDraft() {
 
   document.getElementById('screen').innerHTML = `
     <div style="padding:14px 20px 0;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-      <button class="btn btn-sm btn-outline" onclick="window.doUndo()" ${(draft.currentPickIndex > 0 || draft.currentPhase === 'alternate') ? '' : 'disabled'} style="color:#fff;border-color:#444;">Undo</button>
-      <button class="btn btn-sm btn-outline" onclick="window.doRedo()" style="color:#fff;border-color:#444;">Redo</button>
+      <button class="btn btn-sm btn-outline" onclick="window.doUndo()" ${(draft.currentPickIndex > 0 || draft.currentPhase === 'alternate') ? '' : 'disabled'} style="color:#fff;border-color:#666;background:#2a2a2a;">↩ Undo</button>
+      <button class="btn btn-sm btn-outline" onclick="window.doRedo()" style="color:#fff;border-color:#666;background:#2a2a2a;">↪ Redo</button>
       ${isComm ? `<button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>` : ''}
     </div>
     ${isComm ? `<div style="background:#1a1a1a;border-bottom:1px solid #333;padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
