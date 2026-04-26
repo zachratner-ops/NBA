@@ -804,8 +804,15 @@ window.confirmMakeupPick = async function() {
   if (slotIndex === undefined) return;
 
   const picks = JSON.parse(JSON.stringify(draft.picks));
+  const placeholder = picks[makeupOwner].golfers[slotIndex]; // the bad golfer being replaced
   picks[makeupOwner].golfers[slotIndex] = { name: makeupSelected.name };
+
+  // Remove selected player from field, add placeholder back to field
+  // The assign list panel filters from field automatically, so placeholder reappears there too
   const newField = (draft.field || []).filter(p => p.name !== makeupSelected.name);
+  if (placeholder?.name) {
+    newField.push({ name: placeholder.name });
+  }
 
   makeupPicks = { ...makeupPicks };
   delete makeupPicks[makeupOwner];
