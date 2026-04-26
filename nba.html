@@ -304,20 +304,95 @@ function ownerTotal(o){
 function renderCards(){
   var sorted = OWNERS.map(function(o){ return {o:o,tot:ownerTotal(o)}; }).sort(function(a,b){return b.tot-a.tot;});
   var top = sorted[0].tot || 1;
+
+  // Build yesterday's totals from second-to-last snapshot
+  var prevTotals = {};
+  var prevRanks = {};
+  if (snapHistory.length >= 2) {
+    var prev = snapHistory[snapHistory.length - 2];
+    if (prev && prev.totals) prevTotals = prev.totals;
+    // Build prev ranks
+    var prevSorted = OWNERS.map(function(o){ return {name:o.name, tot:prevTotals[o.name]||0}; }).sort(function(a,b){return b.tot-a.tot;});
+    prevSorted.forEach(function(item,i){ prevRanks[item.name] = i; });
+  }
+
+  var leaderTot = sorted[0].tot;
+  var prevLeaderTot = sorted[0] ? (prevTotals[sorted[0].o.name] || leaderTot) : leaderTot;
+
   document.getElementById('nba-cards').innerHTML = sorted.map(function(item,rank){
-    var o=item.o, tot=item.tot, behind=sorted[0].tot-tot, pct=Math.round(tot/top*100);
+    var o=item.o, tot=item.tot, behind=leaderTot-tot, pct=Math.round(tot/top*100);
     var activePlayers = o.players.filter(function(p){ return !isElim(p.team); }).length;
     var elimNote = activePlayers < o.players.length ? '<div style="font-size:10px;color:#e53935;margin-top:4px;">'+activePlayers+'/'+o.players.length+' active</div>' : '';
-    return '<div class="nba-card'+(rank===0?' leader':'')+'">'+
-      '<div class="nba-rank">'+(rank===0?'🏆 Leading':'#'+(rank+1))+'</div>'+
-      '<div class="nba-name" style="color:'+o.color+'">'+o.name+'</div>'+
-      '<div class="nba-pts">'+tot.toLocaleString()+'</div>'+
-      '<div class="nba-lbl">playoff pts</div>'+
-      '<div class="nba-delta" style="color:'+(rank===0?'#2e7d32':'#e53935')+'">'+
-        (rank===0?'↑ leading':'-'+behind.toLocaleString()+' back')+
-      '</div>'+
-      elimNote+
-      '<div class="nba-bar-bg"><div class="nba-bar" style="width:'+pct+'%;background:'+o.color+'"></div></div>'+
+
+    // Trend calculations
+    var hasPrev = snapHistory.length >= 2;
+    var prevTot = prevTotals[o.name] || tot;
+    var ptsToday = tot - prevTot;
+    var prevRank = hasPrev ? (prevRanks[o.name] !== undefined ? prevRanks[o.name] : rank) : rank;
+    var rankChange = prevRank - rank; // positive = moved up
+
+    var todayLine = '+' + ptsToday + ' pts today';
+
+    var gapLine, gapColor;
+    if (rank === 0) {
+      // Leader: show how much they extended or were caught
+      var prevBehind = prevLeaderTot - (prevTotals[sorted[1] && sorted[1].o.name] || 0);
+      var gapChange = behind - prevBehind; // negative = extended lead
+      if (!hasPrev) {
+        gapLine = '↑ leading'; gapColor = '#2a9d5c';
+      } else if (ptsToday >= (prevSorted && prevSorted[1] ? tot - sorted[1].tot : 0)) {
+        var ext = ptsToday - (sorted[1] ? (sorted[1].tot - (prevTotals[sorted[1].o.name]||sorted[1].tot)) : 0);
+        if (ext > 0) { gapLine = '▲ extended by ' + ext; gapColor = '#2a9d5c'; }
+        else if (ext < 0) { gapLine = '▼ caught by ' + Math.abs(ext); gapColor = '#e05252'; }
+        else { gapLine = '— gap unchanged'; gapColor = '#888'; }
+      } else {
+        gapLine = '↑ leading'; gapColor = '#2a9d5c';
+      }
+    } else {
+      var prevBehindMe = prevLeaderTot - prevTot;
+      var gapDelta = prevBehindMe - behind; // positive = gained, negative = lost
+      if (!hasPrev || gapDelta === 0) {
+        gapLine = '— gap unchanged'; gapColor = '#888';
+      } else if (gapDelta > 0) {
+        gapLine = '▲ gained ' + gapDelta; gapColor = '#2a9d5c';
+      } else {
+        gapLine = '▼ lost ' + Math.abs(gapDelta); gapColor = '#e05252';
+      }
+    }
+
+    var placeLine, placeColor;
+    if (!hasPrev || rankChange === 0) {
+      placeLine = '— held ' + (rank===0?'1st':rank===1?'2nd':rank===2?'3rd':(rank+1)+'th');
+      placeColor = '#888';
+    } else if (rankChange > 0) {
+      placeLine = '▲ up to ' + (rank===0?'1st':rank===1?'2nd':rank===2?'3rd':(rank+1)+'th');
+      placeColor = '#2a9d5c';
+    } else {
+      placeLine = '▼ down to ' + (rank===0?'1st':rank===1?'2nd':rank===2?'3rd':(rank+1)+'th');
+      placeColor = '#e05252';
+    }
+
+    var trendHtml = hasPrev ? (
+      '<div style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;">' +
+        '<div style="font-size:10px;color:#2a9d5c;white-space:nowrap;line-height:1.5;">' + todayLine + '</div>' +
+        '<div style="font-size:10px;color:' + gapColor + ';white-space:nowrap;line-height:1.5;">' + gapLine + '</div>' +
+        '<div style="font-size:10px;color:' + placeColor + ';white-space:nowrap;line-height:1.5;">' + placeLine + '</div>' +
+      '</div>'
+    ) : '';
+
+    return '<div class="nba-card'+(rank===0?' leader':'')+'">' +
+      '<div class="nba-rank">'+(rank===0?'🏆 Leading':'#'+(rank+1))+'</div>' +
+      '<div class="nba-name" style="color:'+o.color+'">'+o.name+'</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 2px;">' +
+        '<div class="nba-pts" style="margin:0;line-height:1;font-size:27px;">'+tot.toLocaleString()+'</div>' +
+        trendHtml +
+      '</div>' +
+      '<div class="nba-lbl">playoff pts</div>' +
+      '<div class="nba-delta" style="color:'+(rank===0?'#2e7d32':'#e53935')+'">' +
+        (rank===0?'↑ leading':'-'+behind.toLocaleString()+' back') +
+      '</div>' +
+      elimNote +
+      '<div class="nba-bar-bg"><div class="nba-bar" style="width:'+pct+'%;background:'+o.color+'"></div></div>' +
     '</div>';
   }).join('');
 }
