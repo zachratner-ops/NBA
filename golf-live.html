@@ -1107,10 +1107,12 @@ function applyFuzzyScores(espnPlayers) {
   // Build lookup by last name and full name (lowercase)
   const espnByFull = {};
   const espnByLast = {};
+  const espnLastNameCount = {};
   Object.entries(espnPlayers).forEach(([name, data]) => {
     espnByFull[name.toLowerCase()] = { name, data };
     const parts = name.split(' ');
     const last = parts[parts.length - 1].toLowerCase();
+    espnLastNameCount[last] = (espnLastNameCount[last] || 0) + 1;
     if (!espnByLast[last]) espnByLast[last] = { name, data };
   });
   // For each draft name, try to find a match
@@ -1122,9 +1124,18 @@ function applyFuzzyScores(espnPlayers) {
     const safeKey = sanitizeKey(draftName);
     const safeData = espnPlayers[safeKey];
     if (safeData) { result[draftName] = safeData; return; }
-    // 2. Last name match
+    // 2. Last name match — only if unambiguous (one ESPN player with that last name)
     const lastName = draftName.split(' ').pop().toLowerCase();
-    if (espnByLast[lastName]) { result[draftName] = espnByLast[lastName].data; return; }
+    if (espnByLast[lastName] && espnLastNameCount[lastName] === 1) { result[draftName] = espnByLast[lastName].data; return; }
+    // 2b. Ambiguous last name — try matching first name too
+    if (espnLastNameCount[lastName] > 1) {
+      const firstName = draftName.split(' ')[0].toLowerCase();
+      const ambigMatch = Object.entries(espnByFull).find(([k]) => {
+        const parts = k.split(' ');
+        return parts[parts.length-1] === lastName && parts[0] === firstName;
+      });
+      if (ambigMatch) { result[draftName] = ambigMatch[1].data; return; }
+    }
     // 3. Try matching with/without Jr. / II etc.
     const stripped = lower.replace(/\s+(jr\.?|sr\.?|ii|iii|iv)$/i, '').trim();
     const match = Object.keys(espnByFull).find(k => k.replace(/\s+(jr\.?|sr\.?|ii|iii|iv)$/i,'').trim() === stripped);
