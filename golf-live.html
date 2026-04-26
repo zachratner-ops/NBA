@@ -639,7 +639,7 @@ function renderDraft() {
       <span style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Commissioner</span>
     </div>` : ''}
     <div class="main">
-      ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. They can click "Make Pick" on their roster card when ready.</div>` : ''}
+      ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
       <div class="timer-bar">
         <div>
           <div style="font-size:11px;color:#888;">${isAlt?'ALTERNATE ROUND':`Round ${cur?.round||''} of 4`}</div>
@@ -819,17 +819,28 @@ window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 
 // ── DRAFT COMPLETE ─────────────────────────────────────────────────
 function renderComplete() {
+  const makeupPicks = (draft.makeupPicks && typeof draft.makeupPicks === 'object') ? draft.makeupPicks : {};
+  const makeupOwners = Object.keys(makeupPicks);
+
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
+    const hasMakeup = !!makeupPicks[o];
     return `<div class="roster-col">
-      <div class="owner-header" style="background:${color(o)}">${o}</div>
-      ${picks.golfers.map((g,i) => `<div class="roster-slot"><span class="slot-label">${i+1}</span><span>${g.name}</span></div>`).join('')}
+      <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
+      ${picks.golfers.map((g,i) => {
+        const isMakeupSlot = hasMakeup && makeupPicks[o] === i;
+        return `<div class="roster-slot ${isMakeupSlot?'makeup':''}">
+          <span class="slot-label">${i+1}</span>
+          <span>${g.isBadGolfer ? `⚠ ${g.name}` : g.name}</span>
+        </div>`;
+      }).join('')}
       <div class="alt-divider">
         <div class="roster-slot ${picks.alternate?'':'empty'}">
           <span class="slot-label" style="color:#856404;">A</span>
           <span>${picks.alternate?picks.alternate.name:'—'}</span>
         </div>
       </div>
+      ${hasMakeup ? `<div style="padding:4px 8px;"><button class="btn btn-sm btn-amber" style="width:100%;font-size:11px;" onclick="window.openMakeupModal('${o}')">Make Pick</button></div>` : ''}
     </div>`;
   }).join('');
 
@@ -837,7 +848,7 @@ function renderComplete() {
     <div class="comm-panel">
       <div class="comm-label">Commissioner Controls</div>
       <div class="comm-actions">
-        <button class="btn btn-green" onclick="window.goLive()">Go Live →</button>
+        <button class="btn btn-green" onclick="window.goLive()" ${makeupOwners.length ? 'disabled title="Resolve pending makeup picks first"' : ''}>Go Live →</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>
       </div>
     </div>` : '';
@@ -848,6 +859,7 @@ function renderComplete() {
         <div style="font-size:22px;font-weight:800;">Draft Complete! 🏌️</div>
         <div style="margin-top:6px;opacity:.85;">All picks locked. Commissioner opens the live tracker when the tournament begins.</div>
       </div>
+      ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
       ${commSection}
       <div class="roster-grid">${rosterHtml}</div>
     </div>`;
