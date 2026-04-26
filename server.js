@@ -275,6 +275,8 @@ async function postGroupMe(totals) {
     ...lines,
     '',
     '💰 $250 pot · Winner takes all',
+    '',
+    '🔗 📊 gyou.in/nba.html',
   ].join('\n');
 
   if (GROUPME_DRY_RUN || !GROUPME_BOT_ID) {
