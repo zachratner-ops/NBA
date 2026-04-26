@@ -492,7 +492,7 @@ function renderTeamPills() {
       ? '<img src="'+logo+'" onerror="this.style.display=\'none\'">'
       : '';
     var active = activeTeamFilters.has(team) ? ' active' : '';
-    var elimStyle = elim ? 'opacity:.45;' : '';
+    var elimStyle = elim ? 'opacity:.35;pointer-events:none;cursor:default;' : '';
     return '<span class="team-pill'+active+'" style="color:'+borderColor+';--text-color:'+textColor+';'+elimStyle+'" onclick="toggleTeamFilter(\''+team+'\')" title="'+(elim?'ELIMINATED: ':'')+team+'">'+
       logoHtml+'<span style="color:'+textColor+'">'+team+'</span></span>';
   }).join('');
