@@ -618,6 +618,7 @@ function renderDraft() {
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
     const hasMakeup = !!currentMakeupPicks[o];
+    console.log(`[rosterMap] ${o}: hasMakeup=${hasMakeup}, currentMakeupPicks[o]=${currentMakeupPicks[o]}, keys=${JSON.stringify(Object.keys(currentMakeupPicks))}`);
     return `<div class="roster-col">
       <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
       ${Array(4).fill(0).map((_,i) => {
