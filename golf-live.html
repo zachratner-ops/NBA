@@ -1020,7 +1020,10 @@ window.refreshScores = async function(explicitId) {
   } catch(e) { if (isComm) alert('Error: ' + e.message); }
 };
 
-// Fuzzy name matching: try exact, then last-name, then first-word-of-last
+// Sanitize name for Firebase key lookup (mirrors server.js)
+function sanitizeKey(name) { return name.replace(/[.#$\/\[\]]/g, '_'); }
+
+// Fuzzy name matching: try exact, then sanitized, then last-name
 function applyFuzzyScores(espnPlayers) {
   if (!espnPlayers) return {};
   const allNames = owners().flatMap(o => {
@@ -1042,6 +1045,10 @@ function applyFuzzyScores(espnPlayers) {
     const lower = draftName.toLowerCase();
     // 1. Exact match
     if (espnByFull[lower]) { result[draftName] = espnByFull[lower].data; return; }
+    // 1b. Sanitized key match (e.g. "J.J. Spaun" -> "J_J_ Spaun")
+    const safeKey = sanitizeKey(draftName);
+    const safeData = espnPlayers[safeKey];
+    if (safeData) { result[draftName] = safeData; return; }
     // 2. Last name match
     const lastName = draftName.split(' ').pop().toLowerCase();
     if (espnByLast[lastName]) { result[draftName] = espnByLast[lastName].data; return; }
