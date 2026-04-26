@@ -339,7 +339,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getDatabase, ref, onValue, set, update, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 // ── Config ────────────────────────────────────────────────────────
-const PROXY = 'https://golf-proxy-production.up.railway.app';
+const PROXY = 'https://nba-production-4b6c.up.railway.app'; // Golf proxy
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
   authDomain: "giesener-bets.firebaseapp.com",
@@ -386,11 +386,15 @@ const histRef  = () => ref(db, `golf/history/${SLUG}`);
 // ── Firebase listeners ────────────────────────────────────────────
 onValue(draftRef(), snap => {
   draft = snap.val();
-  if (draft) renderScreen();
+  // If no Firebase data yet, show setup screen
+  if (!draft) {
+    draft = { status: 'setup', name: '', owners: ALL_OWNERS };
+  }
+  renderScreen();
 });
 onValue(liveRef(), snap => {
   live = snap.val();
-  if (live && (draft?.status === 'live' || draft?.status === 'final')) renderScreen();
+  if (draft?.status === 'live' || draft?.status === 'final') renderScreen();
 });
 
 // ── WebSocket (draft only) ────────────────────────────────────────
