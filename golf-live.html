@@ -1177,7 +1177,7 @@ window.setRound = async function(r) {
   await update(liveRef(), { round: r });
 };
 
-
+window.toggleSubR1 = async function() {
   if (live.subWindowOpen && live.subWindowRound === 1) {
     await update(liveRef(), { subWindowOpen: false });
   } else {
