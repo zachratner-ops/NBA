@@ -58,14 +58,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .timer-val{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;}
 .timer-val.warn{color:#e65100;}
 .timer-val.danger{color:#c62828;}
-.player-card{background:#f5f5f3;border-radius:8px;padding:9px 10px;cursor:pointer;border:1.5px solid transparent;transition:border-color .1s;margin-bottom:5px;}
+.player-card{background:#f5f5f3;border-radius:8px;padding:9px 10px;cursor:pointer;border:1.5px solid transparent;transition:border-color .1s;margin-bottom:5px;display:flex;align-items:center;gap:6px;}
 .player-card:hover{border-color:#bbb;}
 .player-card.selected{border-color:#2e7d32;background:#e8f5e9;}
-.player-name{font-size:13px;font-weight:600;}
-.odds-row{display:flex;gap:4px;margin-top:3px;}
-.dk{background:#000;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;}
-.fd{background:#1565c0;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;border-radius:3px;}
-.pool-list{max-height:460px;overflow-y:auto;}
+.player-name{font-size:13px;font-weight:600;flex:1;}
+.odds-row{display:flex;gap:4px;flex-shrink:0;min-width:140px;justify-content:flex-end;}
+.dk{background:#000;color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;}
+.fd{background:#1565c0;color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;}
+.pool-list{max-height:300px;overflow-y:auto;}
 .pool-search{width:100%;border:1px solid #ddd;border-radius:7px;padding:8px 12px;font-size:13px;margin-bottom:10px;}
 .pool-search:focus{outline:none;border-color:#1a1a1a;}
 .ap-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f5f5f3;border-radius:7px;margin-bottom:5px;font-size:12px;}
@@ -606,7 +606,7 @@ function renderDraft() {
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
-      ${(p.odds_dk||p.odds_fd)?`<div class="odds-row">${p.odds_dk?`<span class="dk">DK ${p.odds_dk}`:''}</span>${p.odds_fd?`<span class="fd">FD ${p.odds_fd}</span>`:''}</div>`:''}
+      <div class="odds-row">${p.odds_dk?`<span class="dk">DK ${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="fd">FD ${p.odds_fd}</span>`:''}</div>
     </div>`).join('');
 
   const apHtml = (draft.autopickList || []).map(p =>
@@ -662,7 +662,7 @@ function renderDraft() {
         <div class="card">
           <div class="section-hdr">Pick Order</div>
           ${makeupHtml ? `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed #eee;">${makeupHtml}</div>` : ''}
-          <div style="max-height:460px;overflow-y:auto;">${pickOrderHtml}</div>
+          <div style="max-height:300px;overflow-y:auto;">${pickOrderHtml}</div>
         </div>
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -674,7 +674,7 @@ function renderDraft() {
             </div>
           </div>
           <input class="pool-search" id="search-input" placeholder="Search players…" value="${searchQuery}" oninput="window.onSearch(this.value)">
-          <div class="pool-list">${poolHtml}</div>
+          <div class="pool-list" id="pool-list">${poolHtml}</div>
         </div>
         <div class="card">
           <div class="section-hdr">Assign List</div>
@@ -733,7 +733,20 @@ window.selectPlayer = function(pJson) {
   catch(e) { console.error('selectPlayer parse error', e); return; }
   renderDraft();
 };
-window.onSearch = function(val) { searchQuery = val; renderDraft(); };
+window.onSearch = function(val) {
+  searchQuery = val;
+  // Update pool in place — avoid full re-render which kills focus
+  const poolEl = document.getElementById('pool-list');
+  if (!poolEl) { renderDraft(); return; }
+  const q = val.toLowerCase();
+  const poolHtml = (draft.field || [])
+    .filter(p => !q || p.name.toLowerCase().includes(q))
+    .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
+      <div class="player-name">${p.name}</div>
+      <div class="odds-row">${p.odds_dk?`<span class="dk">DK ${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="fd">FD ${p.odds_fd}</span>`:''}</div>
+    </div>`).join('');
+  poolEl.innerHTML = poolHtml;
+};
 
 window.confirmPick = async function() {
   if (!selectedPlayer) return;
