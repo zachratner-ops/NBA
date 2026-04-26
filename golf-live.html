@@ -731,7 +731,22 @@ function showAutopick() {
 window.selectPlayer = function(pJson) {
   try { selectedPlayer = typeof pJson === 'string' ? JSON.parse(pJson) : pJson; }
   catch(e) { console.error('selectPlayer parse error', e); return; }
-  renderDraft();
+  // Update pool selection highlight in place
+  const poolEl = document.getElementById('pool-list');
+  if (poolEl) {
+    poolEl.querySelectorAll('.player-card').forEach(el => {
+      try {
+        const p = JSON.parse(el.dataset.p.replace(/&apos;/g, "'"));
+        el.classList.toggle('selected', p.name === selectedPlayer?.name);
+      } catch(e) {}
+    });
+  }
+  // Update pick button in place
+  const pickBtn = document.getElementById('pick-btn');
+  if (pickBtn) {
+    pickBtn.disabled = !selectedPlayer;
+    pickBtn.textContent = selectedPlayer ? `Pick ${selectedPlayer.name}` : 'Pick...';
+  }
 };
 window.onSearch = function(val) {
   searchQuery = val;
