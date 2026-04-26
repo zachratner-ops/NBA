@@ -371,6 +371,7 @@ const histRef  = () => ref(db, `golf/history/${SLUG}`);
 // ── Firebase listeners ─────────────────────────────────────────────
 onValue(draftRef(), snap => {
   draft = snap.val() || { status: 'setup', name: '', owners: ALL_OWNERS };
+  console.log('[draft] status:', draft.status, '| makeupPicks:', JSON.stringify(draft.makeupPicks));
   renderScreen();
 });
 onValue(liveRef(), snap => {
@@ -396,6 +397,7 @@ async function pushDraftToFirebase(d) {
   // Preserve Firebase-only fields that the proxy doesn't know about
   const preserved = {};
   if (draft?.makeupPicks) preserved.makeupPicks = draft.makeupPicks;
+  console.log('[push] preserving makeupPicks:', JSON.stringify(preserved.makeupPicks));
   await set(draftRef(), { ...d, ...preserved, undoStack: [], redoStack: [] });
 }
 
@@ -757,9 +759,9 @@ window.assignAP = async function(name) {
   if (!confirm(`Assign "${name}" to ${cur.owner} as placeholder?`)) return;
   const slotIndex = (draft.picks?.[cur.owner]?.golfers?.length) || 0;
   const golfer = (draft.field || []).find(p => p.name === name) || { name };
-  // Set makeupPicks FIRST so pushDraftToFirebase preserves it
   const makeupPicks = { ...(draft.makeupPicks || {}), [cur.owner]: slotIndex };
-  draft.makeupPicks = makeupPicks; // update local ref immediately
+  draft.makeupPicks = makeupPicks;
+  console.log('[assignAP] writing makeupPicks:', JSON.stringify(makeupPicks), 'slotIndex:', slotIndex);
   await update(draftRef(), { makeupPicks });
   await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { ...golfer, isBadGolfer: true }, isAutopick: true });
 };
@@ -825,6 +827,7 @@ window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 function renderComplete() {
   const makeupPicks = (draft.makeupPicks && typeof draft.makeupPicks === 'object') ? draft.makeupPicks : {};
   const makeupOwners = Object.keys(makeupPicks);
+  console.log('[renderComplete] makeupPicks:', JSON.stringify(makeupPicks), '| makeupOwners:', makeupOwners);
 
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
