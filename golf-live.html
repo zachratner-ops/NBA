@@ -455,13 +455,17 @@ function fmtScore(s) {
 }
 
 // ── SETUP ──────────────────────────────────────────────────────────
+let setupStep = 1;
+let setupField = [];
+
 function renderSetup() {
   document.getElementById('screen').innerHTML = `
     <div class="main-narrow">
       <div class="card">
         <h2 style="font-size:22px;font-weight:700;margin-bottom:20px;">Commissioner Setup</h2>
+        ${setupStep === 1 ? `
         <div class="form-group"><label>Tournament name</label>
-          <input type="text" id="s-name" placeholder="e.g. 2026 PGA Championship"></div>
+          <input type="text" id="s-name" placeholder="e.g. 2026 PGA Championship" value="${draft?.name||''}"></div>
         <div class="form-group"><label>Participants</label>
           <div class="owner-check-grid">${ALL_OWNERS.map(o => `
             <label class="owner-check">
@@ -470,23 +474,63 @@ function renderSetup() {
             </label>`).join('')}</div>
         </div>
         <div class="form-group"><label>Player field (one name per line)</label>
-          <textarea id="s-field" placeholder="Scottie Scheffler&#10;Rory McIlroy&#10;…"></textarea></div>
-        <div class="form-group"><label>Bad golfer / autopick list (one per line)</label>
-          <textarea id="s-auto" style="height:100px;" placeholder="Joel Dahmen&#10;…"></textarea></div>
-        <button class="btn btn-green" onclick="window.submitSetup()">Open Lobby →</button>
+          <textarea id="s-field" placeholder="Scottie Scheffler&#10;Rory McIlroy&#10;…">${setupField.map(p=>p.name).join('\n')}</textarea></div>
+        <button class="btn btn-green" onclick="window.setupStep1Next()">Next: Set Assign List →</button>
+        ` : `
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Select players for the quick-assign list</div>
+          <div style="font-size:12px;color:#888;margin-bottom:14px;">These appear on the right during the draft as easy placeholder picks. They stay in the main field too.</div>
+          <input class="pool-search" id="assign-search" placeholder="Search…" oninput="window.filterAssignList(this.value)" style="margin-bottom:10px;">
+          <div id="assign-list" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
+            ${setupField.map(p => `
+              <label style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#f5f5f3;border-radius:7px;cursor:pointer;">
+                <input type="checkbox" class="assign-check" value="${p.name.replace(/"/g,'&quot;')}" style="width:16px;height:16px;">
+                <span style="font-size:13px;">${p.name}</span>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline" style="color:#fff;border-color:#444;" onclick="window.setupStepBack()">← Back</button>
+          <button class="btn btn-green" onclick="window.submitSetup()">Open Lobby →</button>
+        </div>
+        `}
       </div>
     </div>`;
 }
 
+let setupName = '';
+let setupOwners = [];
+
+window.setupStep1Next = function() {
+  const nameEl = document.getElementById('s-name');
+  if (!nameEl?.value.trim()) { alert('Enter a tournament name.'); return; }
+  const fieldText = document.getElementById('s-field').value.trim();
+  if (!fieldText) { alert('Enter at least one player.'); return; }
+  setupName = nameEl.value.trim();
+  setupOwners = ALL_OWNERS.filter(o => document.getElementById('p-' + o)?.checked);
+  if (setupOwners.length < 2) { alert('Select at least 2 participants.'); return; }
+  setupField = fieldText.split('\n').filter(Boolean).map(l => ({ name: l.trim() }));
+  setupStep = 2;
+  renderSetup();
+};
+
+window.setupStepBack = function() {
+  setupStep = 1;
+  renderSetup();
+};
+
+window.filterAssignList = function(q) {
+  const lower = q.toLowerCase();
+  document.querySelectorAll('#assign-list label').forEach(el => {
+    el.style.display = el.textContent.toLowerCase().includes(lower) ? '' : 'none';
+  });
+};
+
 window.submitSetup = async function() {
-  const name = document.getElementById('s-name').value.trim();
-  if (!name) { alert('Enter a tournament name.'); return; }
-  const selectedOwners = ALL_OWNERS.filter(o => document.getElementById('p-' + o)?.checked);
-  if (selectedOwners.length < 2) { alert('Select at least 2 participants.'); return; }
-  const field = document.getElementById('s-field').value.trim().split('\n').filter(Boolean).map(l => ({ name: l.trim() }));
-  const autopickList = document.getElementById('s-auto').value.trim().split('\n').filter(Boolean).map(l => ({ name: l.trim() }));
+  const autopickList = [...document.querySelectorAll('.assign-check:checked')].map(el => ({ name: el.value }));
+  setupStep = 1;
   connectWS();
-  await proxyApi('/setup', 'POST', { name, field, autopickList, owners: selectedOwners });
+  await proxyApi('/setup', 'POST', { name: setupName, field: setupField, autopickList, owners: setupOwners });
 };
 
 // ── LOBBY ──────────────────────────────────────────────────────────
@@ -586,11 +630,14 @@ function renderDraft() {
   }).join('');
 
   document.getElementById('screen').innerHTML = `
-    <div style="padding:14px 20px 0;display:flex;gap:8px;justify-content:flex-end;">
+    <div style="padding:14px 20px 0;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
       <button class="btn btn-sm btn-outline" onclick="window.doUndo()" ${draft.undoStack?.length?'':'disabled'} style="color:#fff;border-color:#444;">Undo</button>
       <button class="btn btn-sm btn-outline" onclick="window.doRedo()" ${draft.redoStack?.length?'':'disabled'} style="color:#fff;border-color:#444;">Redo</button>
-      <button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset</button>
+      ${isComm ? `<button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>` : ''}
     </div>
+    ${isComm ? `<div style="background:#1a1a1a;border-bottom:1px solid #333;padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Commissioner</span>
+    </div>` : ''}
     <div class="main">
       ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. They can click "Make Pick" on their roster card when ready.</div>` : ''}
       <div class="timer-bar">
@@ -620,11 +667,14 @@ function renderDraft() {
           <input class="pool-search" id="search-input" placeholder="Search players…" value="${searchQuery}" oninput="window.onSearch(this.value)">
           <div class="pool-list">${poolHtml}</div>
         </div>
-        <div class="card">
-          <div class="section-hdr">Bad Golfer List</div>
-          <p style="font-size:11px;color:#888;margin-bottom:10px;">Assign as placeholder — owner replaces it with a real pick later.</p>
-          ${apHtml}
-        </div>
+        ${isComm ? `<div class="card">
+          <div class="section-hdr">Assign List</div>
+          <p style="font-size:11px;color:#888;margin-bottom:10px;">Assign as placeholder — owner makes a real pick later.</p>
+          ${(draft.autopickList || [])
+            .filter(p => (draft.field || []).some(f => f.name === p.name))
+            .map(p => `<div class="ap-item"><span>${p.name}</span>${cur?`<button class="btn btn-sm btn-red" onclick="window.assignAP('${p.name.replace(/'/g,"\\'")}')">Assign</button>`:''}</div>`)
+            .join('') || '<div style="color:#aaa;font-size:12px;padding:4px;">All assigned or none set</div>'}
+        </div>` : ''}
       </div>
       <div class="roster-grid">${rosterHtml}</div>
     </div>`;
@@ -703,7 +753,9 @@ window.assignAP = async function(name) {
   if (!cur) return;
   if (!confirm(`Assign "${name}" to ${cur.owner} as placeholder?`)) return;
   const slotIndex = (draft.picks?.[cur.owner]?.golfers?.length) || 0;
-  await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { name, isBadGolfer: true }, isAutopick: true });
+  // Remove from field so they can't be double-drafted
+  const golfer = (draft.field || []).find(p => p.name === name) || { name };
+  await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { ...golfer, isBadGolfer: true }, isAutopick: true });
   const makeupPicks = { ...(draft.makeupPicks || {}), [cur.owner]: slotIndex };
   await update(draftRef(), { makeupPicks });
 };
@@ -884,6 +936,14 @@ function renderLive(isFinal) {
       </div>`;
     }
 
+    const makeupPicks = draft?.makeupPicks || {};
+    const hasMakeup = !!makeupPicks[entry.owner];
+    const makeupBtnHtml = hasMakeup && isComm
+      ? `<div class="sub-btn-wrap"><button class="btn btn-sm" style="background:#c62828;color:#fff;width:100%;" onclick="window.openMakeupModal('${entry.owner}')">⚠ Make Pick for ${entry.owner}</button></div>`
+      : hasMakeup
+      ? `<div class="sub-btn-wrap"><button class="btn btn-sm btn-amber" style="width:100%;" onclick="window.openMakeupModal('${entry.owner}')">Make Pick</button></div>`
+      : '';
+
     const subBtnHtml = !isFinal && subOpen && !entry.hasSubbed && entry.alternate && !entry.alternate.benchedOut
       ? `<div class="sub-btn-wrap"><button class="btn btn-sm btn-amber" onclick="window.openSubModal('${entry.owner}')">Sub In Alternate ($${subRound===1?5:15})</button></div>` : '';
 
@@ -899,7 +959,7 @@ function renderLive(isFinal) {
       <div class="rc-score ${scoreCls}">${scoreVal}</div>
       <div class="rc-rank">${rankTxt}</div>
       ${playerRows}${altRow}
-      ${subBtnHtml}
+      ${makeupBtnHtml}${subBtnHtml}
     </div>`;
   }).join('');
 
