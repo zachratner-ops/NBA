@@ -393,7 +393,10 @@ function connectWS() {
 
 async function pushDraftToFirebase(d) {
   if (!d) return;
-  await set(draftRef(), { ...d, undoStack: [], redoStack: [] });
+  // Preserve Firebase-only fields that the proxy doesn't know about
+  const preserved = {};
+  if (draft?.makeupPicks) preserved.makeupPicks = draft.makeupPicks;
+  await set(draftRef(), { ...d, ...preserved, undoStack: [], redoStack: [] });
 }
 
 async function proxyApi(path, method = 'GET', body = null) {
@@ -740,12 +743,12 @@ window.apModalPick = async function(name) {
   const cur = getCur();
   if (!cur) return;
   document.getElementById('autopick-modal').style.display = 'none';
-  // Assign bad golfer to the slot
   const slotIndex = (draft.picks?.[cur.owner]?.golfers?.length) || 0;
-  await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { name, isBadGolfer: true }, isAutopick: true });
-  // Mark this owner as having a pending makeup pick for that slot
+  // Set makeupPicks FIRST so pushDraftToFirebase preserves it
   const makeupPicks = { ...(draft.makeupPicks || {}), [cur.owner]: slotIndex };
+  draft.makeupPicks = makeupPicks; // update local ref immediately
   await update(draftRef(), { makeupPicks });
+  await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { name, isBadGolfer: true }, isAutopick: true });
 };
 
 window.assignAP = async function(name) {
@@ -753,11 +756,12 @@ window.assignAP = async function(name) {
   if (!cur) return;
   if (!confirm(`Assign "${name}" to ${cur.owner} as placeholder?`)) return;
   const slotIndex = (draft.picks?.[cur.owner]?.golfers?.length) || 0;
-  // Remove from field so they can't be double-drafted
   const golfer = (draft.field || []).find(p => p.name === name) || { name };
-  await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { ...golfer, isBadGolfer: true }, isAutopick: true });
+  // Set makeupPicks FIRST so pushDraftToFirebase preserves it
   const makeupPicks = { ...(draft.makeupPicks || {}), [cur.owner]: slotIndex };
+  draft.makeupPicks = makeupPicks; // update local ref immediately
   await update(draftRef(), { makeupPicks });
+  await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { ...golfer, isBadGolfer: true }, isAutopick: true });
 };
 
 // Makeup pick flow
