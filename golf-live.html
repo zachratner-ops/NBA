@@ -550,7 +550,7 @@ function renderDraft() {
   const q = searchQuery.toLowerCase();
   const poolHtml = (draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
-    .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(${JSON.stringify(JSON.stringify(p))})">
+    .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
       <div class="player-name">${p.name}</div>
       ${(p.odds_dk||p.odds_fd) ? `<div class="odds-row">${p.odds_dk?`<span class="dk">DK ${p.odds_dk}</span>`:''} ${p.odds_fd?`<span class="fd">FD ${p.odds_fd}</span>`:''}</div>` : ''}
     </div>`).join('');
@@ -662,7 +662,12 @@ function showAutopick() {
 }
 
 window.selectPlayer = function(pJson) {
-  selectedPlayer = JSON.parse(pJson);
+  try {
+    selectedPlayer = typeof pJson === 'string' ? JSON.parse(pJson) : pJson;
+  } catch(e) {
+    console.error('selectPlayer parse error', e);
+    return;
+  }
   renderDraft();
 };
 window.onSearch = function(val) { searchQuery = val; renderDraft(); };
