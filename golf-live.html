@@ -360,7 +360,7 @@ let makeupOwner = null;
 let makeupSlotIndex = null;
 let makeupSelected = null;
 let scoreHistory = [];
-let scoreRefreshInterval = null;
+// scoreRefreshInterval removed — server-side polling handles score updates
 let isComm = false;
 
 const draftRef = () => ref(db, `golf/${SLUG}/draft`);
@@ -818,9 +818,7 @@ window.goLive = async function() {
 function renderLive(isFinal) {
   if (!live) { document.getElementById('screen').innerHTML = '<div class="main"><p style="color:#888;padding:40px;text-align:center;">Loading live data…</p></div>'; return; }
 
-  if (!isFinal && !scoreRefreshInterval) {
-    scoreRefreshInterval = setInterval(window.refreshScores, 60000);
-  }
+  // Scores are refreshed server-side every 30 min — no client interval needed
 
   const pot = live.pot || (owners().length * 25);
   const subs = live.subs || [];
@@ -1005,12 +1003,16 @@ function buildSparklines(lbData) {
 }
 
 // ── Score refresh ──────────────────────────────────────────────────
-window.refreshScores = async function() {
-  if (!live?.espnEventId) return; // silently skip if no ID set
+window.refreshScores = async function(explicitId) {
+  const eventId = explicitId || live?.espnEventId;
+  if (!eventId) return; // silently skip if no ID set
   try {
-    const data = await proxyApi('/scores', 'GET');
+    // Pass event ID directly in the URL so proxy doesn't need it in memory
+    const data = await proxyApi('/scores?eventId=' + encodeURIComponent(eventId), 'GET');
     if (data.error) { if (isComm) alert('Score fetch error: ' + data.error); return; }
-    await update(liveRef(), { scores: data.players, lastUpdated: new Date().toISOString() });
+    // Apply fuzzy name matching before saving
+    const matched = applyFuzzyScores(data.players);
+    await update(liveRef(), { scores: matched, lastUpdated: new Date().toISOString() });
     const ownerScores = {};
     buildLeaderboard().forEach(e => { ownerScores[e.owner] = e.teamScore; });
     scoreHistory.push({ ts: Date.now(), scores: ownerScores });
@@ -1018,11 +1020,52 @@ window.refreshScores = async function() {
   } catch(e) { if (isComm) alert('Error: ' + e.message); }
 };
 
+// Fuzzy name matching: try exact, then last-name, then first-word-of-last
+function applyFuzzyScores(espnPlayers) {
+  if (!espnPlayers) return {};
+  const allNames = owners().flatMap(o => {
+    const picks = draft?.picks?.[o] || { golfers: [], alternate: null };
+    return [...picks.golfers.map(g => g.name), picks.alternate?.name].filter(Boolean);
+  });
+  const result = {};
+  // Build lookup by last name and full name (lowercase)
+  const espnByFull = {};
+  const espnByLast = {};
+  Object.entries(espnPlayers).forEach(([name, data]) => {
+    espnByFull[name.toLowerCase()] = { name, data };
+    const parts = name.split(' ');
+    const last = parts[parts.length - 1].toLowerCase();
+    if (!espnByLast[last]) espnByLast[last] = { name, data };
+  });
+  // For each draft name, try to find a match
+  allNames.forEach(draftName => {
+    const lower = draftName.toLowerCase();
+    // 1. Exact match
+    if (espnByFull[lower]) { result[draftName] = espnByFull[lower].data; return; }
+    // 2. Last name match
+    const lastName = draftName.split(' ').pop().toLowerCase();
+    if (espnByLast[lastName]) { result[draftName] = espnByLast[lastName].data; return; }
+    // 3. Try matching with/without Jr. / II etc.
+    const stripped = lower.replace(/\s+(jr\.?|sr\.?|ii|iii|iv)$/i, '').trim();
+    const match = Object.keys(espnByFull).find(k => k.replace(/\s+(jr\.?|sr\.?|ii|iii|iv)$/i,'').trim() === stripped);
+    if (match) { result[draftName] = espnByFull[match].data; return; }
+  });
+  // Also keep original ESPN names so any exact matches in future still work
+  Object.entries(espnPlayers).forEach(([name, data]) => {
+    if (!result[name]) result[name] = data;
+  });
+  return result;
+};
+
 window.setEspnId = async function() {
   const val = document.getElementById('espn-id-input')?.value?.trim();
   if (!val) return;
+  // Save to Firebase first so refreshScores can read it
   await update(liveRef(), { espnEventId: val });
-  await proxyApi('/eventid', 'POST', { eventId: val });
+  // Tell proxy too (best-effort, don't block)
+  proxyApi('/eventid', 'POST', { eventId: val }).catch(() => {});
+  // Immediately try a refresh so commissioner sees feedback
+  await window.refreshScores(val);
 };
 
 // ── Sub window ─────────────────────────────────────────────────────
@@ -1125,7 +1168,7 @@ window.doFinalize = async function() {
 window.doReset = async function() {
   document.getElementById('reset-modal').style.display = 'none';
   clearInterval(timerInterval); timerInterval = null;
-  clearInterval(scoreRefreshInterval); scoreRefreshInterval = null;
+  // score refresh handled server-side
   ws?.close(); ws = null;
   await fetch(`${PROXY}/golf/${SLUG}/reset`, { method:'POST', headers:{'Content-Type':'application/json'} });
   await set(draftRef(), { slug:SLUG, name:'', status:'setup', field:[], autopickList:[], owners:ALL_OWNERS, picks:{}, currentPickIndex:0, currentPhase:'main', pickSequence:[], altSequence:[], pot:ALL_OWNERS.length*25, timerStart:null, timerDuration:7200, locked:false, undoStack:[], redoStack:[], makeupPicks:{} });
