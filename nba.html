@@ -370,12 +370,12 @@ function renderTable(){
   h += '</tr></tbody>';
   document.getElementById('nba-table').innerHTML = h;
 
-  // Re-apply active team filter if one is set
-  if (activeTeamFilter) {
+  // Re-apply active team filters if any are set
+  if (activeTeamFilters.size > 0) {
     var table = document.getElementById('nba-table');
     table.classList.add('filtered');
     table.querySelectorAll('td[data-team]').forEach(function(td) {
-      td.classList.toggle('team-match', td.getAttribute('data-team') === activeTeamFilter);
+      td.classList.toggle('team-match', activeTeamFilters.has(td.getAttribute('data-team')));
     });
   }
 }
@@ -437,7 +437,7 @@ function renderChart(){
 function renderAll(){ renderCards(); renderTable(); renderChart(); renderTeamPills(); }
 
 // ── Team filter pills ────────────────────────────────────────────
-var activeTeamFilter = null;
+var activeTeamFilters = new Set();
 
 // NBA CDN logo URL helper
 function teamLogoUrl(team) {
@@ -491,7 +491,7 @@ function renderTeamPills() {
     var logoHtml = logo
       ? '<img src="'+logo+'" onerror="this.style.display=\'none\'">'
       : '';
-    var active = activeTeamFilter === team ? ' active' : '';
+    var active = activeTeamFilters.has(team) ? ' active' : '';
     var elimStyle = elim ? 'opacity:.45;' : '';
     return '<span class="team-pill'+active+'" style="color:'+borderColor+';--text-color:'+textColor+';'+elimStyle+'" onclick="toggleTeamFilter(\''+team+'\')" title="'+(elim?'ELIMINATED: ':'')+team+'">'+
       logoHtml+'<span style="color:'+textColor+'">'+team+'</span></span>';
@@ -499,24 +499,22 @@ function renderTeamPills() {
 }
 
 function toggleTeamFilter(team) {
-  activeTeamFilter = (activeTeamFilter === team) ? null : team;
+  if (activeTeamFilters.has(team)) {
+    activeTeamFilters.delete(team);
+  } else {
+    activeTeamFilters.add(team);
+  }
   var table = document.getElementById('nba-table');
 
-  if (!activeTeamFilter) {
+  if (activeTeamFilters.size === 0) {
     table.classList.remove('filtered');
   } else {
     table.classList.add('filtered');
-    // Mark the team-badge cell for each matching player
-    var tds = table.querySelectorAll('td[data-team]');
-    tds.forEach(function(td) {
-      if (td.getAttribute('data-team') === activeTeamFilter) {
-        td.classList.add('team-match');
-      } else {
-        td.classList.remove('team-match');
-      }
+    table.querySelectorAll('td[data-team]').forEach(function(td) {
+      td.classList.toggle('team-match', activeTeamFilters.has(td.getAttribute('data-team')));
     });
   }
-  renderTeamPills(); // re-render pills to update active state
+  renderTeamPills();
 }
 
 // ── Name mapping for BBRef spellings ────────────────────────────
