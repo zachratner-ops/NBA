@@ -1096,6 +1096,10 @@ window.refreshScores = async function(explicitId) {
 // Sanitize name for Firebase key lookup (mirrors server.js)
 function sanitizeKey(name) { return name.replace(/[.#$\/\[\]]/g, '_'); }
 
+function normalizeStr(str) {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 // Fuzzy name matching: try exact, then sanitized, then last-name
 function applyFuzzyScores(espnPlayers) {
   if (!espnPlayers) return {};
@@ -1109,27 +1113,27 @@ function applyFuzzyScores(espnPlayers) {
   const espnByLast = {};
   const espnLastNameCount = {};
   Object.entries(espnPlayers).forEach(([name, data]) => {
-    espnByFull[name.toLowerCase()] = { name, data };
-    const parts = name.split(' ');
-    const last = parts[parts.length - 1].toLowerCase();
+    espnByFull[normalizeStr(name)] = { name, data };
+    const parts = normalizeStr(name).split(' ');
+    const last = parts[parts.length - 1];
     espnLastNameCount[last] = (espnLastNameCount[last] || 0) + 1;
     if (!espnByLast[last]) espnByLast[last] = { name, data };
   });
   // For each draft name, try to find a match
   allNames.forEach(draftName => {
-    const lower = draftName.toLowerCase();
-    // 1. Exact match
+    const lower = normalizeStr(draftName);
+    // 1. Exact match (normalized)
     if (espnByFull[lower]) { result[draftName] = espnByFull[lower].data; return; }
     // 1b. Sanitized key match (e.g. "J.J. Spaun" -> "J_J_ Spaun")
     const safeKey = sanitizeKey(draftName);
     const safeData = espnPlayers[safeKey];
     if (safeData) { result[draftName] = safeData; return; }
     // 2. Last name match — only if unambiguous (one ESPN player with that last name)
-    const lastName = draftName.split(' ').pop().toLowerCase();
+    const lastName = lower.split(' ').pop();
     if (espnByLast[lastName] && espnLastNameCount[lastName] === 1) { result[draftName] = espnByLast[lastName].data; return; }
     // 2b. Ambiguous last name — try matching first name too
     if (espnLastNameCount[lastName] > 1) {
-      const firstName = draftName.split(' ')[0].toLowerCase();
+      const firstName = lower.split(' ')[0];
       const ambigMatch = Object.entries(espnByFull).find(([k]) => {
         const parts = k.split(' ');
         return parts[parts.length-1] === lastName && parts[0] === firstName;
