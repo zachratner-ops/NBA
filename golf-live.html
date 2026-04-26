@@ -370,13 +370,9 @@ const liveRef  = () => ref(db, `golf/${SLUG}/live`);
 const histRef  = () => ref(db, `golf/history/${SLUG}`);
 
 // ── Firebase listeners ─────────────────────────────────────────────
-let makeupPicks = {}; // Firebase-only, never overwritten by proxy
-
+// ── Firebase listeners ─────────────────────────────────────────────
 onValue(draftRef(), snap => {
   draft = snap.val() || { status: 'setup', name: '', owners: ALL_OWNERS };
-  // Always sync makeupPicks from Firebase - pushDraftToFirebase now always preserves it
-  makeupPicks = (draft.makeupPicks && typeof draft.makeupPicks === 'object') ? draft.makeupPicks : {};
-  console.log('[draft] status:', draft.status, '| makeupPicks:', JSON.stringify(makeupPicks));
   renderScreen();
 });
 onValue(liveRef(), snap => {
@@ -399,9 +395,7 @@ function connectWS() {
 
 async function pushDraftToFirebase(d) {
   if (!d) return;
-  // makeupPicks is Firebase-only — always preserve it from our tracked variable
-  console.log('[push] preserving makeupPicks:', JSON.stringify(makeupPicks));
-  await set(draftRef(), { ...d, makeupPicks });
+  await set(draftRef(), { ...d, undoStack: [], redoStack: [] });
 }
 
 async function proxyApi(path, method = 'GET', body = null) {
@@ -577,16 +571,14 @@ window.startDraft = async function() {
 // ── DRAFT ──────────────────────────────────────────────────────────
 function renderDraft() {
   if (!ws) connectWS();
-  const currentMakeupPicks = { ...makeupPicks }; // snapshot — prevents mid-render mutation
-  console.log('[renderDraft] makeupPicks:', JSON.stringify(currentMakeupPicks), '| makeupOwners:', Object.keys(currentMakeupPicks));
   const cur = getCur();
   const isAlt = draft.currentPhase === 'alternate';
   const seq = draft.pickSequence || [];
   const altSeq = draft.altSequence || [];
   const allPicks = [...seq, ...altSeq];
   const globalIdx = isAlt ? seq.length + draft.currentPickIndex : draft.currentPickIndex;
-
-  const makeupOwners = Object.keys(currentMakeupPicks);
+  const draftMakeupPicks = draft.makeupPicks || {};
+  const makeupOwners = Object.keys(draftMakeupPicks);
 
   const pickOrderHtml = allPicks.map((p, i) => {
     const done = i < globalIdx, current = i === globalIdx, isA = i >= seq.length;
@@ -617,13 +609,13 @@ function renderDraft() {
 
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
-    const hasMakeup = currentMakeupPicks[o] !== undefined && currentMakeupPicks[o] !== null;
-    console.log(`[rosterMap] ${o}: hasMakeup=${hasMakeup}, currentMakeupPicks[o]=${currentMakeupPicks[o]}, keys=${JSON.stringify(Object.keys(currentMakeupPicks))}`);
+    const hasMakeup = draftMakeupPicks[o] !== undefined && draftMakeupPicks[o] !== null;
+    console.log(`[rosterMap] ${o}: hasMakeup=${hasMakeup}, draftMakeupPicks[o]=${draftMakeupPicks[o]}`);
     return `<div class="roster-col">
       <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
       ${Array(4).fill(0).map((_,i) => {
         const g = picks.golfers[i];
-        const isMakeupSlot = hasMakeup && currentMakeupPicks[o] === i;
+        const isMakeupSlot = hasMakeup && draftMakeupPicks[o] === i;
         return `<div class="roster-slot ${g?'':'empty'} ${isMakeupSlot?'makeup':''}">
           <span class="slot-label">${i+1}</span>
           <span>${g ? (g.isBadGolfer ? `⚠ ${g.name}` : g.name) : '—'}</span>
@@ -751,9 +743,8 @@ window.apModalPick = async function(name) {
   if (!cur) return;
   document.getElementById('autopick-modal').style.display = 'none';
   const slotIndex = (draft.picks?.[cur.owner]?.golfers?.length) || 0;
-  makeupPicks = { ...makeupPicks, [cur.owner]: slotIndex };
-  await update(draftRef(), { makeupPicks });
   await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { name, isBadGolfer: true }, isAutopick: true });
+  await proxyApi('/makeup-set', 'POST', { owner: cur.owner, slotIndex });
 };
 
 window.assignAP = async function(name) {
@@ -762,10 +753,10 @@ window.assignAP = async function(name) {
   if (!confirm(`Assign "${name}" to ${cur.owner} as placeholder?`)) return;
   const slotIndex = (draft.picks?.[cur.owner]?.golfers?.length) || 0;
   const golfer = (draft.field || []).find(p => p.name === name) || { name };
-  makeupPicks = { ...makeupPicks, [cur.owner]: slotIndex };
-  console.log('[assignAP] writing makeupPicks:', JSON.stringify(makeupPicks), 'slotIndex:', slotIndex);
-  await update(draftRef(), { makeupPicks });
+  // Pick the golfer (removes from field, advances draft)
   await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: { ...golfer, isBadGolfer: true }, isAutopick: true });
+  // Set makeupPicks on the proxy (included in sync, survives undo/redo)
+  await proxyApi('/makeup-set', 'POST', { owner: cur.owner, slotIndex });
 };
 
 // Makeup pick flow
@@ -800,25 +791,19 @@ window.selectMakeup = function(pJson) {
 
 window.confirmMakeupPick = async function() {
   if (!makeupOwner || !makeupSelected) return;
-  const slotIndex = makeupPicks[makeupOwner];
-  if (slotIndex === undefined) return;
+  const slotIndex = draft.makeupPicks?.[makeupOwner];
+  if (slotIndex === undefined || slotIndex === null) return;
 
-  const picks = JSON.parse(JSON.stringify(draft.picks));
-  const placeholder = picks[makeupOwner].golfers[slotIndex]; // the bad golfer being replaced
-  picks[makeupOwner].golfers[slotIndex] = { name: makeupSelected.name };
+  // Get the placeholder name before clearing
+  const placeholder = draft.picks?.[makeupOwner]?.golfers?.[slotIndex];
+  const placeholderName = placeholder?.name || null;
 
-  // Remove selected player from field, add placeholder back to field
-  // The assign list panel filters from field automatically, so placeholder reappears there too
-  const newField = (draft.field || []).filter(p => p.name !== makeupSelected.name);
-  if (placeholder?.name) {
-    newField.push({ name: placeholder.name });
-  }
-
-  makeupPicks = { ...makeupPicks };
-  delete makeupPicks[makeupOwner];
-
-  await update(draftRef(), { picks, field: newField, makeupPicks });
-  await proxyApi('/field-remove', 'POST', { name: makeupSelected.name }).catch(() => {});
+  // Proxy handles: replace slot, remove real pick from field, add placeholder back, clear makeupPicks
+  await proxyApi('/makeup-clear', 'POST', {
+    owner: makeupOwner,
+    realPickName: makeupSelected.name,
+    placeholderName
+  });
 
   document.getElementById('makeup-modal').style.display = 'none';
   makeupOwner = null; makeupSelected = null;
@@ -829,16 +814,16 @@ window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 
 // ── DRAFT COMPLETE ─────────────────────────────────────────────────
 function renderComplete() {
-  const makeupOwners = Object.keys(makeupPicks);
-  console.log('[renderComplete] makeupPicks:', JSON.stringify(makeupPicks), '| makeupOwners:', makeupOwners);
+  const draftMakeupPicks = draft.makeupPicks || {};
+  const makeupOwners = Object.keys(draftMakeupPicks);
 
   const rosterHtml = owners().map(o => {
     const picks = draft.picks?.[o] || { golfers: [], alternate: null };
-    const hasMakeup = makeupPicks[o] !== undefined && makeupPicks[o] !== null;
+    const hasMakeup = draftMakeupPicks[o] !== undefined && draftMakeupPicks[o] !== null;
     return `<div class="roster-col">
       <div class="owner-header" style="background:${color(o)}">${o}${hasMakeup?' ⚠️':''}</div>
       ${picks.golfers.map((g,i) => {
-        const isMakeupSlot = hasMakeup && makeupPicks[o] === i;
+        const isMakeupSlot = hasMakeup && draftMakeupPicks[o] === i;
         return `<div class="roster-slot ${isMakeupSlot?'makeup':''}">
           <span class="slot-label">${i+1}</span>
           <span>${g.isBadGolfer ? `⚠ ${g.name}` : g.name}</span>
@@ -958,7 +943,7 @@ function renderLive(isFinal) {
       </div>`;
     }
 
-    const hasMakeup = makeupPicks[entry.owner] !== undefined && makeupPicks[entry.owner] !== null;
+    const hasMakeup = (draft?.makeupPicks?.[entry.owner] !== undefined) && (draft?.makeupPicks?.[entry.owner] !== null);
     const makeupBtnHtml = hasMakeup && isComm
       ? `<div class="sub-btn-wrap"><button class="btn btn-sm" style="background:#c62828;color:#fff;width:100%;" onclick="window.openMakeupModal('${entry.owner}')">⚠ Make Pick for ${entry.owner}</button></div>`
       : hasMakeup
