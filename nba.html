@@ -248,12 +248,12 @@ function seriesRowBg(team){
   if(isElim(team)) return '';
   var lead = SERIES[team];
   if(lead === undefined) return '';
-  if(lead >= 4)  return 'background:#1b5e20;color:#fff;'; // series won
-  if(lead === 3) return 'background:#388e3c;';             // up 3-x
-  if(lead === 2) return 'background:#81c784;';             // up 2-x
-  if(lead <= -4) return 'background:#7f0000;color:#fff;'; // series lost
-  if(lead === -3)return 'background:#d32f2f;';             // down x-3
-  if(lead === -2)return 'background:#ef9a9a;';             // down x-2
+  if(lead >= 4)  return 'background:#2e7d32;color:#fff;'; // series won
+  if(lead === 3) return 'background:#a5d6a7;';             // up 3-x
+  if(lead === 2) return 'background:#c8e6c9;';             // up 2-x
+  if(lead <= -4) return 'background:#c62828;color:#fff;'; // series lost
+  if(lead === -3)return 'background:#ffcdd2;';             // down x-3
+  if(lead === -2)return 'background:#fce4e4;';             // down x-2
   return '';
 }
 
