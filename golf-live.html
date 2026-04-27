@@ -1259,7 +1259,12 @@ window.refreshScores = async function(explicitId) {
     const matched = applyFuzzyScores(data.players);
     // Strip any manually overridden players so we don't clobber them
     const overrides = live?.manualOverrides || {};
-    Object.keys(overrides).forEach(key => delete matched[key]);
+    console.log('[refresh] manualOverrides:', JSON.stringify(overrides), '| matched keys sample:', Object.keys(matched).slice(0,3));
+    Object.keys(overrides).forEach(key => {
+      console.log('[refresh] stripping override key:', key, '| exists in matched:', key in matched);
+      delete matched[key];
+    });
+    console.log('[refresh] writing scores, override keys removed:', Object.keys(overrides).length);
     await update(liveRef(), { scores: matched, lastUpdated: new Date().toISOString() });
     const ownerScores = {};
     buildLeaderboard().forEach(e => { ownerScores[e.owner] = e.teamScore; });
