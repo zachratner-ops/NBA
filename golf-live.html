@@ -368,7 +368,8 @@ let previewAltOrder = null;
 let subOwner = null;
 let subSwapOut = null;
 let subModalRound = 1;
-let makeupOwner = null;
+let lbSortMode = 'score'; // 'score' | 'pick'
+
 let makeupSlotIndex = null;
 let makeupSelected = null;
 let scoreHistory = [];
@@ -599,11 +600,16 @@ function renderLobby() {
            <span style="color:${color(o)};font-weight:700;">${o}</span></div>`).join('')}</div>
         <div style="margin-bottom:12px;">
           <label style="font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px;">Pick Timer</label>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             ${[['2 min','120'],['5 min','300'],['10 min','600'],['2 hr','7200']].map(([label,val]) =>
               `<button class="btn btn-sm ${(lobbyTimer||7200)==val?'btn-amber':'btn-outline'}" style="${(lobbyTimer||7200)==val?'':'color:#555;border-color:#ddd;'}" onclick="window.setLobbyTimer(${val})">${label}</button>`
             ).join('')}
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input type="number" id="custom-timer-input" min="1" placeholder="min" style="width:60px;border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;text-align:center;">
+              <button class="btn btn-sm btn-outline" style="color:#555;border-color:#ddd;" onclick="window.setCustomTimer()">Set</button>
+            </div>
           </div>
+          ${![120,300,600,7200].includes(lobbyTimer||7200) ? `<div style="font-size:11px;color:#2e7d32;margin-top:5px;">Custom: ${Math.floor(lobbyTimer/60)}m ${lobbyTimer%60>0?lobbyTimer%60+'s':''}</div>` : ''}
         </div>
         <button class="btn btn-outline" style="width:100%;margin-bottom:6px;" onclick="window.genMain()">${previewOrder?'Re-randomize':'Randomize'} Main Order</button>
         ${mainPrev ? `<div class="order-preview">${mainPrev}</div>` : ''}
@@ -621,6 +627,12 @@ function renderLobby() {
 let lobbyTimer = 7200;
 function shuffleArr(a) { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
 window.setLobbyTimer = function(val) { lobbyTimer = parseInt(val); renderLobby(); };
+window.setCustomTimer = function() {
+  const val = parseInt(document.getElementById('custom-timer-input')?.value);
+  if (!val || val < 1) return;
+  lobbyTimer = val * 60;
+  renderLobby();
+};
 window.genMain = function() { previewOrder = shuffleArr(owners()); renderLobby(); };
 window.genAlt  = function() { previewAltOrder = shuffleArr(owners()); renderLobby(); };
 window.startDraft = async function() {
@@ -998,6 +1010,10 @@ function renderLive(isFinal) {
   const subs = Array.isArray(live.subs) ? live.subs : Object.values(live.subs || {});
   const potSubText = subs.map(s => `${s.owner} subbed R${s.round} (+$${s.cost})`).join(' · ');
   const lbData = buildLeaderboard();
+  if (lbSortMode === 'pick') {
+    const pickSeqOrder = (draft?.pickSequence || []).map(p => p.owner);
+    lbData.sort((a, b) => (pickSeqOrder.indexOf(a.owner)+1||999) - (pickSeqOrder.indexOf(b.owner)+1||999));
+  }
   const subOpen = live.subWindowOpen || false;
   const subRound = live.subWindowRound || 1;
 
@@ -1070,7 +1086,7 @@ function renderLive(isFinal) {
     // Draft pick number: first pick in pickSequence for this owner
     const pickSeq = draft?.pickSequence || [];
     const pickNum = pickSeq.findIndex(p => p.owner === entry.owner) + 1;
-    const pickPill = pickNum > 0 ? `<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:20px;background:#f0f0f0;color:#888;float:right;">#${pickNum}</span>` : '';
+    const pickPill = pickNum > 0 ? `<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:20px;background:#f0f0f0;color:#888;float:right;">pick #${pickNum}</span>` : '';
 
     return `<div class="result-card ${isWinner?'won':''} ${isLeader&&!isFinal?'leading':''} ${entry.out?'out':''}">
       <div class="rc-header" style="color:${color(entry.owner)};border-color:${color(entry.owner)};">
@@ -1106,7 +1122,13 @@ function renderLive(isFinal) {
           <div style="font-size:15px;font-weight:800;">Round ${live.round||1}</div>
           ${isComm ? `<div style="display:flex;gap:4px;">${[1,2,3,4].map(r => '<button class="btn btn-sm ' + ((live.round||1)===r ? 'btn-amber' : 'btn-outline') + '" style="padding:2px 9px;font-size:11px;' + ((live.round||1)===r ? '' : 'color:#fff;border-color:#555;') + '" onclick="window.setRound(' + r + ')">' + r + '</button>').join('')}</div>` : ''}
         </div>
-        <div style="font-size:12px;color:#888;">${owners().length} players · ${subs.length} sub${subs.length!==1?'s':''} used</div>
+        <div style="font-size:12px;color:#888;display:flex;align-items:center;gap:8px;">
+          <span>${owners().length} players · ${subs.length} sub${subs.length!==1?'s':''} used</span>
+          <div style="display:flex;gap:3px;">
+            <button class="btn btn-sm" style="padding:2px 8px;font-size:10px;${lbSortMode==='score'?'background:#1a1a1a;color:#fff;':'background:#f0f0f0;color:#666;border:none;'}" onclick="window.setLbSort('score')">Score</button>
+            <button class="btn btn-sm" style="padding:2px 8px;font-size:10px;${lbSortMode==='pick'?'background:#1a1a1a;color:#fff;':'background:#f0f0f0;color:#666;border:none;'}" onclick="window.setLbSort('pick')">Pick Order</button>
+          </div>
+        </div>
       </div>
       <div class="results-grid">${cards}</div>
       ${sparkHtml}
@@ -1294,6 +1316,11 @@ window.setEspnId = async function() {
 // ── Sub window ─────────────────────────────────────────────────────
 window.setRound = async function(r) {
   await update(liveRef(), { round: r });
+};
+
+window.setLbSort = function(mode) {
+  lbSortMode = mode;
+  renderScreen();
 };
 
 window.toggleSubR1 = async function() {
