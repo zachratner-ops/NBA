@@ -719,6 +719,7 @@ function renderDraft() {
     </div>
     ${isComm ? `<div style="background:#1a1a1a;border-bottom:1px solid #333;padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <span style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Commissioner</span>
+      <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">Odds</button>
     </div>` : ''}
     <div class="main">
       ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
@@ -747,7 +748,6 @@ function renderDraft() {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div class="section-hdr" style="margin-bottom:0;">Available (${draft.field?.length||0})</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-outline" onclick="window.importOdds()">Odds</button>
               <button class="btn btn-sm btn-green" id="pick-btn" onclick="window.confirmPick()" ${selectedPlayer?'':'disabled'}>${selectedPlayer?`Pick ${selectedPlayer.name}`:'Pick...'}</button>
             </div>
           </div>
