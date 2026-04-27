@@ -1031,6 +1031,7 @@ function renderLive(isFinal) {
         </div>
         <button class="btn btn-sm ${subOpen&&subRound===1?'btn-red':subOpen&&subRound===2?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===2?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR1()" ${subOpen&&subRound===2?'disabled':''}>R1 Sub Window ($5) ${subOpen&&subRound===1?'— Close':subOpen&&subRound===2?'— Locked':'— Open'}</button>
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
+        ${subs.length > 0 ? `<button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoSub()">↩ Undo Last Sub</button>` : ''}
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
         ${!isFinal
           ? '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>'
@@ -1321,6 +1322,16 @@ window.setRound = async function(r) {
 window.setLbSort = function(mode) {
   lbSortMode = mode;
   renderScreen();
+};
+
+window.undoSub = async function() {
+  const existingSubs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
+  if (!existingSubs.length) return;
+  const lastSub = existingSubs[existingSubs.length - 1];
+  if (!confirm(`Undo sub: ${lastSub.owner} — ${lastSub.from} → ${lastSub.to} (+$${lastSub.cost})?`)) return;
+  const newSubs = existingSubs.slice(0, -1);
+  await update(liveRef(), { subs: newSubs, pot: (live?.pot || 0) - lastSub.cost });
+  showToast(`↩ Sub undone for ${lastSub.owner}`);
 };
 
 window.toggleSubR1 = async function() {
