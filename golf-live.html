@@ -618,7 +618,6 @@ function renderLobby() {
         ${altPrev ? `<div class="order-preview">${altPrev}</div>` : ''}
         <button class="btn btn-green" style="width:100%;padding:12px;margin-top:16px;" onclick="window.startDraft()" ${canStart?'':'disabled'}>${canStart?'Start Draft →':'Randomize both orders first'}</button>
         <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="window.importOdds()">Import DK + FD Odds</button>
-        <button class="btn btn-outline" style="width:100%;margin-top:6px;color:#e65100;border-color:#e65100;" onclick="window.seedOdds()">Seed Masters 2026 Odds</button>
         <button class="btn btn-outline btn-sm" style="margin-top:16px;color:#c62828;border-color:#eee;" onclick="document.getElementById('reset-modal').style.display='flex'">Reset to Setup</button>
       </div>
     </div>`;
@@ -749,7 +748,6 @@ function renderDraft() {
             <div class="section-hdr" style="margin-bottom:0;">Available (${draft.field?.length||0})</div>
             <div style="display:flex;gap:6px;">
               <button class="btn btn-sm btn-outline" onclick="window.importOdds()">Odds</button>
-              <button class="btn btn-sm btn-outline" style="color:#e65100;border-color:#e65100;" onclick="window.seedOdds()">Seed Odds</button>
               <button class="btn btn-sm btn-green" id="pick-btn" onclick="window.confirmPick()" ${selectedPlayer?'':'disabled'}>${selectedPlayer?`Pick ${selectedPlayer.name}`:'Pick...'}</button>
             </div>
           </div>
@@ -1033,6 +1031,7 @@ function renderLive(isFinal) {
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         ${subs.length > 0 ? `<button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoSub()">↩ Undo Last Sub</button>` : ''}
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
+        <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">↻ Refresh Odds</button>
         <button class="btn btn-sm btn-outline" style="color:${showOverridePanel?'#e65100':'#aaa'};border-color:${showOverridePanel?'#e65100':'#444'};" onclick="window.toggleScoreOverride()">${showOverridePanel?'✎ Close Override':'✎ Override Score'}</button>
         ${!isFinal
           ? '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>'
@@ -1526,8 +1525,7 @@ function showOddsResult(data) {
       </div>
     </div>`).join('');
   document.getElementById('odds-content').innerHTML =
-    `${data.seeded ? '<p style="font-size:11px;color:#888;margin-bottom:8px;">📌 Using seeded Masters 2026 pre-tournament odds</p>' : ''}
-    <p style="margin-bottom:12px;"><span style="color:#2e7d32;font-weight:600;">${data.matched} matched</span>${data.unmatched?.length?` · <span style="color:#c62828;font-weight:600;">${data.unmatched.length} unmatched</span>`:''}</p>
+    `<p style="margin-bottom:12px;"><span style="color:#2e7d32;font-weight:600;">${data.matched} matched</span>${data.unmatched?.length?` · <span style="color:#c62828;font-weight:600;">${data.unmatched.length} unmatched</span>`:''}</p>
     ${unmatchedHtml}
     <button class="btn btn-outline btn-sm" style="margin-top:12px;width:100%;" onclick="document.getElementById('odds-modal').style.display='none'">Done</button>`;
 }
@@ -1540,9 +1538,7 @@ window.importOdds = async function() {
     if (data.error) {
       document.getElementById('odds-content').innerHTML =
         `<p style="color:#c62828;">${data.error}</p>
-        <p style="font-size:12px;color:#888;margin-top:8px;">No live odds available — try seeding Masters 2026 odds instead.</p>
-        <button class="btn btn-amber btn-sm" style="margin-top:10px;" onclick="window.seedOdds()">Seed Masters 2026 Odds</button>
-        <button class="btn btn-outline btn-sm" style="margin-top:8px;display:block;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
+        <button class="btn btn-outline btn-sm" style="margin-top:12px;display:block;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
       return;
     }
     showOddsResult(data);
@@ -1551,16 +1547,7 @@ window.importOdds = async function() {
   }
 };
 
-window.seedOdds = async function() {
-  document.getElementById('odds-content').innerHTML = '<p style="color:#888;">Seeding Masters 2026 odds…</p>';
-  document.getElementById('odds-modal').style.display = 'flex';
-  try {
-    const data = await proxyApi('/odds/seed', 'POST');
-    showOddsResult(data);
-  } catch(e) {
-    document.getElementById('odds-content').innerHTML = `<p style="color:#c62828;">Error: ${e.message}</p><button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
-  }
-};
+
 window.applyOdds = async function(fieldName, selId) {
   const sel = document.getElementById('sel-'+selId);
   if (!sel?.value) return;
