@@ -1054,7 +1054,7 @@ function renderLive(isFinal) {
       const sv = g.cut ? 'CUT' : (g.liveScore !== undefined ? fmtScore(g.liveScore) : '—');
       const svCls = g.liveScore < 0 ? 'under' : g.liveScore > 0 ? 'over' : '';
       return `<div class="rc-player ${g.cut?'cut':''} ${g.sub?'sub':''} ${isCounting?'counting':''}">
-        <span>${g.name}${g.pickNumber?`<span style="font-size:9px;color:#bbb;margin-left:4px;">pick #${g.pickNumber}</span>`:''}</span>
+        <span>${g.name}</span>
         <span class="rc-score-val ${svCls}">${sv}</span>
       </div>`;
     }).join('');
