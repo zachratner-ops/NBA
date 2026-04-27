@@ -1033,7 +1033,7 @@ function renderLive(isFinal) {
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         ${subs.length > 0 ? `<button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoSub()">↩ Undo Last Sub</button>` : ''}
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
-        <button class="btn btn-sm btn-outline" style="color:#aaa;border-color:#444;" onclick="window.toggleScoreOverride()">✎ Override Score</button>
+        <button class="btn btn-sm btn-outline" style="color:${showOverridePanel?'#e65100':'#aaa'};border-color:${showOverridePanel?'#e65100':'#444'};" onclick="window.toggleScoreOverride()">${showOverridePanel?'✎ Close Override':'✎ Override Score'}</button>
         ${!isFinal
           ? '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>'
           : live.committedAt
@@ -1041,7 +1041,7 @@ function renderLive(isFinal) {
             : '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Commit to History →</button><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoFinalize()">Undo Finalize</button>'
         }
       </div>
-      ${live.showOverridePanel ? `
+      ${showOverridePanel ? `
       <div style="background:#111;border-top:1px solid #333;padding:10px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <span style="font-size:11px;color:#888;font-weight:700;flex-shrink:0;">OVERRIDE SCORE</span>
         <input id="override-player" list="override-players" placeholder="Player name…" style="border:1px solid #444;background:#1a1a1a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:180px;">
@@ -1052,6 +1052,16 @@ function renderLive(isFinal) {
         <label style="display:flex;align-items:center;gap:4px;color:#aaa;font-size:11px;cursor:pointer;"><input type="checkbox" id="override-cut"> CUT</label>
         <button class="btn btn-sm btn-green" onclick="window.submitOverride()">Apply</button>
         <span style="font-size:11px;color:#555;">Bypasses ESPN — writes directly to Firebase</span>
+        ${Object.keys(live.manualOverrides||{}).length ? `
+        <div style="width:100%;margin-top:6px;border-top:1px solid #222;padding-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <span style="font-size:10px;color:#666;font-weight:700;">ACTIVE OVERRIDES:</span>
+          ${Object.entries(live.manualOverrides||{}).map(([key,name]) =>
+            `<span style="display:inline-flex;align-items:center;gap:4px;background:#1a1a1a;border:1px solid #333;border-radius:4px;padding:2px 6px;font-size:11px;color:#e65100;">
+              ${name}
+              <button onclick="window.clearOverride('${key}','${name}')" style="background:none;border:none;color:#666;cursor:pointer;font-size:11px;padding:0 0 0 2px;">✕</button>
+            </span>`
+          ).join('')}
+        </div>` : ''}
       </div>` : ''}
     </div>` : '';
 
@@ -1329,8 +1339,11 @@ window.setEspnId = async function() {
 
 
 // ── Score override ──────────────────────────────────────────────────
-window.toggleScoreOverride = async function() {
-  await update(liveRef(), { showOverridePanel: !live.showOverridePanel });
+let showOverridePanel = false;
+
+window.toggleScoreOverride = function() {
+  showOverridePanel = !showOverridePanel;
+  renderScreen();
 };
 
 window.submitOverride = async function() {
@@ -1341,6 +1354,11 @@ window.submitOverride = async function() {
   const data = await proxyApi('/scores/override', 'POST', { playerName, score: parseInt(score,10), cut });
   if (data.ok) showToast(`✓ ${playerName} set to ${data.display}${cut?' (CUT)':''}`);
   else alert('Override failed: ' + (data.error||'unknown error'));
+};
+
+window.clearOverride = async function(safeKey, playerName) {
+  await proxyApi('/scores/override-clear', 'POST', { safeKey });
+  showToast(`↩ Override cleared for ${playerName} — ESPN will update on next poll`);
 };
 
 // ── Sub window ─────────────────────────────────────────────────────
