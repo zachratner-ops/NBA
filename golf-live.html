@@ -176,12 +176,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .draft-layout{grid-template-columns:1fr;}
   .roster-grid{grid-template-columns:repeat(2,1fr);}
   .pot-bar{flex-direction:column;align-items:flex-start;}
+  .draft-tabs{display:flex;}
+  .draft-col{display:none!important;}
+  .draft-col.active{display:block!important;}
 }
+.draft-tabs{display:none;gap:0;margin-bottom:12px;border-radius:8px;overflow:hidden;border:1px solid #ddd;}
+.draft-tab{flex:1;padding:9px;text-align:center;font-size:12px;font-weight:700;background:#f5f5f3;border:none;cursor:pointer;color:#888;}
+.draft-tab.active{background:#1a1a1a;color:#fff;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+.stale-warning{color:#e65100;font-size:11px;}
 </style>
 </head>
 <body>
 
 <!-- Main password gate -->
+<div class="toast" id="toast"></div>
 <div class="pw-gate" id="pw-gate">
   <div class="pw-box">
     <div class="pw-title">Giesener...<br>Are you In?</div>
@@ -404,6 +414,24 @@ async function proxyApi(path, method = 'GET', body = null) {
   return fetch(`${PROXY}/golf/${SLUG}${path}`, opts).then(r => r.json());
 }
 
+function showToast(msg, duration=2500) {
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function updatedAgo(isoStr) {
+  if (!isoStr) return 'No scores yet';
+  const mins = Math.floor((Date.now() - new Date(isoStr)) / 60000);
+  if (mins < 1) return 'Updated just now';
+  if (mins === 1) return 'Updated 1 min ago';
+  if (mins < 60) return `Updated ${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return `Updated ${hrs}h${mins%60>0?' '+mins%60+'m':''} ago`;
+}
+
 // ── Commissioner toggle ────────────────────────────────────────────
 window.toggleCommMode = function() {
   if (isComm) {
@@ -485,13 +513,16 @@ function renderSetup() {
         <button class="btn btn-green" onclick="window.setupStep1Next()">Next: Set Assign List →</button>
         ` : `
         <div style="margin-bottom:16px;">
-          <div style="font-size:13px;font-weight:700;margin-bottom:4px;">Select players for the quick-assign list</div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-size:13px;font-weight:700;">Select players for the quick-assign list</div>
+            <div id="assign-count" style="font-size:12px;color:#2e7d32;font-weight:700;">0 selected</div>
+          </div>
           <div style="font-size:12px;color:#888;margin-bottom:14px;">These appear on the right during the draft as easy placeholder picks. They stay in the main field too.</div>
           <input class="pool-search" id="assign-search" placeholder="Search…" oninput="window.filterAssignList(this.value)" style="margin-bottom:10px;">
           <div id="assign-list" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">
             ${setupField.map(p => `
               <label style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:#f5f5f3;border-radius:7px;cursor:pointer;">
-                <input type="checkbox" class="assign-check" value="${p.name.replace(/"/g,'&quot;')}" style="width:16px;height:16px;">
+                <input type="checkbox" class="assign-check" value="${p.name.replace(/"/g,'&quot;')}" style="width:16px;height:16px;" onchange="window.updateAssignCount()">
                 <span style="font-size:13px;">${p.name}</span>
               </label>`).join('')}
           </div>
@@ -526,6 +557,12 @@ window.setupStepBack = function() {
   renderSetup();
 };
 
+window.updateAssignCount = function() {
+  const n = document.querySelectorAll('.assign-check:checked').length;
+  const el = document.getElementById('assign-count');
+  if (el) el.textContent = n + ' selected';
+};
+
 window.filterAssignList = function(q) {
   const lower = q.toLowerCase();
   document.querySelectorAll('#assign-list label').forEach(el => {
@@ -545,6 +582,13 @@ function renderLobby() {
   const mainPrev = previewOrder ? previewOrder.map((o,i) => `<span style="color:${color(o)};font-weight:700;">${i+1}. ${o}</span>`).join('  ') : '';
   const altPrev  = previewAltOrder ? previewAltOrder.map((o,i) => `<span style="color:${color(o)};font-weight:700;">${i+1}. ${o}</span>`).join('  ') : '';
   const canStart = previewOrder && previewAltOrder;
+  // Snake preview — show first 6 picks of the actual sequence
+  const snakePreview = previewOrder ? (() => {
+    const fwd = previewOrder; const rev = [...previewOrder].reverse();
+    const rounds = [fwd, rev, fwd, rev]; // 4 rounds snake
+    const picks = rounds.flatMap(r => r).slice(0, 8);
+    return picks.map((o,i) => `<span style="color:${color(o)};font-weight:600;font-size:11px;">${i+1}. ${o}</span>`).join(' → ');
+  })() : '';
   document.getElementById('screen').innerHTML = `
     <div class="main-narrow">
       <div class="card">
@@ -553,8 +597,17 @@ function renderLobby() {
         <div style="margin-bottom:16px;">${owners().map(o =>
           `<div class="owner-item"><div style="width:8px;height:8px;border-radius:50%;background:${color(o)}"></div>
            <span style="color:${color(o)};font-weight:700;">${o}</span></div>`).join('')}</div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px;">Pick Timer</label>
+          <div style="display:flex;gap:8px;">
+            ${[['2 min','120'],['5 min','300'],['10 min','600'],['2 hr','7200']].map(([label,val]) =>
+              `<button class="btn btn-sm ${(lobbyTimer||7200)==val?'btn-amber':'btn-outline'}" style="${(lobbyTimer||7200)==val?'':'color:#555;border-color:#ddd;'}" onclick="window.setLobbyTimer(${val})">${label}</button>`
+            ).join('')}
+          </div>
+        </div>
         <button class="btn btn-outline" style="width:100%;margin-bottom:6px;" onclick="window.genMain()">${previewOrder?'Re-randomize':'Randomize'} Main Order</button>
         ${mainPrev ? `<div class="order-preview">${mainPrev}</div>` : ''}
+        ${snakePreview ? `<div style="font-size:11px;color:#888;margin-top:4px;margin-bottom:4px;">Snake: ${snakePreview} →...</div>` : ''}
         <button class="btn btn-outline" style="width:100%;margin-top:12px;margin-bottom:6px;" onclick="window.genAlt()">${previewAltOrder?'Re-randomize':'Randomize'} Alternate Order</button>
         ${altPrev ? `<div class="order-preview">${altPrev}</div>` : ''}
         <button class="btn btn-green" style="width:100%;padding:12px;margin-top:16px;" onclick="window.startDraft()" ${canStart?'':'disabled'}>${canStart?'Start Draft →':'Randomize both orders first'}</button>
@@ -565,13 +618,15 @@ function renderLobby() {
     </div>`;
 }
 
+let lobbyTimer = 7200;
 function shuffleArr(a) { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+window.setLobbyTimer = function(val) { lobbyTimer = parseInt(val); renderLobby(); };
 window.genMain = function() { previewOrder = shuffleArr(owners()); renderLobby(); };
 window.genAlt  = function() { previewAltOrder = shuffleArr(owners()); renderLobby(); };
 window.startDraft = async function() {
   if (!previewOrder || !previewAltOrder) return;
   connectWS();
-  await proxyApi('/start', 'POST', { pickOrder: previewOrder, altOrder: previewAltOrder });
+  await proxyApi('/start', 'POST', { pickOrder: previewOrder, altOrder: previewAltOrder, timerDuration: lobbyTimer });
 };
 
 // ── DRAFT ──────────────────────────────────────────────────────────
@@ -639,7 +694,8 @@ function renderDraft() {
           <span>${picks.alternate?picks.alternate.name:'—'}</span>
         </div>
       </div>
-      ${hasMakeup ? `<div style="padding:6px 8px;background:#fff3cd;border-top:2px solid #ffc107;display:block;"><button class="btn btn-sm btn-amber" style="width:100%;font-size:11px;font-weight:700;display:block;" onclick="window.openMakeupModal('${o}')">⚠ Make Pick</button></div>` : '<!-- no makeup -->'}
+      ${hasMakeup ? `<div style="padding:6px 8px;background:#fff3cd;border-top:2px solid #ffc107;display:block;"><button class="btn btn-sm btn-amber" style="width:100%;font-size:11px;font-weight:700;display:block;" onclick="window.openMakeupModal('${o}')">⚠ Make Pick</button></div>` : ''}
+      ${hasMakeup && !isComm ? '' : ''}
     </div>`;
   }).join('');
 
@@ -664,13 +720,18 @@ function renderDraft() {
           <div class="timer-val" id="timer-display">2:00:00</div>
         </div>
       </div>
+      <div class="draft-tabs">
+        <button class="draft-tab active" onclick="window.switchDraftTab(0,this)">Order</button>
+        <button class="draft-tab" onclick="window.switchDraftTab(1,this)">Pool</button>
+        <button class="draft-tab" onclick="window.switchDraftTab(2,this)">Rosters</button>
+      </div>
       <div class="draft-layout">
-        <div class="card">
+        <div class="card draft-col active">
           <div class="section-hdr">Pick Order</div>
           ${makeupHtml ? `<div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed #eee;">${makeupHtml}</div>` : ''}
           <div id="pick-order-list">${pickOrderHtml}</div>
         </div>
-        <div class="card">
+        <div class="card draft-col active">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div class="section-hdr" style="margin-bottom:0;">Available (${draft.field?.length||0})</div>
             <div style="display:flex;gap:6px;">
@@ -682,7 +743,7 @@ function renderDraft() {
           <input class="pool-search" id="search-input" placeholder="Search players…" value="${searchQuery}" oninput="window.onSearch(this.value)">
           <div class="pool-list" id="pool-list">${poolHtml}</div>
         </div>
-        <div class="card">
+        <div class="card draft-col active">
           <div class="section-hdr">Assign List</div>
           <p style="font-size:11px;color:#888;margin-bottom:10px;">Assign as placeholder — owner makes a real pick later.</p>
           ${(draft.autopickList || [])
@@ -779,6 +840,7 @@ window.confirmPick = async function() {
   if (!cur) return;
   const g = selectedPlayer;
   selectedPlayer = null; searchQuery = '';
+  showToast(`✓ ${cur.owner} picked ${g.name}`);
   await proxyApi('/pick', 'POST', { owner: cur.owner, golfer: g });
 };
 
@@ -851,9 +913,14 @@ window.confirmMakeupPick = async function() {
   });
 
   document.getElementById('makeup-modal').style.display = 'none';
+  showToast(`✓ ${makeupOwner}'s pick: ${makeupSelected.name}`);
   makeupOwner = null; makeupSelected = null;
 };
 
+window.switchDraftTab = function(idx) {
+  document.querySelectorAll('.draft-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('.draft-col').forEach((c,i) => c.classList.toggle('active', i===idx));
+};
 window.doUndo = async function() { await proxyApi('/undo', 'POST'); };
 window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 
@@ -944,10 +1011,6 @@ function renderLive(isFinal) {
           <input type="text" id="espn-id-input" value="${live.espnEventId||''}" placeholder="ESPN Event ID" style="border:1px solid #444;background:#2a2a2a;color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;width:150px;">
           <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.setEspnId()">Set</button>
         </div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <span style="font-size:11px;color:#aaa;">Round</span>
-          ${[1,2,3,4].map(r => '<button class="btn btn-sm ' + ((live.round||1)===r ? 'btn-amber' : 'btn-outline') + '" style="' + ((live.round||1)===r ? '' : 'color:#fff;border-color:#444;') + '" onclick="window.setRound(' + r + ')">' + r + '</button>').join('')}
-        </div>
         <button class="btn btn-sm ${subOpen&&subRound===1?'btn-red':subOpen&&subRound===2?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===2?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR1()" ${subOpen&&subRound===2?'disabled':''}>R1 Sub Window ($5) ${subOpen&&subRound===1?'— Close':subOpen&&subRound===2?'— Locked':'— Open'}</button>
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
@@ -1030,17 +1093,31 @@ function renderLive(isFinal) {
           ${potSubText ? `<div class="pot-meta">${potSubText}</div>` : ''}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:11px;color:#aaa;margin-bottom:4px;">${live.lastUpdated?'Updated '+new Date(live.lastUpdated).toLocaleTimeString():'No scores yet'}</div>
+          <div style="font-size:11px;margin-bottom:4px;" id="updated-ago-display">
+            ${(() => { const mins = live.lastUpdated ? Math.floor((Date.now()-new Date(live.lastUpdated))/60000) : null; return `<span class="${mins!==null&&mins>45?'stale-warning':''}" style="color:${mins!==null&&mins>45?'':'#aaa'}">${updatedAgo(live.lastUpdated)}${mins!==null&&mins>45?' ⚠':''}` + '</span>'; })()}
+          </div>
           ${subBadge}
         </div>
       </div>
       <div class="round-bar">
-        <div style="font-size:13px;font-weight:700;">Round ${live.round||1}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:15px;font-weight:800;">Round ${live.round||1}</div>
+          ${isComm ? `<div style="display:flex;gap:4px;">${[1,2,3,4].map(r => '<button class="btn btn-sm ' + ((live.round||1)===r ? 'btn-amber' : 'btn-outline') + '" style="padding:2px 9px;font-size:11px;' + ((live.round||1)===r ? '' : 'color:#fff;border-color:#555;') + '" onclick="window.setRound(' + r + ')">' + r + '</button>').join('')}</div>` : ''}
+        </div>
         <div style="font-size:12px;color:#888;">${owners().length} players · ${subs.length} sub${subs.length!==1?'s':''} used</div>
       </div>
       <div class="results-grid">${cards}</div>
       ${sparkHtml}
     </div>`;
+
+  // Refresh "updated X min ago" every minute without full re-render
+  clearInterval(window._agoInterval);
+  window._agoInterval = setInterval(() => {
+    const el = document.getElementById('updated-ago-display');
+    if (!el || !live) { clearInterval(window._agoInterval); return; }
+    const mins = live.lastUpdated ? Math.floor((Date.now()-new Date(live.lastUpdated))/60000) : null;
+    el.innerHTML = `<span class="${mins!==null&&mins>45?'stale-warning':''}" style="color:${mins!==null&&mins>45?'':'#aaa'}">${updatedAgo(live.lastUpdated)}${mins!==null&&mins>45?' ⚠':''}</span>`;
+  }, 60000);
 }
 
 // ── Leaderboard computation ────────────────────────────────────────
@@ -1272,6 +1349,7 @@ window.confirmSub = async function() {
   const existingSubs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
   await update(liveRef(), { subs: [...existingSubs, newSub], pot: (live?.pot||0) + cost });
   document.getElementById('sub-modal').style.display = 'none';
+  showToast(`✓ ${alt.name} subbed in for ${subOwner} (+$${cost})`);
   subOwner = null; subSwapOut = null;
 };
 
