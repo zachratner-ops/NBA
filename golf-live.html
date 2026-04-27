@@ -1046,7 +1046,7 @@ function renderLive(isFinal) {
         <span style="font-size:11px;color:#888;font-weight:700;flex-shrink:0;">OVERRIDE SCORE</span>
         <input id="override-player" list="override-players" placeholder="Player name…" style="border:1px solid #444;background:#1a1a1a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:180px;">
         <datalist id="override-players">
-          ${Object.values(draft?.picks||{}).flatMap(p=>[...p.golfers.map(g=>g.name),p.alternate?.name].filter(Boolean)).map(n=>`<option value="${n}">`).join('')}
+          ${Object.values(draft?.picks||{}).flatMap(p=>[...p.golfers.map(g=>g.name), p.alternate?.name].filter(Boolean)).map(n=>`<option value="${n}">`).join('')}
         </datalist>
         <input id="override-score" type="number" placeholder="e.g. -5" style="border:1px solid #444;background:#1a1a1a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:90px;">
         <label style="display:flex;align-items:center;gap:4px;color:#aaa;font-size:11px;cursor:pointer;"><input type="checkbox" id="override-cut"> CUT</label>
@@ -1252,13 +1252,14 @@ function buildSparklines(lbData) {
 // ── Score refresh ──────────────────────────────────────────────────
 window.refreshScores = async function(explicitId) {
   const eventId = explicitId || live?.espnEventId;
-  if (!eventId) return; // silently skip if no ID set
+  if (!eventId) return;
   try {
-    // Pass event ID directly in the URL so proxy doesn't need it in memory
     const data = await proxyApi('/scores?eventId=' + encodeURIComponent(eventId), 'GET');
     if (data.error) { if (isComm) alert('Score fetch error: ' + data.error); return; }
-    // Apply fuzzy name matching before saving
     const matched = applyFuzzyScores(data.players);
+    // Strip any manually overridden players so we don't clobber them
+    const overrides = live?.manualOverrides || {};
+    Object.keys(overrides).forEach(key => delete matched[key]);
     await update(liveRef(), { scores: matched, lastUpdated: new Date().toISOString() });
     const ownerScores = {};
     buildLeaderboard().forEach(e => { ownerScores[e.owner] = e.teamScore; });
