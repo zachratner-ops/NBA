@@ -6961,7 +6961,7 @@ function buildMajorCard(m) {
       const ps=typeof p.score==='number'?(p.score===0?'E':p.score>0?'+'+p.score:''+p.score):(p.score||'—');
       return `<div class="rc-player ${p.cut?'cut':''} ${p.sub?'sub':''}"><span>${p.name}</span><span class="rc-score-val">${ps}</span></div>`;
     }).join('');
-    const alt=data.alternate?`<div class="rc-player alt ${data.alternate.cut?'cut':''} ${data.alternate.sub?'sub':''}"><span><span class="alt-lbl">A</span>${data.alternate.name}</span><span class="rc-score-val">${typeof data.alternate.score==='number'?(data.alternate.score===0?'E':data.alternate.score>0?'+'+data.alternate.score:''+data.alternate.score):(data.alternate.score||'—')}</span></div>`:'';
+    const alt=data.alternate&&!data.alternate.subOut?`<div class="rc-player alt ${data.alternate.cut?'cut':''} ${data.alternate.sub?'sub':''}"><span><span class="alt-lbl">A</span>${data.alternate.name}</span><span class="rc-score-val">${typeof data.alternate.score==='number'?(data.alternate.score===0?'E':data.alternate.score>0?'+'+data.alternate.score:''+data.alternate.score):(data.alternate.score||'—')}</span></div>`:'';
     const draftMap = m.pickOrder || GOLF_DRAFT[m.slug] || {};
     const draftPick = draftMap[owner] || null;
     const draftBadge = draftPick ? `<span class="draft-badge" style="margin:0;float:right;margin-top:1px">Pick #${draftPick}</span>` : '';
