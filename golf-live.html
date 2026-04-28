@@ -1480,7 +1480,12 @@ window.doFinalize = async function() {
     }
     const altName = picks.alternate?.name;
     const altLive = live?.scores?.[altName];
-    const alternate = { name: altName, ...(altLive?.cut?{score:'CUT',cut:true}:{score:altLive?.score??0}), ...(ownerSub?{subOut:true}:{}) };
+    // If a sub happened: store the swapped-out golfer in the alternate slot (benchedOut:true)
+    // so golf.html can display them in the alt row. The alternate is already pushed into golfers[] with sub:true.
+    // If no sub: store the alternate normally.
+    const alternate = ownerSub
+      ? { name: ownerSub.from, benchedOut: true, ...(live?.scores?.[ownerSub.from]?.cut ? {score:'CUT',cut:true} : {score: live?.scores?.[ownerSub.from]?.score ?? 0}) }
+      : { name: altName, ...(altLive?.cut?{score:'CUT',cut:true}:{score:altLive?.score??0}) };
     ownersData[owner] = { golfers, alternate, score: entry?.out?'OUT':(entry?.teamScore??0) };
   });
   // Build pick order map { ownerName: pickNumber } — matches GOLF_DRAFT shape for history page
