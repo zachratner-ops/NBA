@@ -6974,8 +6974,8 @@ function buildMajorCard(m) {
     const draftBadge = draftPick ? `<span class="draft-badge" style="margin:0;float:right;margin-top:1px">Pick #${draftPick}</span>` : '';
     return `<div class="result-card ${isWinner?'won':''} ${isOut?'out':''}">
       <div class="rc-header" style="color:${COLORS[owner]||'#555'};border-color:${COLORS[owner]||'#eee'};display:flex;align-items:center;justify-content:space-between">${isWinner?'🏆 ':''}${owner}${draftBadge}</div>
-      <div class="rc-score ${sd.cls}">${sd.txt}</div>
-      <div class="rc-rank">${isOut?'Eliminated':isWinner?'Winner':'#'+(idx+1)}</div>
+      <div style="min-height:48px"><div class="rc-score ${sd.cls}">${sd.txt}</div>
+      <div class="rc-rank">${isOut?'Eliminated':isWinner?'Winner':'#'+(idx+1)}</div></div>
       <div class="rc-players">${players}${alt}</div>
     </div>`;
   }).join('');
