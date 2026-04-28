@@ -1196,7 +1196,7 @@ function buildLeaderboard() {
       liveScore: scores[g.name]?.score,
       cut: scores[g.name]?.cut || g.cut
     }));
-    if (alternate && !alternate.benchedOut) {
+    if (alternate) {
       alternate = {
         ...alternate,
         liveScore: scores[alternate.name]?.score,
