@@ -194,8 +194,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<script>
-const COLORS = {
+<script type="module">
   Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',
   Zach:'#1565C0',Ben:'#C62828',Matt:'#AD1457',Max:'#558B2F',Mike:'#00838F',Adam:'#4E342E'
 };
@@ -240,9 +239,10 @@ const GOLF_DRAFT = {
   'masters-26':          { Ben:1, Jared:2, Marc:3, Matt:4, Zach:5, Andrew:6, Mark:7 },
 };
 
-const ALL_OWNERS = ['Andrew','Ben','Zach','Marc','Jared','Mark','Matt','Max'];
+const ALL_OWNERS = ['Andrew','Ben','Zach','Marc','Jared','Mark','Matt','Max','Mike','Adam'];
 
-const MAJORS = [
+let MAJORS = []; // populated from Firebase + legacy data
+const MAJORS_LEGACY = [
   {
     "slug": "masters-26",
     "name": "2026 Masters",
@@ -6961,8 +6961,8 @@ function buildMajorCard(m) {
       return `<div class="rc-player ${p.cut?'cut':''} ${p.sub?'sub':''}"><span>${p.name}</span><span class="rc-score-val">${ps}</span></div>`;
     }).join('');
     const alt=data.alternate?`<div class="rc-player alt ${data.alternate.cut?'cut':''} ${data.alternate.sub?'sub':''}"><span><span class="alt-lbl">A</span>${data.alternate.name}</span><span class="rc-score-val">${typeof data.alternate.score==='number'?(data.alternate.score===0?'E':data.alternate.score>0?'+'+data.alternate.score:''+data.alternate.score):(data.alternate.score||'—')}</span></div>`:'';
-    const draftMap = GOLF_DRAFT[m.slug] || {};
-    const draftPick = draftMap[owner];
+    const draftMap = m.pickOrder || GOLF_DRAFT[m.slug] || {};
+    const draftPick = draftMap[owner] || null;
     const draftBadge = draftPick ? `<span class="draft-badge" style="margin:0;float:right;margin-top:1px">Pick #${draftPick}</span>` : '';
     return `<div class="result-card ${isWinner?'won':''} ${isOut?'out':''}">
       <div class="rc-header" style="color:${COLORS[owner]||'#555'};border-color:${COLORS[owner]||'#eee'};display:flex;align-items:center;justify-content:space-between">${isWinner?'🏆 ':''}${owner}${draftBadge}</div>
@@ -6971,13 +6971,14 @@ function buildMajorCard(m) {
       ${players}${alt}
     </div>`;
   }).join('');
+  const liveBadge = m.live ? `<span style="font-size:11px;background:#c62828;color:#fff;border-radius:20px;padding:3px 10px;font-weight:700;">🔴 Live</span>` : '';
   const winnerBadge=isTie
     ?`<span class="tie-badge">🤝 Tie: ${winners.join(' & ')}</span>`
     :`<span class="winner-badge" style="background:${COLORS[m.winner]||'#1a1a1a'}">${m.winner?'🏆 '+m.winner+(m.pot?' $'+m.pot:''):''}</span>`;
   return `<div class="major-card">
     <div class="major-header">
       <div class="major-name">${m.name}</div>
-      <div class="major-meta">${m.pot?`<span class="pot-pill">Pot: $${m.pot}</span>`:''} ${winnerBadge}</div>
+      <div class="major-meta">${liveBadge}${m.pot?`<span class="pot-pill">Pot: $${m.pot}</span>`:''} ${m.winner?winnerBadge:''}</div>
     </div>
     <div class="results-grid">${cards}</div>
   </div>`;
@@ -6992,9 +6993,38 @@ function showTab(tab) {
   });
 }
 
-buildAllTime();
-buildMajors();
-buildStats();
+// ── Firebase ───────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
+  authDomain: "giesener-bets.firebaseapp.com",
+  databaseURL: "https://giesener-bets-default-rtdb.firebaseio.com",
+  projectId: "giesener-bets",
+  storageBucket: "giesener-bets.firebasestorage.app",
+  messagingSenderId: "728665249382",
+  appId: "1:728665249382:web:ec1635941b04d3aba7ffa7"
+};
+const fbApp = initializeApp(FIREBASE_CONFIG);
+const db = getDatabase(fbApp);
+
+// Load Firebase history and merge with hardcoded MAJORS_LEGACY
+onValue(ref(db, 'golf/history'), snap => {
+  const fbHistory = snap.val() || {};
+  // Firebase entries keyed by slug — convert to array
+  const fbMajors = Object.values(fbHistory);
+  // Merge: Firebase wins over legacy for same slug
+  const fbSlugs = new Set(fbMajors.map(m => m.slug));
+  const legacy = MAJORS_LEGACY.filter(m => !fbSlugs.has(m.slug));
+  MAJORS = [...fbMajors, ...legacy].sort((a,b) => {
+    if (b.year !== a.year) return b.year - a.year;
+    return a.name.localeCompare(b.name);
+  });
+  buildAllTime();
+  buildMajors();
+  buildStats();
+});
 </script>
 <!-- Feedback modal -->
 <div class="fb-overlay" id="fb-overlay" onclick="fbClose(event)">
