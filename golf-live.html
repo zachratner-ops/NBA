@@ -529,7 +529,7 @@ function renderSetup() {
           </div>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-outline" style="color:#fff;border-color:#444;" onclick="window.setupStepBack()">← Back</button>
+          <button class="btn btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.setupStepBack()">← Back</button>
           <button class="btn btn-green" onclick="window.submitSetup()">Open Lobby →</button>
         </div>
         `}
@@ -1565,6 +1565,7 @@ window.seedOdds = async function() {
     document.getElementById('odds-content').innerHTML = `<p style="color:#c62828;">Error: ${e.message}</p><button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
   }
 };
+
 window.applyOdds = async function(fieldName, selId) {
   const sel = document.getElementById('sel-'+selId);
   if (!sel?.value) return;
