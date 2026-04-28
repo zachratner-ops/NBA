@@ -1087,12 +1087,10 @@ function renderLive(isFinal) {
     let altRow = '';
     if (alt) {
       const isBenched = alt.benchedOut; // swapped-out golfer sitting in alt slot
-      const altSv = isBenched ? '—' : (alt.cut ? 'CUT' : (alt.liveScore !== undefined ? fmtScore(alt.liveScore) : '—'));
-      const altCls = !isBenched && alt.liveScore < 0 ? 'under' : !isBenched && alt.liveScore > 0 ? 'over' : '';
-      const altLabel = isBenched ? 'OUT' : 'A';
-      const altLabelColor = isBenched ? '#c62828' : '#856404';
-      altRow = `<div class="rc-player alt ${!isBenched&&alt.cut?'cut':''}" style="${isBenched?'color:#bbb;font-style:italic;':''}">
-        <span><span class="alt-lbl" style="color:${altLabelColor}">${altLabel}</span>${alt.name}</span>
+      const altSv = alt.cut ? 'CUT' : (alt.liveScore !== undefined ? fmtScore(alt.liveScore) : '—');
+      const altCls = alt.liveScore < 0 ? 'under' : alt.liveScore > 0 ? 'over' : '';
+      altRow = `<div class="rc-player alt ${alt.cut?'cut':''}">
+        <span><span class="alt-lbl">A</span>${alt.name}</span>
         <span class="rc-score-val ${altCls}">${altSv}</span>
       </div>`;
     }
@@ -1218,7 +1216,8 @@ function buildLeaderboard() {
       out: isOut,
       activeCount: active.length,
       hasSubbed: !!ownerSub,
-      countingNames: counting.map(g => g.name)
+      countingNames: counting.map(g => g.name),
+      alternate
     };
   }).sort((a,b) => {
     if (a.out && !b.out) return 1;
