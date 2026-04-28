@@ -6964,14 +6964,9 @@ function buildMajorCard(m) {
     let alt = '';
     if (data.alternate) {
       const altObj = data.alternate;
-      const wasSubbed = altObj.benchedOut || altObj.subOut;
-      if (wasSubbed) {
-        const benchedScore = typeof altObj.score === 'number' ? (altObj.score === 0 ? 'E' : altObj.score > 0 ? '+' + altObj.score : '' + altObj.score) : (altObj.score || '—');
-        alt = `<div class="rc-player alt sub"><span><span class="alt-lbl" style="color:#c62828">OUT</span>${altObj.name}</span><span class="rc-score-val">${benchedScore}</span></div>`;
-      } else {
-        const altScore = typeof altObj.score === 'number' ? (altObj.score === 0 ? 'E' : altObj.score > 0 ? '+' + altObj.score : '' + altObj.score) : (altObj.score || '—');
-        alt = `<div class="rc-player alt ${altObj.cut ? 'cut' : ''}"><span><span class="alt-lbl">A</span>${altObj.name}</span><span class="rc-score-val">${altScore}</span></div>`;
-      }
+      // Always show alt slot with gold A label — whether unused alternate or swapped-out player
+      const altScore = typeof altObj.score === 'number' ? (altObj.score === 0 ? 'E' : altObj.score > 0 ? '+' + altObj.score : '' + altObj.score) : (altObj.score || '—');
+      alt = `<div class="rc-player alt ${altObj.cut ? 'cut' : ''}"><span><span class="alt-lbl">A</span>${altObj.name}</span><span class="rc-score-val">${altScore}</span></div>`;
     }
     const draftMap = m.pickOrder || GOLF_DRAFT[m.slug] || {};
     const draftPick = draftMap[owner] || null;
