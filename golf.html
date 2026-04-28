@@ -194,7 +194,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<script type="module">
+<script>
+const COLORS = {
   Mark:'#7B1FA2',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',
   Zach:'#1565C0',Ben:'#C62828',Matt:'#AD1457',Max:'#558B2F',Mike:'#00838F',Adam:'#4E342E'
 };
@@ -241,7 +242,7 @@ const GOLF_DRAFT = {
 
 const ALL_OWNERS = ['Andrew','Ben','Zach','Marc','Jared','Mark','Matt','Max','Mike','Adam'];
 
-let MAJORS = []; // populated from Firebase + legacy data
+let MAJORS = []; // populated from Firebase + legacy
 const MAJORS_LEGACY = [
   {
     "slug": "masters-26",
@@ -6993,7 +6994,14 @@ function showTab(tab) {
   });
 }
 
-// ── Firebase ───────────────────────────────────────────────────────
+// Initial render with legacy data only — Firebase will update when it loads
+MAJORS = MAJORS_LEGACY.slice();
+buildAllTime();
+buildMajors();
+buildStats();
+</script>
+
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
@@ -7009,12 +7017,9 @@ const FIREBASE_CONFIG = {
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const db = getDatabase(fbApp);
 
-// Load Firebase history and merge with hardcoded MAJORS_LEGACY
 onValue(ref(db, 'golf/history'), snap => {
   const fbHistory = snap.val() || {};
-  // Firebase entries keyed by slug — convert to array
   const fbMajors = Object.values(fbHistory);
-  // Merge: Firebase wins over legacy for same slug
   const fbSlugs = new Set(fbMajors.map(m => m.slug));
   const legacy = MAJORS_LEGACY.filter(m => !fbSlugs.has(m.slug));
   MAJORS = [...fbMajors, ...legacy].sort((a,b) => {
