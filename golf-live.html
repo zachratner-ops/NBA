@@ -1469,11 +1469,12 @@ window.doFinalize = async function() {
     const entry = lbData.find(e => e.owner === owner);
     const picks = draft?.picks?.[owner] || { golfers: [], alternate: null };
     const ownerSub = subs.find(s => s.owner === owner);
-    const golfers = picks.golfers.map(g => {
-      const ls = live?.scores?.[g.name];
-      const isSubOut = ownerSub?.from === g.name;
-      return { name: g.name, ...(isSubOut?{subOut:true}:{}), ...(ls?.cut?{score:'CUT',cut:true}:{score:ls?.score??0}) };
-    });
+    const golfers = picks.golfers
+      .filter(g => ownerSub?.from !== g.name) // remove the subbed-out player from main roster
+      .map(g => {
+        const ls = live?.scores?.[g.name];
+        return { name: g.name, ...(ls?.cut?{score:'CUT',cut:true}:{score:ls?.score??0}) };
+      });
     if (ownerSub) {
       const altScore = live?.scores?.[ownerSub.to];
       golfers.push({ name: ownerSub.to, sub: true, ...(altScore?.cut?{score:'CUT',cut:true}:{score:altScore?.score??0}) });
