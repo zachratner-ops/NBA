@@ -10,7 +10,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 .topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:0;z-index:50;}
 .topbar-title{font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.topbar-sub{font-size:11px;color:#666;margin-top:1px;}
 .topbar-nav{display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .topbar-nav a{color:#aaa;font-size:13px;text-decoration:none;white-space:nowrap;}
 .topbar-nav a:hover{color:#fff;}
@@ -48,7 +47,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:900px){.draft-layout{grid-template-columns:1fr;}}
 /* Desktop draft viewport fit */
 @media(min-width:701px){
-  .draft-screen{display:flex;flex-direction:column;height:calc(100dvh - 47px);padding:12px 20px 0;overflow:hidden;}
+  .draft-screen{display:flex;flex-direction:column;height:calc(100dvh - 41px);padding:12px 20px 0;overflow:hidden;}
   .draft-screen .timer-bar{flex-shrink:0;}
   .draft-screen .makeup-notice{flex-shrink:0;}
   .draft-screen .draft-layout{flex:1;min-height:0;margin-bottom:8px;}
@@ -239,7 +238,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="topbar">
   <div>
     <div class="topbar-title" id="tb-title">Golf</div>
-    <div class="topbar-sub" id="tb-sub"></div>
   </div>
   <div class="topbar-nav">
     <button class="comm-toggle" id="comm-toggle" onclick="toggleCommMode()">⚙ Comm</button>
@@ -487,7 +485,7 @@ function renderScreen() {
   if (!draft) return;
   const status = draft.status || 'setup';
   document.getElementById('tb-title').textContent = draft.name || 'Golf';
-  document.getElementById('tb-sub').textContent = SLUG + ' · ' + {setup:'Setup',lobby:'Lobby',drafting:'Drafting',complete:'Draft Complete',live:'Live 🔴',final:'Final ✅'}[status];
+
   if (status === 'setup') renderSetup();
   else if (status === 'lobby') renderLobby();
   else if (status === 'drafting') renderDraft();
@@ -733,16 +731,13 @@ function renderDraft() {
   }).join('');
 
   document.getElementById('screen').innerHTML = `
-    <div style="padding:14px 20px 0;display:flex;gap:8px;justify-content:flex-end;align-items:center;">
-      <button class="btn btn-sm btn-outline" onclick="window.doUndo()" ${(draft.currentPickIndex > 0 || draft.currentPhase === 'alternate') ? '' : 'disabled'} style="color:#fff;border-color:#666;background:#2a2a2a;">↩ Undo</button>
-      <button class="btn btn-sm btn-outline" onclick="window.doRedo()" style="color:#fff;border-color:#666;background:#2a2a2a;">↪ Redo</button>
-      ${isComm ? `<button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>` : ''}
-    </div>
-    ${isComm ? `<div style="background:#1a1a1a;border-bottom:1px solid #333;padding:8px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <span style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Commissioner</span>
-      <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">Odds</button>
-    </div>` : ''}
     <div class="main draft-screen">
+      <div style="flex-shrink:0;display:flex;gap:8px;justify-content:flex-end;align-items:center;padding-bottom:8px;">
+        <button class="btn btn-sm btn-outline" onclick="window.doUndo()" ${(draft.currentPickIndex > 0 || draft.currentPhase === 'alternate') ? '' : 'disabled'} style="color:#1a1a1a;border-color:#ccc;">↩ Undo</button>
+        <button class="btn btn-sm btn-outline" onclick="window.doRedo()" style="color:#1a1a1a;border-color:#ccc;">↪ Redo</button>
+        ${isComm ? `<button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>` : ''}
+        ${isComm ? `<button class="btn btn-sm btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.importOdds()">Odds</button>` : ''}
+      </div>
       ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
       <div class="timer-bar">
         <div>
