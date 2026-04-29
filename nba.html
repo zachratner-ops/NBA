@@ -470,7 +470,7 @@ function renderTable(){
         : '<div style="display:inline-block;text-align:center;"><span class="nba-badge t-'+p.team+'">'+p.team+'</span>'+seriesScore+'</div>';
       h += '<td class="sep" data-team="'+p.team+'" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+'</td>'+
            '<td style="'+rowBg+'">'+teamBadge+'</td>'+
-           '<td class="pts'+(v===0?' z':'')+(elim?' nba-elim':'')+'" style="'+rowBg+'">'+disp+'</td>';
+           '<td class="pts'+(v===0?' z':'')+'\" style="'+rowBg+'">'+disp+'</td>';
     });
     h += '</tr>';
   }
