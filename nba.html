@@ -113,7 +113,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <!-- Commissioner panel (hidden until unlocked) -->
 <div class="comm-bar" id="comm-bar">
   <span class="comm-bar-label">Commissioner</span>
-  <button class="comm-bar-btn" id="commish-post-btn" onclick="commishPost()">📣 Post Standings to GroupMe</button>
+  <button class="comm-bar-btn" id="commish-btn-test" onclick="commishPost('test')">📣 Post Standings — Test</button>
+  <button class="comm-bar-btn" id="commish-btn-live" onclick="commishPost('live')">📣 Post Standings — Live</button>
 </div>
 
 <!-- Commissioner password modal -->
@@ -923,25 +924,36 @@ function commishConfirm() {
   }
 }
 
-async function commishPost() {
-  const btn = document.getElementById('commish-post-btn');
+const GROUPME_BOT_TEST = 'af8ec9a284c08aa0c9d0c2e231';
+const GROUPME_BOT_LIVE = '36cc1e93ae09476fa837b1b4bd';
+
+async function commishPost(channel) {
+  const isTest = channel === 'test';
+  const botId = isTest ? GROUPME_BOT_TEST : GROUPME_BOT_LIVE;
+  const btnId = isTest ? 'commish-btn-test' : 'commish-btn-live';
+  const label = isTest ? '📣 Post Standings — Test' : '📣 Post Standings — Live';
+  const btn = document.getElementById(btnId);
   btn.textContent = '⏳ Posting...';
   btn.disabled = true;
   try {
-    const res = await fetch(NBA_PROXY + '/nba/groupme', { method: 'POST' });
+    const res = await fetch(NBA_PROXY + '/nba/groupme', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ botId: botId })
+    });
     const data = await res.json();
     if (data.ok) {
       btn.textContent = '✅ Posted!';
-      setTimeout(() => { btn.textContent = '📣 Post Standings to GroupMe'; btn.disabled = false; }, 3000);
+      setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 3000);
     } else {
       btn.textContent = '❌ Failed';
       alert('GroupMe post failed: ' + (data.error || 'unknown error'));
-      setTimeout(() => { btn.textContent = '📣 Post Standings to GroupMe'; btn.disabled = false; }, 2000);
+      setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2000);
     }
   } catch(e) {
     btn.textContent = '❌ Error';
     alert('Request failed: ' + e.message);
-    setTimeout(() => { btn.textContent = '📣 Post Standings to GroupMe'; btn.disabled = false; }, 2000);
+    setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2000);
   }
 }
 </script>

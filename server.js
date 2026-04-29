@@ -257,7 +257,8 @@ const NBA_OWNERS = [
 const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || 'af8ec9a284c08aa0c9d0c2e231';
 const GROUPME_DRY_RUN = process.env.GROUPME_DRY_RUN === 'true';
 
-async function postGroupMe(totals) {
+async function postGroupMe(totals, botId) {
+  botId = botId || GROUPME_BOT_ID;
   const ranked = Object.entries(totals)
     .sort(function(a, b) { return b[1] - a[1]; });
   const leader = ranked[0][1];
@@ -284,7 +285,7 @@ async function postGroupMe(totals) {
     return;
   }
   try {
-    const body = JSON.stringify({ bot_id: GROUPME_BOT_ID, text: msg });
+    const body = JSON.stringify({ bot_id: botId, text: msg });
     await new Promise(function(resolve, reject) {
       const req = https.request({
         hostname: 'api.groupme.com',
@@ -468,8 +469,9 @@ app.post('/nba/groupme', async function(req, res) {
         return sum + (sanitizedPlayers[normalizeName(p)] || 0);
       }, 0);
     });
-    await postGroupMe(totals);
-    res.json({ ok: true, totals: totals });
+    const botId = req.body && req.body.botId ? req.body.botId : GROUPME_BOT_ID;
+    await postGroupMe(totals, botId);
+    res.json({ ok: true, totals: totals, botId: botId });
   } catch(e) {
     console.error('On-demand GroupMe error:', e.message);
     res.status(500).json({ error: e.message });
