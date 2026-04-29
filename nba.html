@@ -443,7 +443,7 @@ function renderCards(){
 function renderTable(){
   var tops = Math.max.apply(null, OWNERS.map(ownerTotal).concat([0]));
   var h = '<thead><tr><th>Rd</th>';
-  OWNERS.forEach(function(o){ h+='<th class="sep" colspan="3" style="background:#fff;padding:8px 4px;text-align:center;"><span style="display:inline-block;background:'+o.color+';color:#fff;font-size:13px;font-weight:700;padding:5px 12px;border-radius:6px;white-space:nowrap;">'+o.name+'</span></th>'; });
+  OWNERS.forEach(function(o){ h+='<th class="sep" colspan="3" style="background:#f5f5f3;padding:8px 4px;text-align:center;"><span style="display:inline-block;background:'+o.color+';color:#fff;font-size:13px;font-weight:700;padding:5px 12px;border-radius:6px;white-space:nowrap;">'+o.name+'</span></th>'; });
   h += '</tr><tr><th></th>';
   OWNERS.forEach(function(){ h+='<th class="sep">Player</th><th>Team</th><th class="r">PTS</th>'; });
   h += '</tr></thead><tbody>';
