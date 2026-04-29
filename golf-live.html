@@ -661,12 +661,13 @@ function renderDraft() {
   const draftMakeupPicks = draft.makeupPicks || {};
   const makeupOwners = Object.keys(draftMakeupPicks);
 
+  const isMobile = window.innerWidth <= 700;
   const pickOrderHtml = allPicks
     .map((p, i) => ({ p, i }))
-    .filter(({ i }) => i >= Math.max(0, globalIdx - 3))  // last 3 done + current + upcoming
+    .filter(({ i }) => isMobile ? i >= globalIdx : i >= Math.max(0, globalIdx - 3))  // mobile: only current + upcoming; desktop: last 3 + current + upcoming
     .map(({ p, i }) => {
       const done = i < globalIdx, current = i === globalIdx, isA = i >= seq.length;
-      return `<div class="pick-item ${done?'done':current?'current':'upcoming'}">
+      return `<div class="pick-item ${done?'done':current?'current':'upcoming'}" ${current?'id="current-pick"':''}>
         <span class="pick-num">${i+1}</span>
         <span style="color:${done?'#aaa':color(p.owner)};font-weight:${current?'700':'500'}">${p.owner}</span>
         ${isA ? '<span class="pick-phase-alt">ALT</span>' : ''}
@@ -772,8 +773,13 @@ function renderDraft() {
       <div class="roster-grid">${rosterHtml}</div>
     </div>`;
 
-  // Restore scroll positions
-  if (pickOrderScroll) { const el = document.getElementById('pick-order-list'); if (el) el.scrollTop = pickOrderScroll; }
+  // Restore scroll positions (desktop) or snap to active pick (mobile)
+  if (window.innerWidth <= 700) {
+    const cur = document.getElementById('current-pick');
+    if (cur) cur.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  } else {
+    if (pickOrderScroll) { const el = document.getElementById('pick-order-list'); if (el) el.scrollTop = pickOrderScroll; }
+  }
   if (poolScroll) { const el = document.getElementById('pool-list'); if (el) el.scrollTop = poolScroll; }
 
   if (!timerInterval) startTimer();
