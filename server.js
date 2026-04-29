@@ -254,7 +254,7 @@ const NBA_OWNERS = [
 ];
 
 // ── GroupMe bot ──────────────────────────────────────────────────
-const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || '36cc1e93ae09476fa837b1b4bd';
+const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || 'af8ec9a284c08aa0c9d0c2e231';
 const GROUPME_DRY_RUN = process.env.GROUPME_DRY_RUN === 'true';
 
 async function postGroupMe(totals) {
@@ -382,13 +382,6 @@ async function pushNBAToFirebase() {
     const playerCount = Object.keys(scoreData.players).length;
     console.log('NBA push complete — ' + playerCount + ' players, snapshot ' + snapKey);
 
-    // Post daily standings to GroupMe only if scrape returned real data
-    if (playerCount > 0) {
-      postGroupMe(totals).catch(function(e) { console.error('GroupMe post error:', e.message); });
-    } else {
-      console.log('GroupMe skipped — scrape returned 0 players, not posting stale standings');
-    }
-
     return { ok: true, players: playerCount, snapshot: snapKey, updated: now };
   } catch(e) {
     console.error('Firebase write error:', e.message);
@@ -458,8 +451,31 @@ app.post('/nba/push', async function(req, res) {
   res.json(result);
 });
 
-// Legacy
-app.get('/all', async function(req, res) {
+// NBA: post standings to GroupMe on demand (commissioner button)
+app.post('/nba/groupme', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  try {
+    const db = admin.database();
+    const snap = await db.ref('nba26_live/scores').get();
+    if (!snap.exists()) return res.status(404).json({ error: 'No score data in Firebase yet' });
+    const data = snap.val();
+    const sanitizedPlayers = data.players || {};
+    if (Object.keys(sanitizedPlayers).length === 0) return res.status(400).json({ error: 'Score data is empty — run a scrape first' });
+    const totals = {};
+    NBA_OWNERS.forEach(function(o) {
+      totals[o.name] = o.players.reduce(function(sum, p) {
+        return sum + (sanitizedPlayers[normalizeName(p)] || 0);
+      }, 0);
+    });
+    await postGroupMe(totals);
+    res.json({ ok: true, totals: totals });
+  } catch(e) {
+    console.error('On-demand GroupMe error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
   const scoreData = await fetchNBAScores();
   if (scoreData.error) return res.status(502).json(scoreData);
   if (firebaseReady) pushNBAToFirebase().catch(function(e) { console.error('Background push failed:', e.message); });
