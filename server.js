@@ -254,7 +254,7 @@ const NBA_OWNERS = [
 ];
 
 // ── GroupMe bot ──────────────────────────────────────────────────
-const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || '45b2dc67de23cb67d9990a9555';
+const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID || '36cc1e93ae09476fa837b1b4bd';
 const GROUPME_DRY_RUN = process.env.GROUPME_DRY_RUN === 'true';
 
 async function postGroupMe(totals) {
@@ -382,8 +382,12 @@ async function pushNBAToFirebase() {
     const playerCount = Object.keys(scoreData.players).length;
     console.log('NBA push complete — ' + playerCount + ' players, snapshot ' + snapKey);
 
-    // Post daily standings to GroupMe (fire-and-forget, won't block the response)
-    postGroupMe(totals).catch(function(e) { console.error('GroupMe post error:', e.message); });
+    // Post daily standings to GroupMe only if scrape returned real data
+    if (playerCount > 0) {
+      postGroupMe(totals).catch(function(e) { console.error('GroupMe post error:', e.message); });
+    } else {
+      console.log('GroupMe skipped — scrape returned 0 players, not posting stale standings');
+    }
 
     return { ok: true, players: playerCount, snapshot: snapKey, updated: now };
   } catch(e) {
