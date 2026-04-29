@@ -74,8 +74,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .player-card.selected{border-color:#2e7d32;background:#e8f5e9;}
 .player-name{font-size:13px;font-weight:600;flex:1;}
 .odds-row{display:flex;gap:4px;flex-shrink:0;min-width:140px;justify-content:flex-end;}
-.dk{background:#000;color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;}
-.fd{background:#1565c0;color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;}
+.odds-pill{font-size:10px;font-weight:700;padding:3px 7px;border-radius:4px;display:flex;flex-direction:column;align-items:center;gap:0px;line-height:1.2;}
+.odds-pill .odds-label{font-size:8px;font-weight:600;opacity:0.75;text-transform:uppercase;letter-spacing:.04em;}
+.dk{background:#000;color:#fff;}
+.odds-top10{background:#1a5c2a;color:#fff;}
+.odds-cut{background:#5c1a1a;color:#fff;}
 .pool-list{max-height:350px;overflow-y:auto;}
 #pick-order-list{max-height:350px;overflow-y:auto;}
 .ap-list{max-height:350px;overflow-y:auto;}
@@ -697,7 +700,7 @@ function renderDraft() {
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
-      <div class="odds-row">${p.odds_dk?`<span class="dk">DK ${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="fd">FD ${p.odds_fd}</span>`:''}</div>
+      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
 
   const apHtml = (draft.autopickList || []).map(p =>
@@ -861,7 +864,7 @@ window.onSearch = function(val) {
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
-      <div class="odds-row">${p.odds_dk?`<span class="dk">DK ${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="fd">FD ${p.odds_fd}</span>`:''}</div>
+      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
   poolEl.innerHTML = poolHtml;
 };
@@ -1551,7 +1554,7 @@ function showOddsResult(data) {
       <div style="display:flex;gap:6px;">
         <select id="sel-${p.name.replace(/\s/g,'_')}" style="flex:1;border:1px solid #ddd;border-radius:5px;padding:4px 8px;font-size:12px;">
           <option value="">-- no match --</option>
-          ${(data.availableOdds||[]).map(o=>`<option value="${o.name}">${o.name} (DK:${o.dk||'—'} FD:${o.fd||'—'})</option>`).join('')}
+          ${(data.availableOdds||[]).map(o=>`<option value="${o.name}">${o.name} (Win:${o.dk||'—'} T10:${o.dk_top10||'—'} Cut:${o.dk_cut||'—'})</option>`).join('')}
         </select>
         <button class="btn btn-sm btn-green" onclick="window.applyOdds('${p.name.replace(/'/g,"\\'")}','${p.name.replace(/\s/g,'_')}')">Apply</button>
       </div>
