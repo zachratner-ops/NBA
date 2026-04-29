@@ -970,8 +970,6 @@ function renderComplete() {
       <div class="comm-actions">
         <button class="btn btn-green" onclick="window.goLive()" ${makeupOwners.length ? 'disabled title="Resolve pending makeup picks first"' : ''}>Go Live →</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>
-        <button class="btn btn-sm btn-outline" style="color:#aaa;border-color:#444;" onclick="window.postGolfGroupMe('test')">📣 Post — Test</button>
-        <button class="btn btn-sm btn-outline" style="color:#aaa;border-color:#444;" onclick="window.postGolfGroupMe('live')">📣 Post — Live</button>
       </div>
     </div>` : '';
 
@@ -1042,8 +1040,6 @@ function renderLive(isFinal) {
             ? '<span style="font-size:11px;color:#aaa;">Committed ' + new Date(live.committedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</span><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoCommit()">Undo Commit</button>'
             : '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Commit to History →</button><button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoFinalize()">Undo Finalize</button>'
         }
-        <button class="btn btn-sm btn-outline" style="color:#aaa;border-color:#444;" onclick="window.postGolfGroupMe('test')">📣 Post — Test</button>
-        <button class="btn btn-sm btn-outline" style="color:#aaa;border-color:#444;" onclick="window.postGolfGroupMe('live')">📣 Post — Live</button>
       </div>
       ${showOverridePanel ? `
       <div style="background:#111;border-top:1px solid #333;padding:10px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -1608,32 +1604,6 @@ window.fbSubmit = async function(e) {
   btn.disabled = false; btn.textContent = 'Send →';
 };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') { window.closeFeedback(); document.getElementById('sub-modal').style.display='none'; document.getElementById('makeup-modal').style.display='none'; } });
-
-// ── GroupMe post ───────────────────────────────────────────────────
-const GOLF_GROUPME_BOT_TEST = 'af8ec9a284c08aa0c9d0c2e231';
-const GOLF_GROUPME_BOT_LIVE = '36cc1e93ae09476fa837b1b4bd';
-
-window.postGolfGroupMe = async function(channel) {
-  const isTest = channel === 'test';
-  const botId = isTest ? GOLF_GROUPME_BOT_TEST : GOLF_GROUPME_BOT_LIVE;
-  const label = isTest ? 'Test' : 'Live';
-  if (!confirm('Post standings to GroupMe (' + label + ')?')) return;
-  try {
-    const res = await fetch(`${PROXY}/golf/${SLUG}/groupme`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ botId })
-    });
-    const data = await res.json();
-    if (data.ok) {
-      alert('✅ Posted to GroupMe (' + label + ')!');
-    } else {
-      alert('❌ Failed: ' + (data.error || 'unknown error'));
-    }
-  } catch(e) {
-    alert('❌ Request failed: ' + e.message);
-  }
-};
 </script>
 </body>
 </html>
