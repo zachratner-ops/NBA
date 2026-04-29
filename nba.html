@@ -223,7 +223,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div class="nba-section-title">Roster</div>
   <div class="nba-wrap"><table class="nba-table" id="nba-table"></table></div>
 
-  <div class="nba-section-title">Teams Remaining</div>
+  <div class="nba-section-title">Teams</div>
   <div id="nba-team-pills" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;justify-content:center;"></div>
 
   <div class="nba-section-title">Points over time</div>
@@ -379,7 +379,8 @@ function renderCards(){
   document.getElementById('nba-cards').innerHTML = sorted.map(function(item,rank){
     var o=item.o, tot=item.tot, behind=leaderTot-tot, pct=Math.round(tot/top*100);
     var activePlayers = o.players.filter(function(p){ return !isElim(p.team); }).length;
-    var elimNote = activePlayers < o.players.length ? '<div style="font-size:10px;color:#e53935;margin-top:4px;">'+activePlayers+'/'+o.players.length+' active</div>' : '';
+    var totalPlayers = o.players.length;
+    var remainingNote = '<div style="font-size:10px;color:#888;margin-top:6px;">'+activePlayers+'/'+totalPlayers+' players remaining</div>';
 
     var prevTot = prevTotals[o.name] || tot;
     var ptsToday = tot - prevTot;
@@ -429,11 +430,11 @@ function renderCards(){
           '<div class="nba-delta" style="color:'+(rank===0?'#2e7d32':'#e53935')+'">' +
             (rank===0?'↑ leading':'-'+behind.toLocaleString()+' back') +
           '</div>' +
-          elimNote +
         '</div>' +
         trendHtml +
       '</div>' +
       '<div class="nba-bar-bg"><div class="nba-bar" style="width:'+pct+'%;background:'+o.color+'"></div></div>' +
+      remainingNote +
     '</div>';
   }).join('');
 }
