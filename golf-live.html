@@ -46,6 +46,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* Draft */
 .draft-layout{display:grid;grid-template-columns:220px 1fr 220px;gap:14px;}
 @media(max-width:900px){.draft-layout{grid-template-columns:1fr;}}
+/* Desktop draft viewport fit */
+@media(min-width:701px){
+  .draft-screen{display:flex;flex-direction:column;height:calc(100dvh - 47px);padding-bottom:0;}
+  .draft-screen .timer-bar{flex-shrink:0;}
+  .draft-screen .draft-layout{flex:1;min-height:0;}
+  .draft-screen .card.draft-col{display:flex;flex-direction:column;min-height:0;}
+  .draft-screen #pick-order-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+  .draft-screen .pool-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+  .draft-screen .ap-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
+  .draft-screen .roster-grid{flex-shrink:0;}
+}
 .pick-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;margin-bottom:3px;font-size:12px;}
 .pick-item.current{background:#fff3cd;font-weight:700;border:1.5px solid #ffc107;}
 .pick-item.done{opacity:0.35;text-decoration:line-through;}
@@ -730,7 +741,7 @@ function renderDraft() {
       <span style="font-size:11px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Commissioner</span>
       <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">Odds</button>
     </div>` : ''}
-    <div class="main">
+    <div class="main draft-screen">
       ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
       <div class="timer-bar">
         <div>
