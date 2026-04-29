@@ -457,6 +457,7 @@ app.post('/nba/groupme', async function(req, res) {
   try {
     const db = admin.database();
     const snap = await db.ref('nba26_live/scores').get();
+
     if (!snap.exists()) return res.status(404).json({ error: 'No score data in Firebase yet' });
     const data = snap.val();
     const sanitizedPlayers = data.players || {};
@@ -476,6 +477,8 @@ app.post('/nba/groupme', async function(req, res) {
 });
 
 
+// Legacy
+app.get('/all', async function(req, res) {
   const scoreData = await fetchNBAScores();
   if (scoreData.error) return res.status(502).json(scoreData);
   if (firebaseReady) pushNBAToFirebase().catch(function(e) { console.error('Background push failed:', e.message); });
