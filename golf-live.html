@@ -48,14 +48,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:900px){.draft-layout{grid-template-columns:1fr;}}
 /* Desktop draft viewport fit */
 @media(min-width:701px){
-  .draft-screen{display:flex;flex-direction:column;height:calc(100dvh - 47px);padding-bottom:0;}
+  .draft-screen{display:flex;flex-direction:column;height:calc(100dvh - 47px);padding:12px 20px 0;overflow:hidden;}
   .draft-screen .timer-bar{flex-shrink:0;}
-  .draft-screen .draft-layout{flex:1;min-height:0;}
+  .draft-screen .makeup-notice{flex-shrink:0;}
+  .draft-screen .draft-layout{flex:1;min-height:0;margin-bottom:8px;}
   .draft-screen .card.draft-col{display:flex;flex-direction:column;min-height:0;}
   .draft-screen #pick-order-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
   .draft-screen .pool-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
   .draft-screen .ap-list{flex:1;min-height:0;max-height:none;overflow-y:auto;}
-  .draft-screen .roster-grid{flex-shrink:0;}
+  .draft-screen .roster-grid{flex-shrink:0;padding-bottom:12px;}
 }
 .pick-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;margin-bottom:3px;font-size:12px;}
 .pick-item.current{background:#fff3cd;font-weight:700;border:1.5px solid #ffc107;}
