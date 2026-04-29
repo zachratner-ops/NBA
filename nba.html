@@ -179,7 +179,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nba-table td.pts.z { color: #ccc; font-weight: 400; }
 .nba-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 0; border-radius: 3px; letter-spacing: .04em; width: 36px; text-align: center; }
 .nba-elim { opacity: 0.38; text-decoration: line-through; }
-.nba-elim-badge { font-size: 9px; background: #eee; color: #999; border-radius: 3px; padding: 1px 4px; margin-left: 4px; font-weight: 600; vertical-align: middle; }
+.nba-elim-badge { font-size: 9px; background: #e0e0e0; color: #999; border-radius: 3px; padding: 1px 4px; font-weight: 600; }
 .nba-err { background: #fff0f0; border: 1px solid #fcc; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #900; margin-bottom: 12px; display: none; }
 .nba-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #ccc; border-top-color: #333; border-radius: 50%; animation: nba-spin .7s linear infinite; vertical-align: middle; margin-right: 5px; }
 @keyframes nba-spin { to { transform: rotate(360deg); } }
@@ -304,7 +304,7 @@ function seriesRowBg(team){
   if(lead === undefined) return '';
   // Use actual win/loss counts so 4-2 (lead=2) still shows as series over
   if(wl && wl.w === 4) return 'background:#2e7d32;color:#fff;'; // series won
-  if(wl && wl.l === 4) return 'background:#c62828;color:#fff;'; // series lost
+  if(wl && wl.l === 4) return 'background:#e8e8e8;color:#999;'; // series lost - grayscale
   if(lead === 3) return 'background:#a5d6a7;';             // up 3-x
   if(lead === 2) return 'background:#c8e6c9;';             // up 2-x
   if(lead === -3)return 'background:#ffcdd2;';             // down x-3
@@ -465,7 +465,7 @@ function renderTable(){
         seriesScore = '<div style="font-size:9px;font-weight:700;margin-top:2px;letter-spacing:.02em;">'+wl.w+'-'+wl.l+'</div>';
       }
       var teamBadge = elim
-        ? '<span class="nba-badge t-ELIM">'+p.team+'</span><span class="nba-elim-badge">ELIMINATED</span>'
+        ? '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;"><span class="nba-badge t-ELIM">'+p.team+'</span><span class="nba-elim-badge">OUT</span></div>'
         : '<div style="display:inline-block;text-align:center;"><span class="nba-badge t-'+p.team+'">'+p.team+'</span>'+seriesScore+'</div>';
       h += '<td class="sep" data-team="'+p.team+'" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+'</td>'+
            '<td style="'+rowBg+'">'+teamBadge+'</td>'+
