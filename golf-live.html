@@ -137,7 +137,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .live-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;margin-bottom:14px;}
 .live-card-header{padding:12px 16px;border-bottom:0.5px solid #eee;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
 .live-card-title{font-size:15px;font-weight:700;}
-.sub-btn-wrap{display:flex;justify-content:flex-end;padding:8px 12px;border-top:0.5px solid #f0f0f0;}
+.sub-btn-wrap{display:flex;padding:10px 0 0 0;}
+.sub-btn-wrap .btn{width:100%;text-align:center;}
 
 /* Sparkline */
 .spark-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:16px;margin-top:14px;}
@@ -1119,22 +1120,35 @@ function renderLive(isFinal) {
     const scoreCls = entry.out ? 'out-txt' : (entry.teamScore < 0 ? 'under' : entry.teamScore > 0 ? 'over' : 'even');
     const rankTxt = entry.out ? 'Eliminated' : (isWinner ? 'Winner 🏆' : (isLeader ? '🔴 Leading' : `#${i+1}`));
 
+    // Build round pill for any golfer — always renders, shows tee time or dashes if no data
+    const buildRoundPill = (g, isCut) => {
+      if (isCut) return `<span class="round-score-box" style="color:#ccc;">—</span>`;
+      const rs = g.roundScore !== null && g.roundScore !== undefined ? fmtScore(g.roundScore) : null;
+      const rsCls = g.roundScore < 0 ? 'under' : g.roundScore > 0 ? 'over' : '';
+      const thruStr = g.thru || null;
+      // Not started — show tee time if available
+      if (rs === null && !thruStr) {
+        if (g.teeTime) {
+          // Format tee time: ESPN returns ISO or "HH:MM AM/PM" — show short version
+          let tt = g.teeTime;
+          try {
+            const d = new Date(tt);
+            if (!isNaN(d)) tt = d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit', timeZone:'America/New_York'});
+          } catch(e) {}
+          return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${tt}</span>`;
+        }
+        return `<span class="round-score-box" style="color:#ccc;">—</span>`;
+      }
+      return `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${thruStr ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${thruStr}</span>` : ''}</span>`;
+    };
+
     const playerRows = entry.displayGolfers.map(g => {
       const isCounting = !entry.out && entry.countingNames?.includes(g.name) && !g.cut && !g.subOut;
       const sv = g.cut ? 'CUT' : (g.liveScore !== undefined ? fmtScore(g.liveScore) : '—');
       const svCls = g.liveScore < 0 ? 'under' : g.liveScore > 0 ? 'over' : '';
-      // Round score
-      const rs = g.roundScore !== null && g.roundScore !== undefined ? fmtScore(g.roundScore) : null;
-      const rsCls = g.roundScore < 0 ? 'under' : g.roundScore > 0 ? 'over' : '';
-      // Thru / hole — shorten ESPN strings like "Thru 14" → "Thru 14", "F" → "F", "*3" → "*3"
-      const thruStr = g.thru ? g.thru.replace('Thru ', 'Thru ') : null;
-      // Round pill — no R label, just score + thru, centered in fixed column
-      const roundPill = (!g.cut && (rs !== null || thruStr))
-        ? `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${thruStr ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${thruStr}</span>` : ''}</span>`
-        : `<span></span>`;
       return `<div class="rc-player ${g.cut?'cut':''} ${g.sub?'sub':''} ${isCounting?'counting':''}">
         <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.name}</span>
-        ${roundPill}
+        ${buildRoundPill(g, g.cut)}
         <span class="rc-score-val ${svCls}">${sv}</span>
       </div>`;
     }).join('');
@@ -1142,26 +1156,27 @@ function renderLive(isFinal) {
     const alt = entry.alternate;
     let altRow = '';
     if (alt) {
-      const isBenched = alt.benchedOut; // swapped-out golfer sitting in alt slot
+      const isBenched = alt.benchedOut;
       const altSv = alt.cut ? 'CUT' : (alt.liveScore !== undefined ? fmtScore(alt.liveScore) : '—');
       const altCls = !isBenched && alt.liveScore < 0 ? 'under' : !isBenched && alt.liveScore > 0 ? 'over' : '';
       const altLabel = isBenched ? 'Subbed' : 'A';
       const altLabelColor = isBenched ? '#aaa' : '#856404';
       altRow = `<div class="rc-player alt ${alt.cut?'cut':''}" style="${isBenched?'color:#bbb;':''}">
-        <span><span class="alt-lbl" style="color:${altLabelColor}">${altLabel}</span>${alt.name}</span>
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="alt-lbl" style="color:${altLabelColor}">${altLabel}</span>${alt.name}</span>
+        ${buildRoundPill(alt, alt.cut || isBenched)}
         <span class="rc-score-val ${altCls}">${altSv}</span>
       </div>`;
     }
 
     const hasMakeup = (draft?.makeupPicks?.[entry.owner] !== undefined) && (draft?.makeupPicks?.[entry.owner] !== null);
     const makeupBtnHtml = hasMakeup && isComm
-      ? `<div class="sub-btn-wrap"><button class="btn btn-sm" style="background:#c62828;color:#fff;width:100%;" onclick="window.openMakeupModal('${entry.owner}')">⚠ Make Pick for ${entry.owner}</button></div>`
+      ? `<div class="sub-btn-wrap"><button class="btn" style="background:#c62828;color:#fff;" onclick="window.openMakeupModal('${entry.owner}')">⚠ Make Pick for ${entry.owner}</button></div>`
       : hasMakeup
-      ? `<div class="sub-btn-wrap"><button class="btn btn-sm btn-amber" style="width:100%;" onclick="window.openMakeupModal('${entry.owner}')">Make Pick</button></div>`
+      ? `<div class="sub-btn-wrap"><button class="btn btn-amber" onclick="window.openMakeupModal('${entry.owner}')">Make Pick</button></div>`
       : '';
 
     const subBtnHtml = !isFinal && subOpen && !entry.hasSubbed && entry.alternate && !entry.alternate.benchedOut
-      ? `<div class="sub-btn-wrap"><button class="btn btn-sm btn-amber" onclick="window.openSubModal('${entry.owner}')">Sub In Alternate ($${subRound===1?5:15})</button></div>` : '';
+      ? `<div class="sub-btn-wrap"><button class="btn btn-amber" onclick="window.openSubModal('${entry.owner}')">Sub In Alternate ($${subRound===1?5:15})</button></div>` : '';
 
     // Draft pick number: first pick in pickSequence for this owner
     const pickSeq = draft?.pickSequence || [];
@@ -1224,7 +1239,11 @@ function renderLive(isFinal) {
         else placeHtml = `<div class="rc-trend-row" style="color:#888;">— held ${ordinal(i)}</div>`;
       }
 
-      if (scoreDeltaHtml || gapHtml || placeHtml) {
+      // If all three are "no change" dashes, collapse to single line
+      const allFlat = [scoreDeltaHtml, gapHtml, placeHtml].every(h => h.includes('— '));
+      if (allFlat) {
+        trendHtml = `<div class="rc-trend"><div class="rc-trend-row" style="color:#bbb;">— no change since last update</div></div>`;
+      } else if (scoreDeltaHtml || gapHtml || placeHtml) {
         trendHtml = `<div class="rc-trend">${scoreDeltaHtml}${gapHtml}${placeHtml}</div>`;
       }
     }
@@ -1311,12 +1330,13 @@ function buildLeaderboard() {
       alternate = { name: ownerSub.from, benchedOut: true };
     }
 
-    // Apply live scores — including round score, thru, position
+    // Apply live scores — including round score, thru, teeTime, position
     displayGolfers = displayGolfers.map(g => ({
       ...g,
       liveScore: scores[g.name]?.score,
       roundScore: scores[g.name]?.roundScore ?? null,
       thru: scores[g.name]?.thru || null,
+      teeTime: scores[g.name]?.teeTime || null,
       position: scores[g.name]?.position || null,
       cut: scores[g.name]?.cut || g.cut
     }));
