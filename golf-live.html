@@ -1386,13 +1386,19 @@ function buildLeaderboard() {
     const cutCount = displayGolfers.filter(g => g.cut).length;
     const isOut = cutCount >= 2;
 
+    // Only consider golfers as "scoring" if they've actually played holes
+    // thru being non-null and not looking like a tee time = they've started
+    const hasStarted = g => g.thru && g.thru !== '' && !/^\d{1,2}:\d{2}/.test(g.thru);
+    const scoring = active.filter(hasStarted);
+    const scoringHasBegun = scoring.length > 0;
+
     const sorted = [...active].sort((a,b) => a.liveScore - b.liveScore);
-    const counting = sorted.slice(0, 3);
-    const teamScore = counting.reduce((s,g) => s + (g.liveScore||0), 0);
+    const counting = scoringHasBegun ? sorted.slice(0, 3) : [];
+    const teamScore = counting.length > 0 ? counting.reduce((s,g) => s + (g.liveScore||0), 0) : null;
 
     return {
       owner, displayGolfers, alternate,
-      teamScore: isOut ? null : (active.length === 0 ? null : teamScore),
+      teamScore: isOut ? null : teamScore,
       out: isOut,
       activeCount: active.length,
       hasSubbed: !!ownerSub,
