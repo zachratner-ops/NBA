@@ -210,6 +210,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
 .toast.show{opacity:1;}
 .stale-warning{color:#e65100;font-size:11px;}
+.cut-badge{display:inline-flex;align-items:center;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fff3cd;color:#856404;border:1px solid #ffc107;margin-left:3px;}
+.cut-badge.danger{background:#fce4ec;color:#c62828;border-color:#e57373;}
+.buyin-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:#f0f0f0;color:#666;white-space:nowrap;}
 .rc-trend{display:flex;flex-direction:column;gap:1px;margin-top:8px;padding-top:8px;border-top:0.5px solid #f0f0f0;}
 .rc-trend-row{font-size:10px;line-height:1.5;white-space:nowrap;}
 
@@ -1071,6 +1074,7 @@ function renderLive(isFinal) {
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         ${subs.length > 0 ? `<button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoSub()">↩ Undo Last Sub</button>` : ''}
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
+        <span style="font-size:10px;color:#555;">Round auto-detected from ESPN</span>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">↻ Refresh Odds</button>
         <button class="btn btn-sm btn-outline" style="color:${showOverridePanel?'#e65100':'#aaa'};border-color:${showOverridePanel?'#e65100':'#444'};" onclick="window.toggleScoreOverride()">${showOverridePanel?'✎ Close Override':'✎ Override Score'}</button>
         ${!isFinal
@@ -1103,6 +1107,11 @@ function renderLive(isFinal) {
         </div>` : ''}
       </div>` : ''}
     </div>` : '';
+
+  // Build per-owner buyin: $25 base + sub costs
+  const buyinMap = {};
+  owners().forEach(o => { buyinMap[o] = 25; });
+  subs.forEach(s => { if (buyinMap[s.owner] !== undefined) buyinMap[s.owner] += (s.cost || 0); });
 
   // Build trend data from scoreHistory (last 2 snapshots)
   const hasTrend = scoreHistory.length >= 2;
@@ -1151,8 +1160,16 @@ function renderLive(isFinal) {
       const isCounting = !entry.out && entry.countingNames?.includes(g.name) && !g.cut && !g.subOut;
       const sv = g.cut ? 'CUT' : (g.liveScore !== undefined ? fmtScore(g.liveScore) : '—');
       const svCls = g.liveScore < 0 ? 'under' : g.liveScore > 0 ? 'over' : '';
+      // Cut line badge — show if player is on or near the cut line (R1/R2 only)
+      const cutLineVal = typeof live?.cutLine === 'number' ? live.cutLine : null;
+      const isR2OrEarlier = (live?.round || 1) <= 2;
+      let cutBadge = '';
+      if (!g.cut && cutLineVal !== null && isR2OrEarlier && g.liveScore !== undefined) {
+        if (g.liveScore === cutLineVal) cutBadge = `<span class="cut-badge danger">CUT</span>`;
+        else if (g.liveScore === cutLineVal + 1) cutBadge = `<span class="cut-badge">+1 cut</span>`;
+      }
       return `<div class="rc-player ${g.cut?'cut':''} ${g.sub?'sub':''} ${isCounting?'counting':''}">
-        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.name}</span>
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.name}${cutBadge}</span>
         ${buildRoundPill(g, g.cut)}
         <span class="rc-score-val ${svCls}">${sv}</span>
       </div>`;
@@ -1186,7 +1203,9 @@ function renderLive(isFinal) {
     // Draft pick number: first pick in pickSequence for this owner
     const pickSeq = draft?.pickSequence || [];
     const pickNum = pickSeq.findIndex(p => p.owner === entry.owner) + 1;
-    const pickPill = pickNum > 0 ? `<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:20px;background:#f0f0f0;color:#888;float:right;">pick #${pickNum}</span>` : '';
+    const pickPill = pickNum > 0 ? `<span style="font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:20px;background:#f0f0f0;color:#888;">PICK #${pickNum}</span>` : '';
+    const buyin = buyinMap[entry.owner] || 25;
+    const buyinPill = `<span class="buyin-pill">$${buyin}</span>`;
 
     // Trend lines — compare current snapshot to previous
     let trendHtml = '';
@@ -1255,8 +1274,9 @@ function renderLive(isFinal) {
     }
 
     return `<div class="result-card ${isWinner?'won':''} ${isLeader&&!isFinal?'leading':''} ${entry.out?'out':''}">
-      <div class="rc-header" style="color:${color(entry.owner)};border-color:${color(entry.owner)};">
-        <span>${isWinner?'🏆 ':''}${entry.owner}</span>${pickPill}
+      <div class="rc-header" style="color:${color(entry.owner)};border-color:${color(entry.owner)};display:flex;align-items:center;justify-content:space-between;">
+        <span>${isWinner?'🏆 ':''}${entry.owner}</span>
+        <span style="display:flex;align-items:center;gap:4px;">${pickPill}${buyinPill}</span>
       </div>
       <div class="rc-score ${scoreCls}">${scoreVal}</div>
       <div class="rc-rank">${rankTxt}</div>
@@ -1287,7 +1307,7 @@ function renderLive(isFinal) {
       <div class="round-bar">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:15px;font-weight:800;">Round ${live.round||1}</div>
-          ${isComm ? `<div style="display:flex;gap:4px;">${[1,2,3,4].map(r => '<button class="btn btn-sm ' + ((live.round||1)===r ? 'btn-amber' : 'btn-outline') + '" style="padding:2px 9px;font-size:11px;' + ((live.round||1)===r ? '' : 'color:#fff;border-color:#555;') + '" onclick="window.setRound(' + r + ')">' + r + '</button>').join('')}</div>` : ''}
+          ${live.cutLine !== undefined && live.cutLine !== null ? `<span style="font-size:12px;color:#888;">Cut: <strong>${typeof live.cutLine === 'number' ? (live.cutLine === 0 ? 'E' : live.cutLine > 0 ? '+'+live.cutLine : live.cutLine) : live.cutLine}</strong></span>` : ''}
         </div>
         <div style="font-size:12px;color:#888;display:flex;align-items:center;gap:8px;">
           <span>${owners().length} players · ${subs.length} sub${subs.length!==1?'s':''} used</span>
