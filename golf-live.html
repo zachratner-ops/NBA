@@ -207,6 +207,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
 .toast.show{opacity:1;}
 .stale-warning{color:#e65100;font-size:11px;}
+/* Identity picker */
+.id-gate{display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9998;align-items:center;justify-content:center;padding:20px;}
+.id-gate.show{display:flex;}
+.id-box{text-align:center;max-width:380px;width:100%;}
+.id-title{font-size:24px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
+.id-sub{font-size:14px;color:#666;margin-bottom:28px;}
+.id-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.id-btn{background:#2a2a2a;border:1px solid #333;border-radius:10px;padding:14px 10px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;transition:background .15s,border-color .15s;}
+.id-btn:hover{background:#333;border-color:#555;}
+/* Owner hero bar on live tracker */
+.owner-hero{border-radius:12px;padding:14px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.owner-hero-name{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.8;margin-bottom:2px;}
+.owner-hero-status{font-size:22px;font-weight:800;line-height:1.1;}
+.owner-hero-detail{font-size:12px;opacity:.75;margin-top:3px;}
+/* Not-you link in topbar */
+.not-you{font-size:11px;color:#555;cursor:pointer;border:none;background:none;padding:0;white-space:nowrap;}
+.not-you:hover{color:#aaa;}
 </style>
 </head>
 <body>
@@ -220,6 +237,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <input class="pw-input" id="pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')pwCheck()">
     <button class="pw-btn" onclick="pwCheck()">Enter →</button>
     <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
+
+<!-- Identity picker gate -->
+<div class="id-gate" id="id-gate">
+  <div class="id-box">
+    <div class="id-title">Who are you?</div>
+    <div class="id-sub" id="id-sub">Pick your name to personalize the experience</div>
+    <div class="id-grid" id="id-grid"></div>
   </div>
 </div>
 
@@ -244,6 +270,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="topbar-nav">
     <button class="comm-toggle" id="comm-toggle" onclick="toggleCommMode()">⚙ Comm</button>
+    <button class="not-you" id="not-you-btn" onclick="window.switchIdentity()" style="display:none;"></button>
     <a href="index.html">🏠 Home</a>
     <a href="golf.html" class="topbar-hide-mobile">History</a>
     <a class="fb-link topbar-hide-mobile" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a>
@@ -1148,9 +1175,48 @@ function renderLive(isFinal) {
 
   const sparkHtml = scoreHistory.length > 1 ? buildSparklines(lbData) : '';
 
+  // Build owner hero bar if we know who's viewing
+  let heroHtml = '';
+  if (currentOwner && owners().includes(currentOwner)) {
+    const myEntry = lbData.find(e => e.owner === currentOwner);
+    const myRank = lbData.filter(e => !e.out).indexOf(myEntry) + 1;
+    const leaderEntry = lbData.find(e => !e.out);
+    const heroColor = color(currentOwner);
+    if (myEntry) {
+      let statusLine = '';
+      let detailLine = '';
+      if (myEntry.out) {
+        statusLine = 'Eliminated';
+        detailLine = '2+ golfers missed the cut';
+      } else if (myEntry.teamScore === null) {
+        statusLine = 'Waiting on scores…';
+        detailLine = '';
+      } else if (myRank === 1) {
+        statusLine = isFinal ? '🏆 Winner' : '🔴 Leading';
+        const gap = leaderEntry && lbData[1] && !lbData[1].out
+          ? Math.abs((myEntry.teamScore||0) - (lbData[1].teamScore||0))
+          : null;
+        detailLine = gap !== null ? `${fmtScore(myEntry.teamScore)} · ${gap === 0 ? 'Tied' : gap + ' ahead of ' + lbData[1].owner}` : fmtScore(myEntry.teamScore);
+      } else {
+        const deficit = (myEntry.teamScore||0) - (leaderEntry?.teamScore||0);
+        statusLine = `#${myRank} of ${lbData.filter(e=>!e.out).length}`;
+        detailLine = `${fmtScore(myEntry.teamScore)} · ${fmtScore(deficit)} back of ${leaderEntry?.owner}`;
+      }
+      heroHtml = `<div class="owner-hero" style="background:${heroColor}18;border:1.5px solid ${heroColor}40;">
+        <div>
+          <div class="owner-hero-name" style="color:${heroColor};">${currentOwner}</div>
+          <div class="owner-hero-status">${statusLine}</div>
+          ${detailLine ? `<div class="owner-hero-detail">${detailLine}</div>` : ''}
+        </div>
+        <div style="font-size:28px;font-weight:800;color:${heroColor};">${myEntry.out ? '💀' : (myRank===1 ? (isFinal?'🏆':'🔴') : `#${myRank}`)}</div>
+      </div>`;
+    }
+  }
+
   document.getElementById('screen').innerHTML = `
     <div class="main">
       ${commHtml}
+      ${heroHtml}
       <div class="pot-bar">
         <div>
           <div style="font-size:11px;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;">Total Pot</div>
@@ -1590,6 +1656,48 @@ window.applyOdds = async function(fieldName, selId) {
   sel.closest('div').style.opacity = '0.4';
 };
 
+// ── Identity ────────────────────────────────────────────────────────
+const OWNER_KEY = 'golf_owner';
+let currentOwner = sessionStorage.getItem(OWNER_KEY) || null;
+
+function updateNotYouBtn() {
+  const btn = document.getElementById('not-you-btn');
+  if (!btn) return;
+  if (currentOwner) {
+    btn.textContent = currentOwner;
+    btn.style.display = '';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function showIdGate(ownerList) {
+  const gate = document.getElementById('id-gate');
+  const grid = document.getElementById('id-grid');
+  const list = ownerList || owners();
+  // odd number: last button spans full width
+  grid.style.gridTemplateColumns = list.length % 2 !== 0 ? '1fr 1fr' : '1fr 1fr';
+  grid.innerHTML = list.map((o, i) => {
+    const spanFull = list.length % 2 !== 0 && i === list.length - 1;
+    return `<button class="id-btn" style="${spanFull ? 'grid-column:1/-1;' : ''}" onclick="window.selectOwner('${o}')">${o}</button>`;
+  }).join('');
+  gate.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+window.selectOwner = function(name) {
+  currentOwner = name;
+  sessionStorage.setItem(OWNER_KEY, name);
+  document.getElementById('id-gate').classList.remove('show');
+  document.body.style.overflow = '';
+  updateNotYouBtn();
+  renderScreen();
+};
+
+window.switchIdentity = function() {
+  showIdGate(owners());
+};
+
 // ── Password gates ─────────────────────────────────────────────────
 const PW_KEY = 'srb_auth';
 (function() {
@@ -1597,6 +1705,21 @@ const PW_KEY = 'srb_auth';
     document.getElementById('pw-gate').classList.add('show');
     document.body.style.overflow = 'hidden';
     setTimeout(() => document.getElementById('pw-input').focus(), 50);
+  } else {
+    // Already authed — show identity picker if no owner set yet
+    if (!currentOwner) {
+      // Wait for draft to load so we have the real owner list
+      const waitForDraft = setInterval(() => {
+        if (draft && draft.owners && draft.owners.length) {
+          clearInterval(waitForDraft);
+          showIdGate(draft.owners);
+        }
+      }, 100);
+      // Fallback after 3s if draft never loads
+      setTimeout(() => clearInterval(waitForDraft), 3000);
+    } else {
+      updateNotYouBtn();
+    }
   }
 })();
 window.pwCheck = function() {
@@ -1605,6 +1728,14 @@ window.pwCheck = function() {
     sessionStorage.setItem(PW_KEY, 'ok');
     document.getElementById('pw-gate').classList.remove('show');
     document.body.style.overflow = '';
+    // Show identity picker after password success
+    const waitForDraft = setInterval(() => {
+      if (draft && draft.owners && draft.owners.length) {
+        clearInterval(waitForDraft);
+        showIdGate(draft.owners);
+      }
+    }, 100);
+    setTimeout(() => clearInterval(waitForDraft), 3000);
   } else {
     document.getElementById('pw-error').textContent = 'Wrong password.';
     document.getElementById('pw-input').value = '';
