@@ -1135,27 +1135,33 @@ function renderLive(isFinal) {
     const rankTxt = entry.out ? 'Eliminated' : (isWinner ? 'Winner 🏆' : (isLeader ? '🔴 Leading' : `#${i+1}`));
 
     // Build round pill for any golfer — always renders, shows tee time or dashes if no data
+    // Format any ISO or raw time string to "11:10a" ET
+    const fmtTeeTime = raw => {
+      if (!raw) return null;
+      try {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          const h = d.toLocaleString('en-US', { hour: 'numeric', hour12: true, timeZone: 'America/New_York' });
+          const m = d.toLocaleString('en-US', { minute: '2-digit', timeZone: 'America/New_York' });
+          const ampm = h.includes('AM') ? 'a' : 'p';
+          return h.replace(' AM','').replace(' PM','') + ':' + m + ampm;
+        }
+      } catch(e) {}
+      return null;
+    };
+
     const buildRoundPill = (g, isCut) => {
       if (isCut) return `<span class="round-score-box" style="color:#ccc;">—</span>`;
       const rs = g.roundScore !== null && g.roundScore !== undefined ? fmtScore(g.roundScore) : null;
       const rsCls = g.roundScore < 0 ? 'under' : g.roundScore > 0 ? 'over' : '';
       const thruStr = g.thru || null;
-      // Not started — show tee time if available
-      if (rs === null && !thruStr) {
-        if (g.teeTime) {
-          let tt = g.teeTime;
-          try {
-            const d = new Date(tt);
-            if (!isNaN(d.getTime())) {
-              const h = d.toLocaleString('en-US', { hour: 'numeric', hour12: true, timeZone: 'America/New_York' });
-              const m = d.toLocaleString('en-US', { minute: '2-digit', timeZone: 'America/New_York' });
-              const ampm = h.includes('AM') ? 'a' : 'p';
-              const hour = h.replace(' AM','').replace(' PM','');
-              tt = `${hour}:${m}${ampm}`; // e.g. "11:10a", "3:04p"
-            }
-          } catch(e) {}
-          return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${tt}</span>`;
-        }
+
+      // Not started — thru may be a tee time ISO string, or teeTime field may have it
+      if (rs === null && (!thruStr || thruStr.includes('T') || thruStr.includes(':'))) {
+        // Try teeTime field first, then thru if it looks like an ISO/time string
+        const rawTime = g.teeTime || (thruStr && (thruStr.includes('T') || /^\d/.test(thruStr)) ? thruStr : null);
+        const formatted = fmtTeeTime(rawTime);
+        if (formatted) return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${formatted}</span>`;
         return `<span class="round-score-box" style="color:#ccc;">—</span>`;
       }
       return `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${thruStr ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${thruStr}</span>` : ''}</span>`;
