@@ -1143,11 +1143,22 @@ function renderLive(isFinal) {
       // Not started — show tee time if available
       if (rs === null && !thruStr) {
         if (g.teeTime) {
-          // Format tee time: ESPN returns ISO or "HH:MM AM/PM" — show short version
           let tt = g.teeTime;
           try {
+            // ESPN teeTime is typically ISO UTC e.g. "2026-05-15T13:00Z"
             const d = new Date(tt);
-            if (!isNaN(d)) tt = d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit', timeZone:'America/New_York'});
+            if (!isNaN(d.getTime())) {
+              tt = d.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'America/New_York'
+              }).replace(' AM', 'a').replace(' PM', 'p'); // "10:30a", "1:04p"
+            }
+            // If it's already a readable string like "7:30 AM", clean it up too
+            else {
+              tt = tt.replace(':00 ', ' ').replace(' AM','a').replace(' PM','p');
+            }
           } catch(e) {}
           return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${tt}</span>`;
         }
