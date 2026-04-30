@@ -1404,8 +1404,10 @@ function buildLeaderboard() {
       if (/^\d{1,2}:\d{2}/.test(t)) return false; // formatted time like "2:25p"
       return true; // "F", "Thru 14", "*3", etc.
     };
-    const scoring = active.filter(hasStarted);
-    const scoringHasBegun = scoring.length > 0;
+    // scoringHasBegun: true if any golfer has a roundScore (persisted from actual play)
+    // This latches — once a round score exists in Firebase it stays even when ESPN
+    // overwrites thru with the next round's tee time
+    const scoringHasBegun = active.some(g => g.roundScore !== null && g.roundScore !== undefined);
 
     const sorted = [...active].sort((a,b) => a.liveScore - b.liveScore);
     const counting = scoringHasBegun ? sorted.slice(0, 3) : [];
