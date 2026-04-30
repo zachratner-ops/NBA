@@ -1394,7 +1394,16 @@ function buildLeaderboard() {
 
     // Only consider golfers as "scoring" if they've actually played holes
     // thru being non-null and not looking like a tee time = they've started
-    const hasStarted = g => g.thru && g.thru !== '' && !/^\d{1,2}:\d{2}/.test(g.thru);
+    // hasStarted: thru must look like a hole/finish indicator, not a tee time
+    // Tee times come as ISO strings ("2026-04-30T15:10:00Z") or formatted ("2:25p")
+    // Valid thru values: "F", "Thru 14", "*3", numbers
+    const hasStarted = g => {
+      const t = g.thru;
+      if (!t || t === '') return false;
+      if (t.includes('T') && t.includes(':') && t.includes('Z')) return false; // ISO datetime
+      if (/^\d{1,2}:\d{2}/.test(t)) return false; // formatted time like "2:25p"
+      return true; // "F", "Thru 14", "*3", etc.
+    };
     const scoring = active.filter(hasStarted);
     const scoringHasBegun = scoring.length > 0;
 
