@@ -110,7 +110,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .sub-closed{background:#f5f5f3;color:#aaa;}
 
 /* History-style result cards */
-.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;background:transparent;}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;background:transparent;}
 .result-card{background:#fff;padding:16px;border-radius:10px;border:0.5px solid #e0e0e0;}
 .result-card.won{background:#f0faf0;}
 .result-card.out{opacity:0.55;}
@@ -123,15 +123,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rc-score.out-txt{color:#aaa;font-size:14px;}
 .rc-rank{font-size:11px;color:#888;margin-bottom:9px;}
 .rc-round-meta{font-size:10px;color:#bbb;margin-bottom:6px;}
-.round-score-box{display:inline-flex;align-items:center;gap:2px;background:#f5f5f3;border-radius:3px;padding:1px 4px;font-size:10px;color:#888;}
-.round-score-box .rsb-label{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#bbb;margin-right:2px;}
-.rc-player{font-size:12px;padding:4px 0;min-height:24px;display:flex;align-items:center;justify-content:space-between;color:#555;border-bottom:0.5px solid #f5f5f3;}
+.round-score-box{display:flex;align-items:center;justify-content:center;gap:2px;background:#f5f5f3;border-radius:3px;padding:1px 5px;font-size:10px;color:#888;white-space:nowrap;}
+.rc-player{font-size:12px;padding:4px 0;min-height:24px;display:grid;grid-template-columns:1fr 52px 44px;align-items:center;color:#555;border-bottom:0.5px solid #f5f5f3;gap:4px;}
 .rc-player:last-child{border-bottom:none;}
 .rc-player.cut{color:#bbb;text-decoration:line-through;}
 .rc-player.sub{font-style:italic;color:#1565c0;}
 .rc-player.counting{background:#e8f5e9;border-radius:3px;padding:2px 4px;margin:-2px -4px;}
 .rc-player.alt{border-top:1.5px solid #eee;margin-top:3px;padding-top:3px;}
-.rc-score-val{font-weight:600;flex-shrink:0;margin-left:4px;}
+.rc-score-val{font-weight:600;text-align:right;}
 .rc-score-val.under{color:#2e7d32;}
 .rc-score-val.over{color:#c62828;}
 .alt-lbl{font-size:9px;font-weight:700;color:#856404;margin-right:2px;}
@@ -210,6 +209,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
 .toast.show{opacity:1;}
 .stale-warning{color:#e65100;font-size:11px;}
+.rc-trend{display:flex;flex-direction:column;gap:1px;margin-top:8px;padding-top:8px;border-top:0.5px solid #f0f0f0;}
+.rc-trend-row{font-size:10px;line-height:1.5;white-space:nowrap;}
 
 </style>
 </head>
@@ -1097,6 +1098,19 @@ function renderLive(isFinal) {
       </div>` : ''}
     </div>` : '';
 
+  // Build trend data from scoreHistory (last 2 snapshots)
+  const hasTrend = scoreHistory.length >= 2;
+  const prevSnap = hasTrend ? scoreHistory[scoreHistory.length - 2] : null;
+  const currSnap = hasTrend ? scoreHistory[scoreHistory.length - 1] : null;
+  const prevRanking = hasTrend
+    ? [...owners()].sort((a,b) => {
+        const sa = prevSnap.scores[a], sb = prevSnap.scores[b];
+        if (sa === null && sb === null) return 0;
+        if (sa === null) return 1; if (sb === null) return -1;
+        return sa - sb;
+      })
+    : null;
+
   // Build history-style cards — sorted by leaderboard position
   const cards = lbData.map((entry, i) => {
     const isLeader = i === 0 && !entry.out;
@@ -1114,14 +1128,14 @@ function renderLive(isFinal) {
       const rsCls = g.roundScore < 0 ? 'under' : g.roundScore > 0 ? 'over' : '';
       // Thru / hole — shorten ESPN strings like "Thru 14" → "Thru 14", "F" → "F", "*3" → "*3"
       const thruStr = g.thru ? g.thru.replace('Thru ', 'Thru ') : null;
-      // Build round info pill — gray box with (round score) and thru
-      const roundPill = (!g.cut && (rs !== null || thruStr)) ? `<span class="round-score-box"><span class="rsb-label">R</span>${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${thruStr ? `<span style="color:#bbb;margin-left:2px;">${thruStr}</span>` : ''}</span>` : '';
+      // Round pill — no R label, just score + thru, centered in fixed column
+      const roundPill = (!g.cut && (rs !== null || thruStr))
+        ? `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${thruStr ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${thruStr}</span>` : ''}</span>`
+        : `<span></span>`;
       return `<div class="rc-player ${g.cut?'cut':''} ${g.sub?'sub':''} ${isCounting?'counting':''}">
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.name}</span>
-        <span style="display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:4px;">
-          ${roundPill}
-          <span class="rc-score-val ${svCls}">${sv}</span>
-        </span>
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${g.name}</span>
+        ${roundPill}
+        <span class="rc-score-val ${svCls}">${sv}</span>
       </div>`;
     }).join('');
 
@@ -1154,6 +1168,67 @@ function renderLive(isFinal) {
     const pickNum = pickSeq.findIndex(p => p.owner === entry.owner) + 1;
     const pickPill = pickNum > 0 ? `<span style="display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:20px;background:#f0f0f0;color:#888;float:right;">pick #${pickNum}</span>` : '';
 
+    // Trend lines — compare current snapshot to previous
+    let trendHtml = '';
+    if (hasTrend && !entry.out && entry.teamScore !== null) {
+      const currScore = currSnap?.scores?.[entry.owner];
+      const prevScore = prevSnap?.scores?.[entry.owner];
+      const leaderCurr = currSnap?.scores?.[lbData[0]?.owner];
+      const leaderPrev = prevSnap?.scores?.[lbData[0]?.owner];
+      const prevRank = prevRanking ? prevRanking.indexOf(entry.owner) : -1;
+      const rankChange = prevRank >= 0 ? prevRank - i : 0; // positive = moved up
+
+      // Score delta since last snapshot
+      let scoreDeltaHtml = '';
+      if (currScore !== null && currScore !== undefined && prevScore !== null && prevScore !== undefined) {
+        const delta = currScore - prevScore;
+        if (delta !== 0) {
+          const sign = delta < 0 ? '▼' : '▲';
+          const col = delta < 0 ? '#2a9d5c' : '#e05252'; // under par = good = green
+          scoreDeltaHtml = `<div class="rc-trend-row" style="color:${col};">${sign} ${Math.abs(delta)} strokes ${delta < 0 ? 'gained' : 'lost'}</div>`;
+        } else {
+          scoreDeltaHtml = `<div class="rc-trend-row" style="color:#888;">— no change</div>`;
+        }
+      }
+
+      // Gap to leader delta
+      let gapHtml = '';
+      if (i === 0) {
+        // Leader: did gap to 2nd grow or shrink?
+        const second = lbData[1];
+        if (second && !second.out && second.teamScore !== null) {
+          const currGap = (entry.teamScore||0) - (second.teamScore||0);
+          const prevGap = prevRanking
+            ? (prevSnap?.scores?.[entry.owner]||0) - (prevSnap?.scores?.[second.owner]||0)
+            : currGap;
+          const ext = currGap - prevGap;
+          if (ext < 0) gapHtml = `<div class="rc-trend-row" style="color:#2a9d5c;">▲ extended lead by ${Math.abs(ext)}</div>`;
+          else if (ext > 0) gapHtml = `<div class="rc-trend-row" style="color:#e05252;">▼ lead cut by ${ext}</div>`;
+          else gapHtml = `<div class="rc-trend-row" style="color:#888;">— lead unchanged</div>`;
+        }
+      } else {
+        const currGap = (entry.teamScore||0) - (lbData[0]?.teamScore||0);
+        const prevGap = leaderPrev !== undefined && prevScore !== undefined ? (prevScore||0) - (leaderPrev||0) : currGap;
+        const delta = prevGap - currGap; // positive = closed gap = good
+        if (delta > 0) gapHtml = `<div class="rc-trend-row" style="color:#2a9d5c;">▲ gained ${delta} on leader</div>`;
+        else if (delta < 0) gapHtml = `<div class="rc-trend-row" style="color:#e05252;">▼ lost ${Math.abs(delta)} to leader</div>`;
+        else gapHtml = `<div class="rc-trend-row" style="color:#888;">— gap unchanged</div>`;
+      }
+
+      // Place movement
+      let placeHtml = '';
+      const ordinal = n => n===0?'1st':n===1?'2nd':n===2?'3rd':`${n+1}th`;
+      if (prevRank >= 0) {
+        if (rankChange > 0) placeHtml = `<div class="rc-trend-row" style="color:#2a9d5c;">▲ up to ${ordinal(i)}</div>`;
+        else if (rankChange < 0) placeHtml = `<div class="rc-trend-row" style="color:#e05252;">▼ down to ${ordinal(i)}</div>`;
+        else placeHtml = `<div class="rc-trend-row" style="color:#888;">— held ${ordinal(i)}</div>`;
+      }
+
+      if (scoreDeltaHtml || gapHtml || placeHtml) {
+        trendHtml = `<div class="rc-trend">${scoreDeltaHtml}${gapHtml}${placeHtml}</div>`;
+      }
+    }
+
     return `<div class="result-card ${isWinner?'won':''} ${isLeader&&!isFinal?'leading':''} ${entry.out?'out':''}">
       <div class="rc-header" style="color:${color(entry.owner)};border-color:${color(entry.owner)};">
         <span>${isWinner?'🏆 ':''}${entry.owner}</span>${pickPill}
@@ -1161,6 +1236,7 @@ function renderLive(isFinal) {
       <div class="rc-score ${scoreCls}">${scoreVal}</div>
       <div class="rc-rank">${rankTxt}</div>
       ${playerRows}${altRow}
+      ${trendHtml}
       ${makeupBtnHtml}${subBtnHtml}
     </div>`;
   }).join('');
