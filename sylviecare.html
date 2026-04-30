@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SylvieCare</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; width: 100%; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #fdf6f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, #ffd6e7 0%, transparent 70%);
+    top: -100px; left: -100px;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, #d6eaff 0%, transparent 70%);
+    bottom: -80px; right: -80px;
+    pointer-events: none;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    padding: 20px;
+  }
+
+  .brand {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.6rem;
+    color: #f7609a;
+    letter-spacing: .01em;
+    margin-bottom: 4px;
+    text-shadow: 3px 3px 0 #ffd6e7;
+  }
+
+  .tagline {
+    font-size: .85rem;
+    color: #c0a0b0;
+    margin-bottom: 28px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .question {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.55rem;
+    color: #3a2a40;
+    text-align: center;
+    margin-bottom: 32px;
+    line-height: 1.3;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    width: 340px;
+    height: 340px;
+    margin: 0 auto 32px;
+  }
+
+  .pointer {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 30px solid #3a2a40;
+    z-index: 10;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.25));
+  }
+
+  canvas {
+    border-radius: 50%;
+    box-shadow: 0 8px 40px rgba(0,0,0,.15), 0 0 0 6px #fff, 0 0 0 10px #f7609a22;
+    display: block;
+    margin: 0 auto;
+  }
+
+  .spin-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    background: linear-gradient(135deg, #f7609a, #ff8cc8);
+    color: #fff;
+    border: none;
+    padding: 14px 52px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px #f7609a55;
+    transition: transform .15s, box-shadow .15s;
+    letter-spacing: .02em;
+    display: block;
+    margin: 0 auto;
+  }
+  .spin-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px #f7609a66; }
+  .spin-btn:active { transform: translateY(1px); }
+  .spin-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(58, 42, 64, .55);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 28px;
+    padding: 48px 44px;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 24px 80px rgba(0,0,0,.2);
+    animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-emoji { font-size: 4rem; margin-bottom: 12px; display: block; }
+  .modal-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    color: #c0a0b0;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .modal-name {
+    font-family: 'Fredoka One', cursive;
+    font-size: 3rem;
+    color: #f7609a;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+  .modal-sub {
+    font-size: 1rem;
+    color: #8a7090;
+    font-weight: 700;
+    margin-bottom: 28px;
+  }
+  .modal-close {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    background: #3a2a40;
+    color: #fff;
+    border: none;
+    padding: 12px 36px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .modal-close:hover { background: #5a3a60; }
+
+  .confetti-piece {
+    position: fixed;
+    animation: confettiFall linear forwards;
+    pointer-events: none;
+    z-index: 99;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="brand">🍼 SylvieCare</div>
+  <div class="tagline">The fairest system known to science</div>
+  <div class="question">Who's Waking Up<br>with Sylvie Tomorrow?</div>
+
+  <div class="wheel-wrap">
+    <div class="pointer"></div>
+    <canvas id="wheel" width="340" height="340"></canvas>
+  </div>
+
+  <button class="spin-btn" id="spinBtn" onclick="spin()">Spin the Wheel</button>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <span class="modal-emoji" id="modalEmoji">🎉</span>
+    <div class="modal-title">Congratulations</div>
+    <div class="modal-name" id="modalName"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <button class="modal-close" onclick="closeModal()">OK fine 😭</button>
+  </div>
+</div>
+
+<script>
+  const SEGMENTS = ['Mom','Mom','Mom','Mom','Mom','Mom','Mom','Mom','Mom','Mom','Mom','Dad'];
+  const MOM_COLORS = ['#f7609a','#ff8cc8','#ffa3d1','#f7609a','#ff79b3','#ffc2dc','#f7609a','#ff8cc8','#ffa3d1','#f7609a','#ff79b3','#ffc2dc'];
+  const DAD_COLOR = '#4a90d9';
+
+  const canvas = document.getElementById('wheel');
+  const ctx = canvas.getContext('2d');
+  const N = SEGMENTS.length;
+  const ARC = (2 * Math.PI) / N;
+  const R = 170, CX = 170, CY = 170;
+  let currentAngle = 0, spinning = false;
+
+  function drawWheel(angle) {
+    ctx.clearRect(0, 0, 340, 340);
+    for (let i = 0; i < N; i++) {
+      const start = angle + i * ARC;
+      const end = start + ARC;
+      const isMom = SEGMENTS[i] === 'Mom';
+      ctx.beginPath();
+      ctx.moveTo(CX, CY);
+      ctx.arc(CX, CY, R, start, end);
+      ctx.closePath();
+      ctx.fillStyle = isMom ? MOM_COLORS[i] : DAD_COLOR;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(CX, CY);
+      ctx.rotate(start + ARC / 2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#fff';
+      ctx.font = `bold ${isMom ? 15 : 13}px 'Nunito', sans-serif`;
+      ctx.shadowColor = 'rgba(0,0,0,.2)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(SEGMENTS[i], R - 12, 5);
+      ctx.restore();
+    }
+    ctx.beginPath();
+    ctx.arc(CX, CY, 26, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,.15)';
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#f7609a';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.font = "bold 18px 'Nunito', sans-serif";
+    ctx.fillStyle = '#f7609a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✨', CX, CY);
+  }
+
+  drawWheel(currentAngle);
+
+  function getWinner(finalAngle) {
+    const normalized = (((-finalAngle - Math.PI / 2) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    return SEGMENTS[Math.floor(normalized / ARC) % N];
+  }
+
+  function spin() {
+    if (spinning) return;
+    spinning = true;
+    document.getElementById('spinBtn').disabled = true;
+    const targetAngle = currentAngle + (6 + Math.random() * 6) * 2 * Math.PI;
+    const duration = 4000 + Math.random() * 1000;
+    const startAngle = currentAngle;
+    const startTime = performance.now();
+    function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+    function animate(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      currentAngle = startAngle + (targetAngle - startAngle) * easeOut(t);
+      drawWheel(currentAngle);
+      if (t < 1) { requestAnimationFrame(animate); }
+      else {
+        currentAngle = targetAngle;
+        spinning = false;
+        document.getElementById('spinBtn').disabled = false;
+        setTimeout(() => showModal(getWinner(currentAngle)), 400);
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+
+  function showModal(winner) {
+    const isDad = winner === 'Dad';
+    document.getElementById('modalName').textContent = winner + '!';
+    document.getElementById('modalName').style.color = isDad ? '#4a90d9' : '#f7609a';
+    document.getElementById('modalEmoji').textContent = isDad ? '😅' : '💖';
+    document.getElementById('modalSub').textContent = isDad ? "Your alarm is set. No takebacks." : "As always. You're the best. 💕";
+    document.getElementById('modalBg').classList.add('show');
+    launchConfetti(isDad ? ['#4a90d9','#a8d4ff','#fff'] : ['#f7609a','#ffc2dc','#fff','#ffec99']);
+  }
+
+  function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+
+  function launchConfetti(colors) {
+    for (let i = 0; i < 60; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.top = '-20px';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.width = (6 + Math.random() * 8) + 'px';
+      el.style.height = (6 + Math.random() * 8) + 'px';
+      el.style.borderRadius = Math.random() > .5 ? '50%' : '2px';
+      el.style.animationDuration = (2 + Math.random() * 2) + 's';
+      el.style.animationDelay = Math.random() * .5 + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4500);
+    }
+  }
+</script>
+</body>
+</html>
