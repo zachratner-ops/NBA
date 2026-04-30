@@ -1193,8 +1193,8 @@ function renderLive(isFinal) {
     if (hasTrend && !entry.out && entry.teamScore !== null) {
       const currScore = currSnap?.scores?.[entry.owner];
       const prevScore = prevSnap?.scores?.[entry.owner];
-      const leaderCurr = currSnap?.scores?.[lbData[0]?.owner];
-      const leaderPrev = prevSnap?.scores?.[lbData[0]?.owner];
+      const leaderCurr = currSnap?.scores?.[scoreSortedLeader?.owner];
+      const leaderPrev = prevSnap?.scores?.[scoreSortedLeader?.owner];
       const prevRank = prevRanking ? prevRanking.indexOf(entry.owner) : -1;
       const currRank = scoreRank[entry.owner] ?? -1;
       const rankChange = prevRank >= 0 && currRank >= 0 ? prevRank - currRank : 0; // positive = moved up
