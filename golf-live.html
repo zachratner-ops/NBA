@@ -1043,6 +1043,11 @@ function renderLive(isFinal) {
   const subs = Array.isArray(live.subs) ? live.subs : Object.values(live.subs || {});
   const potSubText = subs.map(s => `${s.owner} subbed R${s.round} (+$${s.cost})`).join(' · ');
   const lbData = buildLeaderboard();
+  // Capture score-based rank BEFORE any re-sort — used for trend calculations
+  const scoreRank = {};
+  lbData.forEach((e, i) => { scoreRank[e.owner] = i; });
+  const scoreSortedLeader = lbData.find(e => !e.out) || lbData[0];
+
   if (lbSortMode === 'pick') {
     const pickSeqOrder = (draft?.pickSequence || []).map(p => p.owner);
     lbData.sort((a, b) => (pickSeqOrder.indexOf(a.owner)+1||999) - (pickSeqOrder.indexOf(b.owner)+1||999));
@@ -1114,7 +1119,7 @@ function renderLive(isFinal) {
 
   // Build history-style cards — sorted by leaderboard position
   const cards = lbData.map((entry, i) => {
-    const isLeader = i === 0 && !entry.out;
+    const isLeader = (scoreRank[entry.owner] ?? 999) === 0 && !entry.out;
     const isWinner = isFinal && isLeader;
     const scoreVal = entry.out ? 'OUT' : (entry.teamScore === null ? '—' : fmtScore(entry.teamScore));
     const scoreCls = entry.out ? 'out-txt' : (entry.teamScore < 0 ? 'under' : entry.teamScore > 0 ? 'over' : 'even');
@@ -1191,7 +1196,8 @@ function renderLive(isFinal) {
       const leaderCurr = currSnap?.scores?.[lbData[0]?.owner];
       const leaderPrev = prevSnap?.scores?.[lbData[0]?.owner];
       const prevRank = prevRanking ? prevRanking.indexOf(entry.owner) : -1;
-      const rankChange = prevRank >= 0 ? prevRank - i : 0; // positive = moved up
+      const currRank = scoreRank[entry.owner] ?? -1;
+      const rankChange = prevRank >= 0 && currRank >= 0 ? prevRank - currRank : 0; // positive = moved up
 
       // Score delta since last snapshot
       let scoreDeltaHtml = '';
@@ -1206,11 +1212,11 @@ function renderLive(isFinal) {
         }
       }
 
-      // Gap to leader delta
+      // Gap to leader delta — always use score-sorted rank, not render index
       let gapHtml = '';
-      if (i === 0) {
+      if (currRank === 0) {
         // Leader: did gap to 2nd grow or shrink?
-        const second = lbData[1];
+        const second = lbData.find(e => (scoreRank[e.owner]??999) === 1);
         if (second && !second.out && second.teamScore !== null) {
           const currGap = (entry.teamScore||0) - (second.teamScore||0);
           const prevGap = prevRanking
@@ -1222,7 +1228,7 @@ function renderLive(isFinal) {
           else gapHtml = `<div class="rc-trend-row" style="color:#888;">— lead unchanged</div>`;
         }
       } else {
-        const currGap = (entry.teamScore||0) - (lbData[0]?.teamScore||0);
+        const currGap = (entry.teamScore||0) - (scoreSortedLeader?.teamScore||0);
         const prevGap = leaderPrev !== undefined && prevScore !== undefined ? (prevScore||0) - (leaderPrev||0) : currGap;
         const delta = prevGap - currGap; // positive = closed gap = good
         if (delta > 0) gapHtml = `<div class="rc-trend-row" style="color:#2a9d5c;">▲ gained ${delta} on leader</div>`;
@@ -1233,10 +1239,10 @@ function renderLive(isFinal) {
       // Place movement
       let placeHtml = '';
       const ordinal = n => n===0?'1st':n===1?'2nd':n===2?'3rd':`${n+1}th`;
-      if (prevRank >= 0) {
-        if (rankChange > 0) placeHtml = `<div class="rc-trend-row" style="color:#2a9d5c;">▲ up to ${ordinal(i)}</div>`;
-        else if (rankChange < 0) placeHtml = `<div class="rc-trend-row" style="color:#e05252;">▼ down to ${ordinal(i)}</div>`;
-        else placeHtml = `<div class="rc-trend-row" style="color:#888;">— held ${ordinal(i)}</div>`;
+      if (prevRank >= 0 && currRank >= 0) {
+        if (rankChange > 0) placeHtml = `<div class="rc-trend-row" style="color:#2a9d5c;">▲ up to ${ordinal(currRank)}</div>`;
+        else if (rankChange < 0) placeHtml = `<div class="rc-trend-row" style="color:#e05252;">▼ down to ${ordinal(currRank)}</div>`;
+        else placeHtml = `<div class="rc-trend-row" style="color:#888;">— held ${ordinal(currRank)}</div>`;
       }
 
       // If all three are "no change" dashes, collapse to single line
