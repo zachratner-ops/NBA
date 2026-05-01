@@ -242,7 +242,7 @@ var NBA_PROXY = 'https://reasonable-illumination-production-6e9a.up.railway.app'
 var PLAYOFFS_END = new Date('2026-06-15T00:00:00');
 
 var ELIMINATED = [];
-var INJURED = [];
+var INJURED = {};
 var SERIES = {};
 var WINS = {};
 var PLAYING_TODAY = [];
@@ -302,7 +302,7 @@ var OWNERS = [
 
 function isElim(team){ return ELIMINATED.indexOf(team) !== -1; }
 function normalizeStr(str){ return str.normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
-function isInjured(name){ return INJURED.indexOf(normalizeStr(name)) !== -1; }
+function isInjured(name){ return INJURED[normalizeStr(name)] || null; }
 function seriesRowBg(team){
   var wl = WINS[team];
   var lead = SERIES[team];
@@ -330,9 +330,9 @@ window.applyFirebaseData = function applyFirebaseData(data) {
   console.log('applyFirebaseData called, keys:', Object.keys(data || {}));
   if (!data) return;
   var scores = data.scores || {};
-  pts         = scores.players         || {};
-  ELIMINATED  = scores.eliminated      || [];
-  INJURED     = scores.injured         || [];
+  pts           = scores.players         || {};
+  ELIMINATED    = scores.eliminated      || [];
+  INJURED       = scores.injuredMap      || {};
   SERIES        = scores.seriesStandings || {};
   WINS          = scores.seriesWins      || {};
   PLAYING_TODAY = scores.playingToday    || [];
@@ -465,7 +465,7 @@ function renderTable(){
       var inj = isInjured(p.name);
       var rowBg = seriesRowBg(p.team);
       var nameCls = elim ? ' class="nba-elim"' : '';
-      var injIcon = inj ? ' <span title="Injured" style="font-size:13px;vertical-align:bottom;">🚑</span>' : '';
+      var injIcon = inj ? ' <span title="'+inj+'" style="font-size:13px;vertical-align:bottom;">🚑</span>' : '';
       var playingIcon = (!elim && PLAYING_TODAY.indexOf(p.team) !== -1) ? ' <span title="Playing tonight" style="font-size:13px;vertical-align:bottom;">🏀</span>' : '';
       var seriesScore = '';
       if(!elim && WINS[p.team]) {
