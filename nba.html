@@ -465,8 +465,8 @@ function renderTable(){
       var inj = isInjured(p.name);
       var rowBg = seriesRowBg(p.team);
       var nameCls = elim ? ' class="nba-elim"' : '';
-      var injIcon = inj ? ' <span title="Injured" style="font-size:13px;vertical-align:text-top;">🚑</span>' : '';
-      var playingIcon = (!elim && PLAYING_TODAY.indexOf(p.team) !== -1) ? ' <span title="Playing tonight" style="font-size:13px;vertical-align:text-top;">🏀</span>' : '';
+      var injIcon = inj ? ' <span title="Injured" style="font-size:13px;vertical-align:bottom;">🚑</span>' : '';
+      var playingIcon = (!elim && PLAYING_TODAY.indexOf(p.team) !== -1) ? ' <span title="Playing tonight" style="font-size:13px;vertical-align:bottom;">🏀</span>' : '';
       var seriesScore = '';
       if(!elim && WINS[p.team]) {
         var wl = WINS[p.team];
