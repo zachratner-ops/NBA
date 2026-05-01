@@ -80,8 +80,19 @@ async function getSeriesStandings() {
     const data = JSON.parse(result.body);
     const games = data.data || [];
 
+    // Today's date in ET (UTC-4 during EDT, UTC-5 during EST)
+    const nowET = new Date(Date.now() - 4 * 60 * 60 * 1000); // EDT offset
+    const todayET = nowET.toISOString().slice(0, 10);
+    const playingToday = new Set();
+
     const matchups = {};
     games.forEach(function(g) {
+      // Collect teams playing today (not yet final)
+      const gameDate = (g.date || '').slice(0, 10);
+      if (gameDate === todayET && g.status !== 'Final') {
+        playingToday.add(g.home_team.abbreviation);
+        playingToday.add(g.visitor_team.abbreviation);
+      }
       if (g.status !== 'Final') return;
       const home = g.home_team.abbreviation;
       const away = g.visitor_team.abbreviation;
@@ -111,7 +122,7 @@ async function getSeriesStandings() {
       if (m[t2] === 4) eliminated.add(t1);
     });
 
-    return { standings: standings, winsMap: winsMap, eliminated: [...eliminated] };
+    return { standings: standings, winsMap: winsMap, eliminated: [...eliminated], playingToday: [...playingToday] };
   } catch(e) {
     console.error('getSeriesStandings error:', e.message);
     return { standings: {}, winsMap: {}, eliminated: [] };
@@ -368,6 +379,7 @@ async function pushNBAToFirebase() {
       injured: injuredList,
       seriesStandings: seriesResult.standings || {},
       seriesWins: seriesResult.winsMap || {},
+      playingToday: seriesResult.playingToday || [],
       updated: now,
     });
     const totals = {};
