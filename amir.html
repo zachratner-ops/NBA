@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Should Amir Go Fishing?</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --red-dark: #8B1A1A;
+    --red-mid: #C0392B;
+    --red-bright: #E74C3C;
+    --red-light: #F1948A;
+    --red-pale: #FADBD8;
+    --cream: #FDF6EC;
+    --ink: #1A0A0A;
+    --ink-muted: #6B3333;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--cream);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 20%, rgba(139,26,26,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 60% at 80% 80%, rgba(231,76,60,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* scattered NO watermarks */
+  body::after {
+    content: 'NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO NO';
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 80px;
+    font-weight: 900;
+    color: rgba(139,26,26,0.035);
+    letter-spacing: 40px;
+    line-height: 1.8;
+    word-break: break-all;
+    padding: 2rem;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 2rem 1.5rem;
+    max-width: 480px;
+    width: 100%;
+  }
+
+  .eyebrow {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--red-mid);
+    margin-bottom: 0.5rem;
+  }
+
+  .headline {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(26px, 6vw, 38px);
+    font-weight: 900;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.15;
+    margin-bottom: 0.4rem;
+  }
+
+  .headline em {
+    font-style: italic;
+    color: var(--red-mid);
+  }
+
+  .tagline {
+    font-size: 13px;
+    color: var(--ink-muted);
+    font-weight: 300;
+    margin-bottom: 2rem;
+    letter-spacing: 0.01em;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    width: 320px;
+    height: 320px;
+    margin-bottom: 2rem;
+  }
+
+  .pointer-wrap {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .pointer-body {
+    width: 18px;
+    height: 28px;
+    background: var(--ink);
+    clip-path: polygon(50% 100%, 0 0, 100% 0);
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .pointer-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    margin-top: -2px;
+  }
+
+  canvas {
+    display: block;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 6px var(--cream),
+      0 0 0 8px var(--red-dark),
+      0 12px 40px rgba(139,26,26,0.25);
+  }
+
+  .spin-btn {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 700;
+    font-style: italic;
+    color: var(--cream);
+    background: var(--ink);
+    border: none;
+    padding: 16px 52px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: background 0.2s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .spin-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--red-dark);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  .spin-btn:hover::before { transform: scaleX(1); }
+  .spin-btn span { position: relative; z-index: 1; }
+  .spin-btn:active { transform: scale(0.97); }
+  .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .spin-btn:disabled::before { transform: scaleX(0) !important; }
+
+  /* modal */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(26,10,10,0.65);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 2rem;
+  }
+  .modal-bg.show { display: flex; }
+
+  .modal {
+    background: var(--cream);
+    border: 2px solid var(--ink);
+    border-radius: 2px;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    max-width: 320px;
+    width: 100%;
+    animation: popIn 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  .modal-fish {
+    font-size: 42px;
+    margin-bottom: 0.75rem;
+    display: block;
+  }
+
+  .modal-verdict {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .modal-answer {
+    font-family: 'Playfair Display', serif;
+    font-size: 40px;
+    font-weight: 900;
+    color: var(--red-mid);
+    line-height: 1;
+    margin-bottom: 0.75rem;
+  }
+
+  .modal-sub {
+    font-size: 14px;
+    color: var(--ink-muted);
+    font-weight: 300;
+    margin-bottom: 1.75rem;
+    line-height: 1.5;
+  }
+
+  .modal-close {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    padding: 10px 28px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, color 0.15s;
+  }
+  .modal-close:hover { background: var(--ink); color: var(--cream); }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <p class="eyebrow">Official Verdict</p>
+  <h1 class="headline">Should <em>Amir</em> Go<br>Fishing This Weekend?</h1>
+  <p class="tagline">Powered by advanced probability and the scientific method</p>
+
+  <div class="wheel-wrap">
+    <div class="pointer-wrap">
+      <div class="pointer-body"></div>
+      <div class="pointer-dot"></div>
+    </div>
+    <canvas id="wheel" width="320" height="320"></canvas>
+  </div>
+
+  <button class="spin-btn" id="spinBtn"><span>Spin the Wheel</span></button>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <span class="modal-fish">🎣</span>
+    <p class="modal-verdict">The wheel has decided</p>
+    <div class="modal-answer" id="modalAnswer"></div>
+    <p class="modal-sub" id="modalSub"></p>
+    <button class="modal-close" id="modalClose">OK fine</button>
+  </div>
+</div>
+
+<script>
+const SEGMENTS = [
+  'Absolutely not',
+  'No',
+  'Nope',
+  'Hard no',
+  'Definitely not',
+  'No way',
+  'Not a chance',
+  'No',
+  'Nope',
+  'Please no',
+  'No chance',
+  'Nope'
+];
+
+const SUBS = {
+  'Absolutely not': 'The fish filed a restraining order.',
+  'No': 'Science has spoken. Unanimously.',
+  'Nope': 'Try again never.',
+  'Hard no': 'Extremely hard no.',
+  'Definitely not': 'As definitive as it gets.',
+  'No way': 'No way whatsoever.',
+  'Not a chance': 'Zero. Zilch. None.',
+  'Please no': 'The fish are begging.',
+  'No chance': 'The data is unambiguous.',
+};
+
+const COLORS = [
+  '#8B1A1A','#C0392B','#E74C3C','#8B1A1A','#A93226',
+  '#CB4335','#8B1A1A','#C0392B','#E74C3C','#8B1A1A',
+  '#A93226','#CB4335'
+];
+
+const TEXT_SIZES = {
+  'Absolutely not': 11,
+  'Not a chance': 11,
+  'Definitely not': 11,
+  'Please no': 12,
+  'No chance': 12,
+  'Hard no': 14,
+  'No way': 14,
+  'Nope': 15,
+  'No': 17,
+};
+
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const N = SEGMENTS.length;
+const ARC = (2 * Math.PI) / N;
+const R = 155, CX = 160, CY = 160;
+let angle = 0, spinning = false;
+
+function drawWheel(a) {
+  ctx.clearRect(0, 0, 320, 320);
+  for (let i = 0; i < N; i++) {
+    const s = a + i * ARC, e = s + ARC;
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, s, e);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i];
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(253,246,236,0.6)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(s + ARC / 2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(253,246,236,0.92)';
+    const label = SEGMENTS[i];
+    const fs = TEXT_SIZES[label] || 13;
+    ctx.font = `500 ${fs}px 'DM Sans', sans-serif`;
+    ctx.fillText(label, R - 10, fs * 0.38);
+    ctx.restore();
+  }
+  // center cap
+  ctx.beginPath();
+  ctx.arc(CX, CY, 20, 0, 2 * Math.PI);
+  ctx.fillStyle = '#1A0A0A';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(CX, CY, 8, 0, 2 * Math.PI);
+  ctx.fillStyle = '#FDF6EC';
+  ctx.fill();
+}
+
+drawWheel(angle);
+
+document.getElementById('spinBtn').addEventListener('click', function() {
+  if (spinning) return;
+  spinning = true;
+  this.disabled = true;
+
+  const spins = 8 + Math.random() * 5;
+  const totalRotation = spins * 2 * Math.PI + Math.random() * 2 * Math.PI;
+  const duration = 4200 + Math.random() * 800;
+  const start = performance.now();
+  const startAngle = angle;
+
+  function ease(t) {
+    return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2;
+  }
+
+  function frame(now) {
+    const t = Math.min((now - start) / duration, 1);
+    angle = startAngle + totalRotation * ease(t);
+    drawWheel(angle);
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      spinning = false;
+      document.getElementById('spinBtn').disabled = false;
+      showResult();
+    }
+  }
+  requestAnimationFrame(frame);
+});
+
+function showResult() {
+  const ptr = -Math.PI / 2;
+  const norm = ((ptr - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const idx = Math.floor(norm / ARC) % N;
+  const result = SEGMENTS[idx];
+  document.getElementById('modalAnswer').textContent = result;
+  document.getElementById('modalSub').textContent = SUBS[result] || 'The wheel has decided.';
+  document.getElementById('modalBg').classList.add('show');
+}
+
+document.getElementById('modalClose').addEventListener('click', function() {
+  document.getElementById('modalBg').classList.remove('show');
+});
+document.getElementById('modalBg').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+</script>
+</body>
+</html>
