@@ -222,6 +222,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
   <div class="nba-section-title">Roster</div>
   <div class="nba-wrap"><table class="nba-table" id="nba-table"></table></div>
+  <div style="display:flex;gap:16px;justify-content:flex-end;margin:-20px 0 24px;padding-right:4px;">
+    <span style="font-size:11px;color:#888;">🚑 Injured</span>
+    <span style="font-size:11px;color:#888;">🏀 Playing tonight</span>
+  </div>
 
   <div class="nba-section-title">Teams</div>
   <div id="nba-team-pills" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;justify-content:center;"></div>
@@ -241,6 +245,7 @@ var ELIMINATED = [];
 var INJURED = [];
 var SERIES = {};
 var WINS = {};
+var PLAYING_TODAY = [];
 
 var OWNERS = [
   { name:'Max', color:'#2e7d32', players:[
@@ -328,9 +333,10 @@ window.applyFirebaseData = function applyFirebaseData(data) {
   pts         = scores.players         || {};
   ELIMINATED  = scores.eliminated      || [];
   INJURED     = scores.injured         || [];
-  SERIES      = scores.seriesStandings || {};
-  WINS        = scores.seriesWins      || {};
-  lastUpdated = scores.updated         || null;
+  SERIES        = scores.seriesStandings || {};
+  WINS          = scores.seriesWins      || {};
+  PLAYING_TODAY = scores.playingToday    || [];
+  lastUpdated   = scores.updated         || null;
 
   // Convert snapshots object {YYYYMMDD: {date, totals}} → sorted array
   var snaps = data.snapshots || {};
@@ -459,7 +465,8 @@ function renderTable(){
       var inj = isInjured(p.name);
       var rowBg = seriesRowBg(p.team);
       var nameCls = elim ? ' class="nba-elim"' : '';
-      var injIcon = inj ? ' <span style="font-size:9px;font-weight:700;background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:3px;padding:1px 4px;vertical-align:middle;">HURT</span>' : '';
+      var injIcon = inj ? ' <span title="Injured" style="font-size:13px;vertical-align:middle;">🚑</span>' : '';
+      var playingIcon = (!elim && PLAYING_TODAY.indexOf(p.team) !== -1) ? ' <span title="Playing tonight" style="font-size:13px;vertical-align:middle;">🏀</span>' : '';
       var seriesScore = '';
       if(!elim && WINS[p.team]) {
         var wl = WINS[p.team];
@@ -468,7 +475,7 @@ function renderTable(){
       var teamBadge = elim
         ? '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;"><span class="nba-badge t-ELIM">'+p.team+'</span><span class="nba-elim-badge">OUT</span></div>'
         : '<div style="display:inline-block;text-align:center;"><span class="nba-badge t-'+p.team+'">'+p.team+'</span>'+seriesScore+'</div>';
-      h += '<td class="sep" data-team="'+p.team+'" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+'</td>'+
+      h += '<td class="sep" data-team="'+p.team+'" style="'+rowBg+'"><span'+nameCls+'>'+p.name+'</span>'+injIcon+playingIcon+'</td>'+
            '<td style="'+rowBg+'">'+teamBadge+'</td>'+
            '<td class="pts'+(v===0?' z':'')+'\" style="'+rowBg+'">'+disp+'</td>';
     });
