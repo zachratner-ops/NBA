@@ -80,8 +80,8 @@ async function getSeriesStandings() {
     const data = JSON.parse(result.body);
     const games = data.data || [];
 
-    // Today's date in ET (UTC-4 during EDT, UTC-5 during EST)
-    const nowET = new Date(Date.now() - 4 * 60 * 60 * 1000); // EDT offset
+    // Today's date in ET (UTC-4 during EDT)
+    const nowET = new Date(Date.now() - 4 * 60 * 60 * 1000);
     const todayET = nowET.toISOString().slice(0, 10);
     const playingToday = new Set();
 
@@ -329,9 +329,9 @@ async function fetchNBAInjuries() {
         'Referer': 'https://www.basketball-reference.com/',
       }
     );
-    if (result.status !== 200) return [];
+    if (result.status !== 200) return {};
     const body = result.body;
-    const injured = new Set();
+    const injuredMap = {};
     const trRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
     let m;
     while ((m = trRegex.exec(body)) !== null) {
@@ -340,11 +340,11 @@ async function fetchNBAInjuries() {
       const noteMatch = row.match(/data-stat="note"[^>]*>([^<]+)<\/td>/);
       if (nameMatch && noteMatch && noteMatch[1].trim().length > 0) {
         const name = normalizeName(nameMatch[1].trim());
-        injured.add(name);
+        injuredMap[name] = noteMatch[1].trim();
       }
     }
-    console.log('Injuries found: ' + injured.size);
-    return [...injured];
+    console.log('Injuries found: ' + Object.keys(injuredMap).length);
+    return injuredMap;
   } catch(e) {
     console.error('fetchNBAInjuries error:', e.message);
     return [];
@@ -376,7 +376,7 @@ async function pushNBAToFirebase() {
     await db.ref('nba26_live/scores').set({
       players: sanitizedPlayers,
       eliminated: seriesResult.eliminated || [],
-      injured: injuredList,
+      injuredMap: injuredList || {},
       seriesStandings: seriesResult.standings || {},
       seriesWins: seriesResult.winsMap || {},
       playingToday: seriesResult.playingToday || [],
