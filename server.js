@@ -399,11 +399,11 @@ async function pushNBAToFirebase() {
   } catch(e) {
     console.error('Firebase write error:', e.message);
     return { error: e.message };
-  }
+  
 }
 
 // ── 7am ET daily cron (11:00 UTC) ────────────────────────────────
-cron.schedule('0 16 * * *', async function() {
+cron.schedule('0 14 * * *', async function() {
   console.log('Cron: daily NBA push starting...');
   const result = await pushNBAToFirebase();
   console.log('Cron: NBA push result:', result);
