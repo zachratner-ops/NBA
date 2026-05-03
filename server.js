@@ -464,6 +464,40 @@ app.post('/nba/push', async function(req, res) {
   res.json(result);
 });
 
+// NBA: refresh live scores only — NO snapshot written (manual refresh from frontend)
+app.get('/nba/refresh-only', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  const [scoreData, injuredList, seriesResult] = await Promise.all([
+    fetchNBAScores(),
+    fetchNBAInjuries(),
+    getSeriesStandings(),
+  ]);
+  if (scoreData.error) return res.status(502).json(scoreData);
+  try {
+    const db = admin.database();
+    const now = new Date().toISOString();
+    const sanitizedPlayers = {};
+    Object.keys(scoreData.players).forEach(function(name) {
+      sanitizedPlayers[normalizeName(name)] = scoreData.players[name];
+    });
+    await db.ref('nba26_live/scores').set({
+      players: sanitizedPlayers,
+      eliminated: seriesResult.eliminated || [],
+      injuredMap: injuredList || {},
+      seriesStandings: seriesResult.standings || {},
+      seriesWins: seriesResult.winsMap || {},
+      playingToday: seriesResult.playingToday || [],
+      updated: now,
+    });
+    // No snapshot write — chart data stays cron-only
+    console.log('NBA refresh-only complete — ' + Object.keys(scoreData.players).length + ' players');
+    res.json({ ok: true, players: Object.keys(scoreData.players).length, updated: now });
+  } catch(e) {
+    console.error('Firebase refresh-only error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // NBA: post standings to GroupMe on demand (commissioner button)
 app.post('/nba/groupme', async function(req, res) {
   if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
