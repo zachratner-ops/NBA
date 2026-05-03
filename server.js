@@ -399,7 +399,7 @@ async function pushNBAToFirebase() {
   } catch(e) {
     console.error('Firebase write error:', e.message);
     return { error: e.message };
-  
+  }
 }
 
 // ── 7am ET daily cron (11:00 UTC) ────────────────────────────────
