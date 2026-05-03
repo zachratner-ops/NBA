@@ -818,7 +818,11 @@ function renderDraft() {
           <p style="font-size:11px;color:#888;margin-bottom:10px;">Assign as placeholder — owner makes a real pick later.</p>
           <div class="ap-list">${(draft.autopickList || [])
             .filter(p => (draft.field || []).some(f => f.name === p.name))
-            .map(p => `<div class="ap-item"><span>${p.name}</span>${cur?`<button class="btn btn-sm btn-red" onclick="window.assignAP('${p.name.replace(/'/g,"\\'")}')">Assign</button>`:''}</div>`)
+            .map(p => {
+              const fd = (draft.field || []).find(f => f.name === p.name) || {};
+              const oddsPill = fd.odds_dk ? `<span class="odds-pill dk" style="margin-right:4px;"><span class="odds-label">Win</span>${fd.odds_dk}</span>` : '';
+              return `<div class="ap-item"><span style="flex:1;">${p.name}</span>${oddsPill}${cur?`<button class="btn btn-sm btn-red" onclick="window.assignAP('${p.name.replace(/'/g,"\\'")}')">Assign</button>`:''}</div>`;
+            })
             .join('') || '<div style="color:#aaa;font-size:12px;padding:4px;">All assigned or none set</div>'}</div>
         </div>
       </div>
