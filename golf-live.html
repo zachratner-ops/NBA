@@ -398,6 +398,7 @@ let subOwner = null;
 let subSwapOut = null;
 let subModalRound = 1;
 let lbSortMode = 'score'; // 'score' | 'pick'
+let poolSortMode = 'odds'; // 'name' | 'odds'
 
 let makeupOwner = null;
 let makeupSlotIndex = null;
@@ -676,6 +677,27 @@ window.startDraft = async function() {
 };
 
 // ── DRAFT ──────────────────────────────────────────────────────────
+function parseOdds(str) {
+  if (!str) return Infinity;
+  const n = parseInt(str.replace('+', ''), 10);
+  return isNaN(n) ? Infinity : n;
+}
+
+function sortPool(field) {
+  const copy = [...field];
+  if (poolSortMode === 'name') {
+    copy.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    // odds: most favored (lowest/most-negative American odds) first; no-odds players last
+    copy.sort((a, b) => {
+      const aO = parseOdds(a.odds_dk), bO = parseOdds(b.odds_dk);
+      if (aO === Infinity && bO === Infinity) return a.name.localeCompare(b.name);
+      return aO - bO;
+    });
+  }
+  return copy;
+}
+
 function renderDraft() {
   if (!ws) connectWS();
   // Preserve scroll positions across re-renders
@@ -710,7 +732,7 @@ function renderDraft() {
     </div>`).join('') : '';
 
   const q = searchQuery.toLowerCase();
-  const poolHtml = (draft.field || [])
+  const poolHtml = sortPool(draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
@@ -781,6 +803,10 @@ function renderDraft() {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
             <div class="section-hdr" style="margin-bottom:0;">Available (${draft.field?.length||0})</div>
             <div style="display:flex;gap:6px;">
+              <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;">
+                <button onclick="window.setPoolSort('odds')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;cursor:pointer;background:${poolSortMode==='odds'?'#1a1a1a':'#f5f5f3'};color:${poolSortMode==='odds'?'#fff':'#888'};">Odds</button>
+                <button onclick="window.setPoolSort('name')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='name'?'#1a1a1a':'#f5f5f3'};color:${poolSortMode==='name'?'#fff':'#888'};">A–Z</button>
+              </div>
               <button class="btn btn-sm btn-green" id="pick-btn" onclick="window.confirmPick()" ${selectedPlayer?'':'disabled'}>${selectedPlayer?`Pick ${selectedPlayer.name}`:'Pick...'}</button>
             </div>
           </div>
@@ -868,13 +894,34 @@ window.selectPlayer = function(pJson) {
     pickBtn.textContent = selectedPlayer ? `Pick ${selectedPlayer.name}` : 'Pick...';
   }
 };
+window.setPoolSort = function(mode) {
+  poolSortMode = mode;
+  // Re-render the pool list and update toggle button states in place
+  const poolEl = document.getElementById('pool-list');
+  if (poolEl) {
+    const q = searchQuery.toLowerCase();
+    poolEl.innerHTML = sortPool(draft.field || [])
+      .filter(p => !q || p.name.toLowerCase().includes(q))
+      .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
+        <div class="player-name">${p.name}</div>
+        <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+      </div>`).join('');
+  }
+  // Update toggle button styles in place
+  document.querySelectorAll('[onclick*="setPoolSort"]').forEach(btn => {
+    const m = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+    btn.style.background = m === poolSortMode ? '#1a1a1a' : '#f5f5f3';
+    btn.style.color = m === poolSortMode ? '#fff' : '#888';
+  });
+};
+
 window.onSearch = function(val) {
   searchQuery = val;
   // Update pool in place — avoid full re-render which kills focus
   const poolEl = document.getElementById('pool-list');
   if (!poolEl) { renderDraft(); return; }
   const q = val.toLowerCase();
-  const poolHtml = (draft.field || [])
+  const poolHtml = sortPool(draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
