@@ -85,7 +85,14 @@ async function getSeriesStandings() {
     const todayET = nowET.toISOString().slice(0, 10);
     const playingToday = new Set();
 
+    // Sort chronologically so we can detect when teams switch to a new round matchup
+    games.sort(function(a, b) { return (a.date || '').localeCompare(b.date || ''); });
+
+    // Track which matchup key each team most recently appeared in.
+    // When a team shows up in a new pairing (new round), we drop the old one.
+    const teamToKey = {};
     const matchups = {};
+
     games.forEach(function(g) {
       // Collect teams playing today (not yet final)
       const gameDate = (g.date || '').slice(0, 10);
@@ -97,6 +104,16 @@ async function getSeriesStandings() {
       const home = g.home_team.abbreviation;
       const away = g.visitor_team.abbreviation;
       const key = [home, away].sort().join('-');
+
+      // If either team has moved to a new matchup (new round), clear the old one
+      [home, away].forEach(function(team) {
+        const prevKey = teamToKey[team];
+        if (prevKey && prevKey !== key) {
+          delete matchups[prevKey];
+        }
+        teamToKey[team] = key;
+      });
+
       if (!matchups[key]) matchups[key] = {};
       matchups[key][home] = (matchups[key][home] || 0);
       matchups[key][away] = (matchups[key][away] || 0);
