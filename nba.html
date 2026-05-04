@@ -115,6 +115,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span class="comm-bar-label">Commissioner</span>
   <button class="comm-bar-btn" id="commish-btn-test" onclick="commishPost('test')">📣 Post Standings — Test</button>
   <button class="comm-bar-btn" id="commish-btn-live" onclick="commishPost('live')">📣 Post Standings — Live</button>
+  <span class="comm-bar-label" style="margin-left:12px;">Series</span>
+  <button class="comm-bar-btn" id="commish-reset-series" onclick="commishResetSeries()">🔄 Reset Series to 0-0</button>
   <span class="comm-bar-label" style="margin-left:12px;">Round Snapshots</span>
   <button class="comm-bar-btn" id="commish-save-R1" onclick="commishSaveRound('R1')">📸 Save End of R1</button>
   <button class="comm-bar-btn" id="commish-save-R2" onclick="commishSaveRound('R2')">📸 Save End of R2</button>
@@ -1012,6 +1014,27 @@ function commishConfirm() {
     document.getElementById('comm-pw-input').value = '';
     document.getElementById('comm-pw-input').focus();
     setTimeout(() => { err.textContent = ''; }, 2000);
+  }
+}
+
+async function commishResetSeries() {
+  if (!confirm('Reset all series scores to 0-0 and clear eliminated teams? Do this right before a new round starts.')) return;
+  const btn = document.getElementById('commish-reset-series');
+  btn.textContent = '⏳ Resetting...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(NBA_PROXY + '/nba/reset-series', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      btn.textContent = '✅ Reset!';
+      setTimeout(function() { btn.textContent = '🔄 Reset Series to 0-0'; btn.disabled = false; }, 3000);
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch(e) {
+    btn.textContent = '❌ Error';
+    alert('Reset failed: ' + e.message);
+    setTimeout(function() { btn.textContent = '🔄 Reset Series to 0-0'; btn.disabled = false; }, 2000);
   }
 }
 
