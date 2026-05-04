@@ -115,6 +115,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span class="comm-bar-label">Commissioner</span>
   <button class="comm-bar-btn" id="commish-btn-test" onclick="commishPost('test')">📣 Post Standings — Test</button>
   <button class="comm-bar-btn" id="commish-btn-live" onclick="commishPost('live')">📣 Post Standings — Live</button>
+  <span class="comm-bar-label" style="margin-left:12px;">Round Snapshots</span>
+  <button class="comm-bar-btn" id="commish-save-R1" onclick="commishSaveRound('R1')">📸 Save End of R1</button>
+  <button class="comm-bar-btn" id="commish-save-R2" onclick="commishSaveRound('R2')">📸 Save End of R2</button>
+  <button class="comm-bar-btn" id="commish-save-R3" onclick="commishSaveRound('R3')">📸 Save End of R3</button>
 </div>
 
 <!-- Commissioner password modal -->
@@ -146,6 +150,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="nba-err" id="nba-err"></div>
 
+  <!-- Round toggle tabs -->
+  <div class="round-toggle-bar" id="round-toggle-bar">
+    <span style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;">View:</span>
+    <button class="round-tab active" id="tab-current" onclick="switchRound('current')">Current</button>
+    <button class="round-tab" id="tab-R1" onclick="switchRound('R1')" disabled>R1</button>
+    <button class="round-tab" id="tab-R2" onclick="switchRound('R2')" disabled>R2</button>
+    <button class="round-tab" id="tab-R3" onclick="switchRound('R3')" disabled>R3</button>
+  </div>
+  <div class="round-frozen-banner" id="round-frozen-banner">
+    📸 Frozen snapshot — scores and series standings as of end of <span id="round-frozen-label"></span>. <a href="#" onclick="switchRound('current');return false;" style="color:#7a6000;font-weight:700;">Back to live →</a>
+  </div>
 
 <style>
 #nba-tracker { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 100%; }
@@ -156,6 +171,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nba-btn { background: #1a1a1a; color: #fff; border: none; font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: 7px; cursor: pointer; }
 .nba-btn:hover { background: #333; }
 .nba-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.round-toggle-bar { display: flex; gap: 6px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+.round-tab { background: #f0f0f0; color: #888; border: none; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all .15s; }
+.round-tab:hover:not(:disabled) { background: #ddd; color: #444; }
+.round-tab.active { background: #1a1a1a; color: #fff; }
+.round-tab:disabled { opacity: 0.35; cursor: not-allowed; }
+.round-frozen-banner { background: #fff8e1; border: 1px solid #f9a825; border-radius: 8px; padding: 8px 14px; font-size: 12px; color: #7a6000; margin-bottom: 16px; display: none; }
+.round-frozen-banner.show { display: block; }
 .nba-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
 .nba-card { background: #f5f5f3; border-radius: 10px; padding: 14px; }
 .nba-card.leader { background: #fff; border: 2px solid #2e7d32; }
@@ -324,13 +346,26 @@ var lastUpdated = null;
 var snapHistory = [];
 var chart = null;
 var firebaseUnsub = null;
-
-
+var liveData = null;       // full Firebase snapshot (always current)
+var roundsData = {};       // { R1: {...}, R2: {...}, ... }
+var activeRound = 'current'; // which tab is selected
 
 window.applyFirebaseData = function applyFirebaseData(data) {
   console.log('applyFirebaseData called, keys:', Object.keys(data || {}));
   if (!data) return;
-  var scores = data.scores || {};
+  liveData = data;
+
+  // Store round snapshots and update tab availability
+  roundsData = data.rounds || {};
+  updateRoundTabs();
+
+  // If viewing a frozen round, don't overwrite the display — just update tabs
+  if (activeRound !== 'current') return;
+
+  applyScoreData(data.scores || {}, data.snapshots || {});
+};
+
+function applyScoreData(scores, snapshots) {
   pts           = scores.players         || {};
   ELIMINATED    = scores.eliminated      || [];
   INJURED       = scores.injuredMap      || {};
@@ -340,16 +375,62 @@ window.applyFirebaseData = function applyFirebaseData(data) {
   lastUpdated   = scores.updated         || null;
 
   // Convert snapshots object {YYYYMMDD: {date, totals}} → sorted array
-  var snaps = data.snapshots || {};
+  var snaps = snapshots || {};
   snapHistory = Object.values(snaps).sort(function(a,b){ return a.date < b.date ? -1 : 1; });
 
   renderAll();
   var updEl = document.getElementById('nba-updated');
-  if (lastUpdated) {
+  if (lastUpdated && activeRound === 'current') {
     updEl.innerHTML = '<span style="color:#2e7d32;">●</span> Live · Updated ' +
       new Date(lastUpdated).toLocaleString() + ' via Basketball Reference';
   }
-};
+}
+
+function updateRoundTabs() {
+  ['R1','R2','R3'].forEach(function(r) {
+    var tab = document.getElementById('tab-' + r);
+    if (tab) tab.disabled = !roundsData[r];
+  });
+}
+
+function switchRound(round) {
+  activeRound = round;
+
+  // Update active tab styling
+  ['current','R1','R2','R3'].forEach(function(r) {
+    var tab = document.getElementById('tab-' + r);
+    if (tab) tab.classList.toggle('active', r === round);
+  });
+
+  var banner = document.getElementById('round-frozen-banner');
+  var updEl = document.getElementById('nba-updated');
+  var refreshBtn = document.getElementById('nba-btn');
+
+  if (round === 'current') {
+    banner.classList.remove('show');
+    if (refreshBtn) refreshBtn.disabled = false;
+    if (liveData) applyScoreData(liveData.scores || {}, liveData.snapshots || {});
+  } else {
+    var snap = roundsData[round];
+    if (!snap) return;
+    banner.classList.add('show');
+    document.getElementById('round-frozen-label').textContent = round;
+    if (refreshBtn) refreshBtn.disabled = true;
+
+    // Apply frozen round data
+    pts           = snap.players         || {};
+    ELIMINATED    = snap.eliminated      || [];
+    INJURED       = {};
+    SERIES        = snap.seriesStandings || {};
+    WINS          = snap.seriesWins      || {};
+    PLAYING_TODAY = [];
+    lastUpdated   = snap.savedAt         || null;
+    snapHistory   = [];
+
+    renderAll();
+    updEl.innerHTML = '📸 End of ' + round + ' snapshot · Saved ' + new Date(snap.savedAt).toLocaleString();
+  }
+}
 
 // Match the proxy's normalization: strip diacritics + replace Firebase-illegal chars
 function normalizeName(name) {
@@ -931,6 +1012,35 @@ function commishConfirm() {
     document.getElementById('comm-pw-input').value = '';
     document.getElementById('comm-pw-input').focus();
     setTimeout(() => { err.textContent = ''; }, 2000);
+  }
+}
+
+async function commishSaveRound(round) {
+  if (!confirm('Save end-of-' + round + ' snapshot? This is permanent and cannot be overwritten.')) return;
+  var btnId = 'commish-save-' + round;
+  var btn = document.getElementById(btnId);
+  var origLabel = btn.textContent;
+  btn.textContent = '⏳ Saving...';
+  btn.disabled = true;
+  try {
+    var res = await fetch(NBA_PROXY + '/nba/rounds/' + round, { method: 'POST' });
+    var data = await res.json();
+    if (res.ok && data.ok) {
+      btn.textContent = '✅ Saved!';
+      // Update tab availability
+      var tab = document.getElementById('tab-' + round);
+      if (tab) tab.disabled = false;
+      setTimeout(function() { btn.textContent = origLabel; btn.disabled = false; }, 3000);
+    } else if (res.status === 409) {
+      alert(round + ' has already been saved and is read-only.');
+      btn.textContent = origLabel; btn.disabled = false;
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch(e) {
+    btn.textContent = '❌ Error';
+    alert('Save failed: ' + e.message);
+    setTimeout(function() { btn.textContent = origLabel; btn.disabled = false; }, 2000);
   }
 }
 
