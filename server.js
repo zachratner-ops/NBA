@@ -523,8 +523,8 @@ app.post('/nba/reset-series', async function(req, res) {
     await db.ref('nba26_live/scores').update({
       seriesStandings: {},
       seriesWins: {},
-      eliminated: [],
       playingToday: [],
+      // eliminated intentionally preserved — knocked-out teams stay grayed out
     });
     console.log('NBA series reset by commissioner');
     res.json({ ok: true });
