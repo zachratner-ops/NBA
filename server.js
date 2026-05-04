@@ -72,13 +72,28 @@ function fetchBDL(path) {
   });
 }
 
+// ── Read round start config from Firebase ────────────────────────
+async function getRoundStart() {
+  if (!firebaseReady) return null;
+  try {
+    const snap = await admin.database().ref('nba26_live/config/roundStart').get();
+    return snap.exists() ? snap.val() : null;
+  } catch(e) { return null; }
+}
+
 // ── Series standings from BallDontLie ────────────────────────────
-async function getSeriesStandings() {
+async function getSeriesStandings(roundStart) {
   try {
     const result = await fetchBDL('/nba/v1/games?seasons[]=2025&postseason=true&per_page=100');
     if (result.status !== 200) throw new Error('BDL games returned ' + result.status);
     const data = JSON.parse(result.body);
-    const games = data.data || [];
+    let games = data.data || [];
+
+    // Filter to only games on or after the current round start date (set by commissioner)
+    if (roundStart) {
+      games = games.filter(function(g) { return (g.date || '').slice(0, 10) >= roundStart; });
+      console.log('Round start filter ' + roundStart + ': ' + games.length + ' games');
+    }
 
     // Today's date in ET (UTC-4 during EDT)
     const nowET = new Date(Date.now() - 4 * 60 * 60 * 1000);
@@ -372,10 +387,11 @@ async function fetchNBAInjuries() {
 async function pushNBAToFirebase() {
   if (!firebaseReady) return { error: 'Firebase not initialized' };
   console.log('Fetching NBA scores, injuries, and series standings...');
+  const roundStart = await getRoundStart();
   const [scoreData, injuredList, seriesResult] = await Promise.all([
     fetchNBAScores(),
     fetchNBAInjuries(),
-    getSeriesStandings(),
+    getSeriesStandings(roundStart),
   ]);
   if (scoreData.error) return scoreData;
   try {
@@ -489,10 +505,11 @@ app.post('/nba/push', async function(req, res) {
 // NBA: refresh live scores only — NO snapshot written (manual refresh from frontend)
 app.get('/nba/refresh-only', async function(req, res) {
   if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  const roundStart = await getRoundStart();
   const [scoreData, injuredList, seriesResult] = await Promise.all([
     fetchNBAScores(),
     fetchNBAInjuries(),
-    getSeriesStandings(),
+    getSeriesStandings(roundStart),
   ]);
   if (scoreData.error) return res.status(502).json(scoreData);
   try {
@@ -521,6 +538,30 @@ app.get('/nba/refresh-only', async function(req, res) {
     res.json({ ok: true, players: Object.keys(scoreData.players).length, updated: now });
   } catch(e) {
     console.error('Firebase refresh-only error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// NBA: set/get round start date (commissioner only)
+app.post('/nba/config/round-start', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  const { date } = req.body;
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Invalid date — use YYYY-MM-DD' });
+  try {
+    await admin.database().ref('nba26_live/config/roundStart').set(date);
+    console.log('Round start set to:', date);
+    res.json({ ok: true, roundStart: date });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/nba/config', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  try {
+    const snap = await admin.database().ref('nba26_live/config').get();
+    res.json(snap.exists() ? snap.val() : {});
+  } catch(e) {
     res.status(500).json({ error: e.message });
   }
 });
