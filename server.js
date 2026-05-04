@@ -542,6 +542,51 @@ app.post('/nba/groupme', async function(req, res) {
 });
 
 
+// NBA: save end-of-round snapshot to Firebase (commissioner only, read-only once saved)
+app.post('/nba/rounds/:round', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  const round = req.params.round; // e.g. "R1", "R2", "R3"
+  if (!['R1','R2','R3','R4'].includes(round)) return res.status(400).json({ error: 'Invalid round — use R1, R2, R3, or R4' });
+  try {
+    const db = admin.database();
+    // Check if already saved — read-only once written
+    const existing = await db.ref('nba26_live/rounds/' + round).get();
+    if (existing.exists()) {
+      return res.status(409).json({ error: round + ' already saved. Round snapshots are read-only once written.' });
+    }
+    // Read current live scores
+    const snap = await db.ref('nba26_live/scores').get();
+    if (!snap.exists()) return res.status(404).json({ error: 'No live score data found' });
+    const data = snap.val();
+    const now = new Date().toISOString();
+    await db.ref('nba26_live/rounds/' + round).set({
+      players: data.players || {},
+      eliminated: data.eliminated || [],
+      seriesStandings: data.seriesStandings || {},
+      seriesWins: data.seriesWins || {},
+      savedAt: now,
+      round: round,
+    });
+    console.log('Round snapshot saved: ' + round + ' at ' + now);
+    res.json({ ok: true, round: round, savedAt: now });
+  } catch(e) {
+    console.error('Save round error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// NBA: get all saved round snapshots
+app.get('/nba/rounds', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  try {
+    const db = admin.database();
+    const snap = await db.ref('nba26_live/rounds').get();
+    res.json(snap.exists() ? snap.val() : {});
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Legacy
 app.get('/all', async function(req, res) {
   const scoreData = await fetchNBAScores();
