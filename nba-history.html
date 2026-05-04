@@ -369,12 +369,17 @@ function buildSeasons() {
     const owners = Object.entries(s.owners).map(([name,data]) => ({
       name, ...data,
       displayName: name === 'Triplets' ? 'Throuple' : name
-    })).sort((a,b)=>b.score-a.score);
+    }));
     const winnerName = s.winner === 'Triplets' ? 'Throuple' : s.winner;
 
-    const cards = owners.map((o,idx)=>{
+    // Compute finish rank by score separately so display order stays as draft order
+    const rankMap = {};
+    owners.slice().sort((a,b)=>b.score-a.score).forEach((o,i)=>{ rankMap[o.name]=i+1; });
+
+    const cards = owners.map((o)=>{
       const isWinner = o.displayName === winnerName;
-      const topPlayers = o.players.slice().sort((a,b)=>b.pts-a.pts);
+      const finishRank = rankMap[o.name];
+      const topPlayers = o.players.slice(); // preserve draft pick order
       const playerRows = topPlayers.map(p=>
         `<div class="oc-player"><span>${p.name}</span><span class="oc-pts">${p.pts}</span></div>`
       ).join('');
@@ -383,7 +388,7 @@ function buildSeasons() {
       return `<div class="owner-card ${isWinner?'won':''}">
         <div class="oc-header" style="color:${COLORS[o.displayName]||'#555'};border-color:${COLORS[o.displayName]||'#eee'};display:flex;align-items:center;justify-content:space-between">${isWinner?'🏆 ':''}${o.displayName}${draftBadge}</div>
         <div class="oc-score">${o.score.toLocaleString()}</div>
-        <div class="oc-rank">${isWinner?'Winner':'#'+(idx+1)}</div>
+        <div class="oc-rank">${isWinner?'Winner':'#'+finishRank}</div>
         ${playerRows}
       </div>`;
     }).join('');
