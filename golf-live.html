@@ -210,6 +210,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
 .toast.show{opacity:1;}
 .stale-warning{color:#e65100;font-size:11px;}
+.refresh-btn{background:#1a1a1a;color:#fff;border:none;font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:background .15s;}
+.refresh-btn:hover{background:#333;}
+.refresh-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.refresh-btn.spinning svg{animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 .cut-badge{display:inline-flex;align-items:center;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:#fff3cd;color:#856404;border:1px solid #ffc107;margin-left:3px;}
 .cut-badge.danger{background:#fce4ec;color:#c62828;border-color:#e57373;}
 .buyin-pill{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;background:#f0f0f0;color:#666;white-space:nowrap;}
@@ -1360,8 +1365,14 @@ function renderLive(isFinal) {
           ${potSubText ? `<div class="pot-meta">${potSubText}</div>` : ''}
         </div>
         <div style="text-align:right;">
-          <div style="font-size:11px;margin-bottom:4px;" id="updated-ago-display">
-            ${(() => { const mins = live.lastUpdated ? Math.floor((Date.now()-new Date(live.lastUpdated))/60000) : null; return `<span class="${mins!==null&&mins>45?'stale-warning':''}" style="color:${mins!==null&&mins>45?'':'#aaa'}">${updatedAgo(live.lastUpdated)}${mins!==null&&mins>45?' ⚠':''}` + '</span>'; })()}
+          <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-bottom:4px;">
+            <div style="font-size:11px;" id="updated-ago-display">
+              ${(() => { const mins = live.lastUpdated ? Math.floor((Date.now()-new Date(live.lastUpdated))/60000) : null; return `<span class="${mins!==null&&mins>45?'stale-warning':''}" style="color:${mins!==null&&mins>45?'':'#aaa'}">${updatedAgo(live.lastUpdated)}${mins!==null&&mins>45?' ⚠':''}` + '</span>'; })()}
+            </div>
+            <button class="refresh-btn" id="refresh-btn" onclick="window.manualRefresh()" ${live.espnEventId ? '' : 'title="No ESPN event ID set" disabled'}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Refresh
+            </button>
           </div>
           ${subBadge}
         </div>
@@ -1520,6 +1531,25 @@ window.refreshScores = async function(explicitId) {
     scoreUpdates['lastUpdated'] = new Date().toISOString();
     await update(liveRef(), scoreUpdates);
   } catch(e) { if (isComm) alert('Error: ' + e.message); }
+};
+
+window.manualRefresh = async function() {
+  const btn = document.getElementById('refresh-btn');
+  if (!btn || btn.disabled) return;
+  if (!live?.espnEventId) { showToast('No ESPN event ID set — ask the commissioner'); return; }
+  btn.disabled = true;
+  btn.classList.add('spinning');
+  btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Fetching…`;
+  try {
+    await window.refreshScores();
+    showToast('✓ Scores updated');
+  } catch(e) {
+    showToast('Failed to refresh — try again');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+    btn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Refresh`;
+  }
 };
 
 // Sanitize name for Firebase key lookup (mirrors server.js)
