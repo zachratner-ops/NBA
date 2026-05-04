@@ -115,6 +115,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span class="comm-bar-label">Commissioner</span>
   <button class="comm-bar-btn" id="commish-btn-test" onclick="commishPost('test')">📣 Post Standings — Test</button>
   <button class="comm-bar-btn" id="commish-btn-live" onclick="commishPost('live')">📣 Post Standings — Live</button>
+  <span class="comm-bar-label" style="margin-left:12px;">Round Config</span>
+  <input type="date" id="commish-round-start-date" style="font-size:12px;padding:5px 8px;border-radius:6px;border:1px solid #ccc;background:#fff;cursor:pointer;" title="Set the start date of the current round — only games on/after this date will count for series scores">
+  <button class="comm-bar-btn" id="commish-set-round-start" onclick="commishSetRoundStart()">📅 Set Round Start</button>
   <span class="comm-bar-label" style="margin-left:12px;">Series</span>
   <button class="comm-bar-btn" id="commish-reset-series" onclick="commishResetSeries()">🔄 Reset Series to 0-0</button>
   <span class="comm-bar-label" style="margin-left:12px;">Round Snapshots</span>
@@ -1008,12 +1011,44 @@ function commishConfirm() {
     document.getElementById('comm-toggle').classList.add('active');
     document.getElementById('comm-bar').classList.add('open');
     commishClose();
+    // Load current round start config into the date picker
+    fetch(NBA_PROXY + '/nba/config').then(function(r){ return r.json(); }).then(function(cfg) {
+      if (cfg.roundStart) document.getElementById('commish-round-start-date').value = cfg.roundStart;
+    }).catch(function(){});
   } else {
     const err = document.getElementById('comm-pw-err');
     err.textContent = 'Wrong password.';
     document.getElementById('comm-pw-input').value = '';
     document.getElementById('comm-pw-input').focus();
     setTimeout(() => { err.textContent = ''; }, 2000);
+  }
+}
+
+async function commishSetRoundStart() {
+  const dateInput = document.getElementById('commish-round-start-date');
+  const date = dateInput.value;
+  if (!date) { alert('Please pick a date first.'); return; }
+  if (!confirm('Set round start to ' + date + '? Games before this date will be ignored for series scores.')) return;
+  const btn = document.getElementById('commish-set-round-start');
+  btn.textContent = '⏳ Saving...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(NBA_PROXY + '/nba/config/round-start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: date }),
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      btn.textContent = '✅ Saved!';
+      setTimeout(function() { btn.textContent = '📅 Set Round Start'; btn.disabled = false; }, 3000);
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch(e) {
+    btn.textContent = '❌ Error';
+    alert('Failed: ' + e.message);
+    setTimeout(function() { btn.textContent = '📅 Set Round Start'; btn.disabled = false; }, 2000);
   }
 }
 
