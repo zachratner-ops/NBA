@@ -547,7 +547,7 @@ function renderTable(){
       var disp = (v===undefined) ? '—' : v.toLocaleString();
       var elim = isElim(p.team);
       var inj = isInjured(p.name);
-      var rowBg = elim ? 'background:#f0f0f0;color:#aaa;' : seriesRowBg(p.team);
+      var rowBg = elim ? 'background:#d0d0d0;color:#888;' : seriesRowBg(p.team);
       var nameCls = elim ? ' class="nba-elim"' : '';
       var injIcon = inj ? ' <span title="'+inj+'" style="font-size:13px;vertical-align:bottom;">🚑</span>' : '';
       var playingIcon = (!elim && PLAYING_TODAY.indexOf(p.team) !== -1) ? ' <span title="Playing tonight" style="font-size:13px;vertical-align:bottom;">🏀</span>' : '';
