@@ -515,6 +515,25 @@ app.get('/nba/refresh-only', async function(req, res) {
   }
 });
 
+// NBA: reset series scores — wipes seriesStandings, seriesWins, eliminated (commissioner only)
+app.post('/nba/reset-series', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  try {
+    const db = admin.database();
+    await db.ref('nba26_live/scores').update({
+      seriesStandings: {},
+      seriesWins: {},
+      eliminated: [],
+      playingToday: [],
+    });
+    console.log('NBA series reset by commissioner');
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('Series reset error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // NBA: post standings to GroupMe on demand (commissioner button)
 app.post('/nba/groupme', async function(req, res) {
   if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
