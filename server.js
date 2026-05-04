@@ -390,9 +390,14 @@ async function pushNBAToFirebase() {
       sanitizedPlayers[safeKey] = scoreData.players[name];
     });
 
+    // Merge eliminated — never remove a team once knocked out
+    const existingElimSnap = await db.ref('nba26_live/scores/eliminated').get();
+    const existingElimList = existingElimSnap.exists() ? (existingElimSnap.val() || []) : [];
+    const mergedElimList = [...new Set([...existingElimList, ...(seriesResult.eliminated || [])])];
+
     await db.ref('nba26_live/scores').set({
       players: sanitizedPlayers,
-      eliminated: seriesResult.eliminated || [],
+      eliminated: mergedElimList,
       injuredMap: injuredList || {},
       seriesStandings: seriesResult.standings || {},
       seriesWins: seriesResult.winsMap || {},
@@ -497,9 +502,14 @@ app.get('/nba/refresh-only', async function(req, res) {
     Object.keys(scoreData.players).forEach(function(name) {
       sanitizedPlayers[normalizeName(name)] = scoreData.players[name];
     });
+    // Merge eliminated — never remove a team once they've been knocked out
+    const existingSnap = await db.ref('nba26_live/scores/eliminated').get();
+    const existingElim = existingSnap.exists() ? (existingSnap.val() || []) : [];
+    const mergedElim = [...new Set([...existingElim, ...(seriesResult.eliminated || [])])];
+
     await db.ref('nba26_live/scores').set({
       players: sanitizedPlayers,
-      eliminated: seriesResult.eliminated || [],
+      eliminated: mergedElim,
       injuredMap: injuredList || {},
       seriesStandings: seriesResult.standings || {},
       seriesWins: seriesResult.winsMap || {},
