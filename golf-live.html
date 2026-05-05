@@ -749,7 +749,9 @@ function renderDraft() {
   ).join('') || '<div style="color:#aaa;font-size:12px;padding:4px;">No list set</div>';
 
   const rawPickOrder = draft.pickOrder || [];
-  const pickSeqOrder = Array.isArray(rawPickOrder) ? rawPickOrder : Object.values(rawPickOrder);
+  const pickSeqOrder = Array.isArray(rawPickOrder)
+    ? rawPickOrder
+    : Object.entries(rawPickOrder).sort((a,b) => Number(a[0]) - Number(b[0])).map(e => e[1]);
   const sortedOwners = [...owners()].sort((a, b) => {
     const ai = pickSeqOrder.indexOf(a);
     const bi = pickSeqOrder.indexOf(b);
