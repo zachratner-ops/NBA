@@ -748,7 +748,8 @@ function renderDraft() {
     `<div class="ap-item"><span>${p.name}</span>${cur?`<button class="btn btn-sm btn-red" onclick="window.assignAP('${p.name.replace(/'/g,"\\'")}')">Assign</button>`:''}</div>`
   ).join('') || '<div style="color:#aaa;font-size:12px;padding:4px;">No list set</div>';
 
-  const pickSeqOrder = draft.pickOrder || (draft.pickSequence || []).map(p => p.owner).filter((o, i, a) => a.indexOf(o) === i);
+  const rawPickOrder = draft.pickOrder || [];
+  const pickSeqOrder = Array.isArray(rawPickOrder) ? rawPickOrder : Object.values(rawPickOrder);
   const sortedOwners = [...owners()].sort((a, b) => {
     const ai = pickSeqOrder.indexOf(a);
     const bi = pickSeqOrder.indexOf(b);
