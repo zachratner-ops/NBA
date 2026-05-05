@@ -43,7 +43,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .owner-check input{width:16px;height:16px;cursor:pointer;}
 
 /* Draft */
-.draft-layout{display:grid;grid-template-columns:200px 1fr 280px;gap:14px;}
+.draft-layout{display:grid;grid-template-columns:180px 1fr 340px;gap:14px;}
 @media(max-width:900px){.draft-layout{grid-template-columns:1fr;}}
 /* Desktop draft viewport fit */
 @media(min-width:701px){
@@ -748,10 +748,10 @@ function renderDraft() {
     `<div class="ap-item"><span>${p.name}</span>${cur?`<button class="btn btn-sm btn-red" onclick="window.assignAP('${p.name.replace(/'/g,"\\'")}')">Assign</button>`:''}</div>`
   ).join('') || '<div style="color:#aaa;font-size:12px;padding:4px;">No list set</div>';
 
-  const rawPickOrder = draft.pickOrder || [];
-  const pickSeqOrder = Array.isArray(rawPickOrder)
-    ? rawPickOrder
-    : Object.entries(rawPickOrder).sort((a,b) => Number(a[0]) - Number(b[0])).map(e => e[1]);
+  const seenOwners = new Set();
+  const pickSeqOrder = (Array.isArray(draft.pickSequence) ? draft.pickSequence : Object.values(draft.pickSequence || {}))
+    .map(p => p.owner)
+    .filter(o => { if (seenOwners.has(o)) return false; seenOwners.add(o); return true; });
   const sortedOwners = [...owners()].sort((a, b) => {
     const ai = pickSeqOrder.indexOf(a);
     const bi = pickSeqOrder.indexOf(b);
