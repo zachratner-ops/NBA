@@ -390,7 +390,32 @@ const FORMSPREE_ID = 'mnjlwlgy';
 const fbApp = initializeApp(FIREBASE_CONFIG);
 const db = getDatabase(fbApp);
 const params = new URLSearchParams(location.search);
-const SLUG = params.get('slug') || 'pga-2026';
+const SLUG = params.get('slug');
+
+// No slug → show a simple picker instead of silently defaulting
+if (!SLUG) {
+  document.getElementById('screen').innerHTML = `
+    <div class="main-narrow" style="padding-top:80px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:28px;margin-bottom:8px;">⛳</div>
+        <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;">Golf Draft</h2>
+        <p style="font-size:13px;color:#888;margin-bottom:24px;">Enter a tournament slug to continue.</p>
+        <div style="display:flex;gap:8px;max-width:320px;margin:0 auto;">
+          <input id="slug-input" type="text" placeholder="e.g. pga-2026" style="flex:1;border:1px solid #ddd;border-radius:7px;padding:9px 12px;font-size:14px;font-family:inherit;"
+            onkeydown="if(event.key==='Enter')goToSlug()">
+          <button class="btn btn-green" onclick="goToSlug()">Go →</button>
+        </div>
+        <div id="slug-error" style="font-size:12px;color:#c62828;margin-top:8px;min-height:16px;"></div>
+      </div>
+    </div>`;
+  document.getElementById('tb-title').textContent = 'Golf Draft';
+  window.goToSlug = function() {
+    const val = document.getElementById('slug-input').value.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+    if (!val) { document.getElementById('slug-error').textContent = 'Enter a slug.'; return; }
+    location.href = location.pathname + '?slug=' + val;
+  };
+  throw new Error('No slug — showing picker'); // stop rest of script from running
+}
 
 let draft = null;
 let live = null;
