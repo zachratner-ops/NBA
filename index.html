@@ -62,6 +62,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .alltime-record{font-size:11px;color:#aaa;width:40px;text-align:right;}
 .alltime-net{font-size:11px;font-weight:700;width:52px;text-align:right;}
 
+/* ── Commissioner panel ───────────────────────────────────────── */
+.comm-bar{background:#1a1a1a;border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.comm-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;}
+.comm-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.btn{background:#1a1a1a;color:#fff;border:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:7px;cursor:pointer;transition:background .15s;}
+.btn:hover{background:#333;}
+.btn-green{background:#2e7d32;}.btn-green:hover{background:#1b5e20;}
+.btn-amber{background:#e65100;color:#fff;}.btn-amber:hover{background:#bf360c;}
+.btn-outline{background:transparent;border:1px solid #444;color:#aaa;}.btn-outline:hover{border-color:#888;color:#fff;}
+.comm-toggle-btn{font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1px solid #444;color:#aaa;background:transparent;cursor:pointer;}
+.comm-toggle-btn.active{background:#f9a825;color:#1a1a1a;border-color:#f9a825;}
+/* comm password modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:500;padding:20px;}
+.modal{background:#fff;border-radius:14px;padding:24px;max-width:360px;width:100%;}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:#888;margin-bottom:16px;}
+
 /* ── Feedback modal ───────────────────────────────────────────── */
 .fb-link{font-size:12px;color:#aaa;text-decoration:none;white-space:nowrap;border:0.5px solid #444;border-radius:5px;padding:4px 10px;transition:color .15s,border-color .15s;}
 .fb-link:hover{color:#fff;border-color:#888;}
@@ -115,7 +132,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="topbar-title">Giesener, Are You In?</div>
     
   </div>
-  <a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest a feature</a>
+  <div style="display:flex;align-items:center;gap:8px;"><a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a><button class="comm-toggle-btn" id="comm-toggle" onclick="toggleComm()">⚙ Comm</button></div>
 </div>
 
 <div class="hero">
@@ -168,18 +185,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </a>
 
-    <div class="bet-card locked">
-      <div class="card-stripe" style="background:#2E7D32;"></div>
-      <div class="card-body">
-        <div class="card-sport">⛳ Golf</div>
-        <div class="card-name">2026 PGA Championship Draft</div>
-        <div class="card-desc">Snake draft of the PGA Championship field. Most combined points from your picks wins the pot.</div>
-        <div class="card-footer">
-          <span class="card-status" style="background:#fff3cd;color:#856404;">🔒 Coming Soon</span>
-          <div><div class="card-leader"><span>Winner:</span> TBD</div></div>
+    <div id="golf-card-wrap">
+      <div class="bet-card locked" id="golf-card">
+        <div class="card-stripe" style="background:#2E7D32;"></div>
+        <div class="card-body">
+          <div class="card-sport">⛳ Golf</div>
+          <div class="card-name">2026 PGA Championship</div>
+          <div class="card-desc">Snake draft of the 2026 PGA Championship field. Lowest combined score to par wins.</div>
+          <div class="card-footer">
+            <span class="card-status" id="golf-card-status" style="background:#fff3cd;color:#856404;">🔒 Coming Soon</span>
+            <div><div class="card-leader" id="golf-card-leader"><span>Leader:</span> TBD</div></div>
+          </div>
         </div>
       </div>
     </div>
+
 
   </div>
 
@@ -6703,6 +6723,159 @@ function pwCheck() {
     setTimeout(() => { err.textContent = ''; input.style.borderColor = ''; }, 2000);
   }
 }
+</script>
+
+<!-- Commissioner password modal -->
+<div class="modal-bg" id="comm-pw-modal" style="display:none;">
+  <div class="modal">
+    <h3>Commissioner Mode</h3>
+    <div class="modal-sub">Enter the commissioner password to manage events.</div>
+    <input type="password" id="comm-pw-input" placeholder="password"
+      style="width:100%;border:1px solid #ddd;border-radius:7px;padding:9px 12px;font-size:14px;font-family:inherit;margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter')checkCommPw()">
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green" onclick="checkCommPw()">Enter</button>
+      <button class="btn btn-outline" style="color:#555;border-color:#ccc;" onclick="document.getElementById('comm-pw-modal').style.display='none'">Cancel</button>
+    </div>
+    <div id="comm-pw-error" style="font-size:12px;color:#e53935;margin-top:8px;min-height:16px;"></div>
+  </div>
+</div>
+
+<!-- Commissioner panel (shown when in comm mode) -->
+<div id="comm-panel" style="display:none;">
+  <div class="main" style="padding-bottom:0;padding-top:0;">
+    <div class="comm-bar">
+      <div class="comm-bar-label">⚙ Commissioner Controls</div>
+      <div class="comm-actions">
+        <span id="golf-unlock-status" style="font-size:11px;color:#555;"></span>
+        <button class="btn btn-green" id="btn-unlock-golf" onclick="setGolfUnlocked(true)">🔓 Unlock Golf Card</button>
+        <button class="btn btn-amber" id="btn-lock-golf" onclick="setGolfUnlocked(false)">🔒 Re-lock Golf Card</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Commissioner ────────────────────────────────────────────────
+const COMM_PW = 'golf';
+const GOLF_SLUG = 'pga-26';
+const FIREBASE_BASE = 'https://giesener-bets-default-rtdb.firebaseio.com';
+let isComm = false;
+let golfUnlocked = false;
+
+function toggleComm() {
+  if (isComm) {
+    isComm = false;
+    document.getElementById('comm-toggle').classList.remove('active');
+    document.getElementById('comm-panel').style.display = 'none';
+  } else {
+    document.getElementById('comm-pw-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('comm-pw-input').focus(), 50);
+  }
+}
+
+function checkCommPw() {
+  const val = document.getElementById('comm-pw-input').value.trim().toLowerCase();
+  if (val === COMM_PW) {
+    isComm = true;
+    document.getElementById('comm-toggle').classList.add('active');
+    document.getElementById('comm-pw-modal').style.display = 'none';
+    document.getElementById('comm-pw-input').value = '';
+    document.getElementById('comm-pw-error').textContent = '';
+    document.getElementById('comm-panel').style.display = 'block';
+    // Move panel to top of main content
+    const hero = document.querySelector('.hero');
+    hero.parentNode.insertBefore(document.getElementById('comm-panel'), hero.nextSibling);
+    updateCommButtons();
+  } else {
+    document.getElementById('comm-pw-error').textContent = 'Wrong password.';
+    document.getElementById('comm-pw-input').value = '';
+    setTimeout(() => { document.getElementById('comm-pw-error').textContent = ''; }, 2000);
+  }
+}
+
+function updateCommButtons() {
+  document.getElementById('btn-unlock-golf').style.display = golfUnlocked ? 'none' : '';
+  document.getElementById('btn-lock-golf').style.display = golfUnlocked ? '' : 'none';
+  document.getElementById('golf-unlock-status').textContent = golfUnlocked ? '✅ Golf card is live' : '🔒 Golf card is locked';
+}
+
+async function setGolfUnlocked(unlocked) {
+  await fetch(`${FIREBASE_BASE}/site_config/golf_unlocked.json`, {
+    method: 'PUT',
+    body: JSON.stringify(unlocked),
+    headers: { 'Content-Type': 'application/json' }
+  });
+  golfUnlocked = unlocked;
+  renderGolfCard(unlocked);
+  updateCommButtons();
+}
+
+// ── Golf card rendering ─────────────────────────────────────────
+function renderGolfCard(unlocked) {
+  const wrap = document.getElementById('golf-card-wrap');
+  const leaderHtml = `<div class="card-leader" id="golf-live-leader"><span>Leader:</span> TBD</div>`;
+  if (unlocked) {
+    wrap.innerHTML = `
+      <a class="bet-card" href="golf-live.html?slug=${GOLF_SLUG}">
+        <div class="card-stripe" style="background:#2E7D32;"></div>
+        <div class="card-body">
+          <div class="card-sport">⛳ Golf</div>
+          <div class="card-name">2026 PGA Championship</div>
+          <div class="card-desc">Snake draft of the 2026 PGA Championship field. Lowest combined score to par wins.</div>
+          <div class="card-footer">
+            <span class="card-status status-active">🟢 Live</span>
+            <div>${leaderHtml}</div>
+          </div>
+        </div>
+      </a>`;
+    loadGolfLeader();
+  } else {
+    wrap.innerHTML = `
+      <div class="bet-card locked">
+        <div class="card-stripe" style="background:#2E7D32;"></div>
+        <div class="card-body">
+          <div class="card-sport">⛳ Golf</div>
+          <div class="card-name">2026 PGA Championship</div>
+          <div class="card-desc">Snake draft of the 2026 PGA Championship field. Lowest combined score to par wins.</div>
+          <div class="card-footer">
+            <span class="card-status" style="background:#fff3cd;color:#856404;">🔒 Coming Soon</span>
+            <div>${leaderHtml}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+}
+
+// Pull live leader from Firebase golf live scores
+function loadGolfLeader() {
+  fetch(`${FIREBASE_BASE}/golf/${GOLF_SLUG}/live.json`)
+    .then(r => r.json())
+    .then(live => {
+      const el = document.getElementById('golf-live-leader');
+      if (!el || !live) return;
+      const scores = live.scores || {};
+      const draftData = null; // we don't have picks here, just show score leader
+      // Find the player with the lowest score (most under par)
+      const entries = Object.values(scores).filter(s => !s.cut && s.score !== undefined);
+      if (!entries.length) return;
+      entries.sort((a, b) => a.score - b.score);
+      const best = entries[0];
+      const name = best.espnName || Object.keys(scores).find(k => scores[k] === best) || '—';
+      const disp = best.display || (best.score === 0 ? 'E' : best.score > 0 ? '+' + best.score : '' + best.score);
+      el.innerHTML = `<span>Leader:</span> ${name.split(' ').pop()} (${disp})`;
+    })
+    .catch(() => {});
+}
+
+// Load unlock state from Firebase on page load
+fetch(`${FIREBASE_BASE}/site_config/golf_unlocked.json`)
+  .then(r => r.json())
+  .then(val => {
+    golfUnlocked = val === true;
+    renderGolfCard(golfUnlocked);
+  })
+  .catch(() => {});
 </script>
 </body>
 </html>
