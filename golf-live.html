@@ -684,7 +684,6 @@ function renderLobby() {
         <button class="btn btn-outline" style="width:100%;margin-top:12px;margin-bottom:6px;" onclick="window.genAlt()">${previewAltOrder?'Re-randomize':'Randomize'} Alternate Order</button>
         ${altPrev ? `<div class="order-preview">${altPrev}</div>` : ''}
         <button class="btn btn-green" style="width:100%;padding:12px;margin-top:16px;" onclick="window.startDraft()" ${canStart?'':'disabled'}>${canStart?'Start Draft →':'Randomize both orders first'}</button>
-        <button class="btn btn-outline" style="width:100%;margin-top:8px;" onclick="window.importOdds()">Import Odds (DK + FD)</button>
         <button class="btn btn-outline btn-sm" style="margin-top:16px;color:#c62828;border-color:#eee;" onclick="document.getElementById('reset-modal').style.display='flex'">Reset to Setup</button>
       </div>
     </div>`;
@@ -821,7 +820,7 @@ function renderDraft() {
         <button class="btn btn-sm btn-outline" onclick="window.doUndo()" ${(draft.currentPickIndex > 0 || draft.currentPhase === 'alternate') ? '' : 'disabled'} style="color:#1a1a1a;border-color:#ccc;">↩ Undo</button>
         <button class="btn btn-sm btn-outline" onclick="window.doRedo()" style="color:#1a1a1a;border-color:#ccc;">↪ Redo</button>
         ${isComm ? `<button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>` : ''}
-        ${isComm ? `<button class="btn btn-sm btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.importOdds()">Odds</button>` : ''}
+        ${isComm ? `<button class="btn btn-sm btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.importOdds()">↻ Import Odds</button>` : ''}
       </div>
       ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
       <div class="timer-bar">
