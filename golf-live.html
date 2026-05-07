@@ -598,6 +598,7 @@ function renderSetup() {
         <div style="display:flex;gap:8px;">
           <button class="btn btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.setupStepBack()">← Back</button>
           <button class="btn btn-green" onclick="window.submitSetup()">Open Lobby →</button>
+          <button class="btn btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.setupImportOdds()">↻ Import Odds</button>
         </div>
         `}
       </div>
@@ -643,6 +644,14 @@ window.submitSetup = async function() {
   setupStep = 1;
   connectWS();
   await proxyApi('/setup', 'POST', { name: setupName, field: setupField, autopickList, owners: setupOwners });
+};
+
+// Save setup first (so odds have a draft to attach to), then import
+window.setupImportOdds = async function() {
+  const autopickList = [...document.querySelectorAll('.assign-check:checked')].map(el => ({ name: el.value }));
+  connectWS();
+  await proxyApi('/setup', 'POST', { name: setupName, field: setupField, autopickList, owners: setupOwners });
+  window.importOdds();
 };
 
 // ── LOBBY ──────────────────────────────────────────────────────────
