@@ -1828,20 +1828,96 @@ function showOddsResult(data) {
     <button class="btn btn-outline btn-sm" style="margin-top:12px;width:100%;" onclick="document.getElementById('odds-modal').style.display='none'">Done</button>`;
 }
 
+// ── BetMGM browser-side odds fetch ─────────────────────────────────
+// Fetches directly from the browser (bypasses Railway IP block).
+// BetMGM CDS API access ID — embedded in their frontend JS, public.
+const BETMGM_ACCESS_ID = 'ZjVlNTEzYzAtMGUwNC00YTk1LTg4OGYtZDQ4ZGNhOWY4Mjc1';
+const BETMGM_BASE = `x-bwin-accessid=${BETMGM_ACCESS_ID}&lang=en-us&country=US&usercountry=US`;
+
+async function fetchBetMGMOdds() {
+  // Golf sport ID = 4 on Entain/BetMGM platform
+  // offerMapping=Outrights gets win + top10 + make cut as separate fixtures
+  const url = `https://www.ny.betmgm.com/cds-api/bettingoffer/fixtures?${BETMGM_BASE}&fixtureTypes=Standard&state=Latest&offerMapping=Outrights&sportIds=4&skip=0&take=200&sortBy=Tags`;
+  const r = await fetch(url, {
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+  });
+  if (!r.ok) throw new Error(`BetMGM returned ${r.status}`);
+  const data = await r.json();
+
+  // Parse fixtures — each fixture is one market type (Win, Top 10, Make Cut)
+  // structure: { fixtures: [{ name, markets: [{ name, options: [{ name, price: { usOdds } }] }] }] }
+  const odds = {}; // { playerName: { win, top10, cut } }
+
+  (data.fixtures || []).forEach(fixture => {
+    const fixtureName = (fixture.name?.value || '').toLowerCase();
+    const isWin    = fixtureName.includes('winner') || fixtureName.includes('outright');
+    const isTop10  = fixtureName.includes('top 10') || fixtureName.includes('top ten');
+    const isCut    = fixtureName.includes('make cut') || fixtureName.includes('make the cut');
+    if (!isWin && !isTop10 && !isCut) return;
+
+    (fixture.markets || []).forEach(market => {
+      (market.options || []).forEach(opt => {
+        const name = opt.name?.value;
+        if (!name) return;
+        const usOdds = opt.price?.usOdds;
+        if (usOdds === undefined || usOdds === null) return;
+        const fmt = usOdds >= 0 ? `+${Math.round(usOdds)}` : `${Math.round(usOdds)}`;
+        if (!odds[name]) odds[name] = {};
+        if (isWin)   odds[name].win   = fmt;
+        if (isTop10) odds[name].top10 = fmt;
+        if (isCut)   odds[name].cut   = fmt;
+      });
+    });
+  });
+
+  return { odds, fixtureCount: (data.fixtures || []).length, raw: data };
+}
+
 window.importOdds = async function() {
-  document.getElementById('odds-content').innerHTML = '<p style="color:#888;">Fetching live odds…</p>';
+  document.getElementById('odds-content').innerHTML = `
+    <p style="color:#888;margin-bottom:12px;">Fetching odds from BetMGM (browser-side)…</p>
+    <p style="font-size:11px;color:#aaa;">This fetches directly from your browser, bypassing server IP restrictions.</p>`;
   document.getElementById('odds-modal').style.display = 'flex';
+
+  try {
+    // First try browser-side BetMGM fetch
+    let betmgmResult = null;
+    try {
+      betmgmResult = await fetchBetMGMOdds();
+    } catch(e) {
+      console.warn('[odds] BetMGM browser fetch failed:', e.message);
+    }
+
+    if (betmgmResult && Object.keys(betmgmResult.odds).length > 0) {
+      // Got BetMGM odds — POST to server for matching+saving
+      document.getElementById('odds-content').innerHTML = `<p style="color:#888;">Matching ${Object.keys(betmgmResult.odds).length} players to field…</p>`;
+      const data = await proxyApi('/odds/betmgm', 'POST', { odds: betmgmResult.odds });
+      if (data.error) throw new Error(data.error);
+      showOddsResult(data);
+    } else {
+      // Fallback to server-side Odds API (win odds only)
+      document.getElementById('odds-content').innerHTML = `<p style="color:#888;">BetMGM unavailable, trying Odds API (win odds only)…</p>`;
+      const data = await proxyApi('/odds', 'POST');
+      if (data.error) throw new Error(data.error);
+      showOddsResult(data);
+    }
+  } catch(e) {
+    document.getElementById('odds-content').innerHTML = `
+      <p style="color:#c62828;margin-bottom:8px;">Error: ${e.message}</p>
+      <p style="font-size:11px;color:#888;margin-bottom:12px;">Make sure you're logged into BetMGM in another tab, or try the Odds API fallback below.</p>
+      <button class="btn btn-outline btn-sm" style="margin-bottom:6px;width:100%;" onclick="window.importOddsFallback()">↻ Try Odds API (win odds only)</button>
+      <button class="btn btn-outline btn-sm" style="width:100%;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
+  }
+};
+
+window.importOddsFallback = async function() {
+  document.getElementById('odds-content').innerHTML = '<p style="color:#888;">Fetching via Odds API…</p>';
   try {
     const data = await proxyApi('/odds', 'POST');
-    if (data.error) {
-      document.getElementById('odds-content').innerHTML =
-        `<p style="color:#c62828;">${data.error}</p>
-        <button class="btn btn-outline btn-sm" style="margin-top:12px;display:block;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
-      return;
-    }
+    if (data.error) throw new Error(data.error);
     showOddsResult(data);
   } catch(e) {
-    document.getElementById('odds-content').innerHTML = `<p style="color:#c62828;">Error: ${e.message}</p><button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
+    document.getElementById('odds-content').innerHTML = `<p style="color:#c62828;">Error: ${e.message}</p>`;
   }
 };
 
