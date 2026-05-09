@@ -1188,6 +1188,7 @@ function renderLive(isFinal) {
         <button class="btn btn-sm ${subOpen&&subRound===1?'btn-red':subOpen&&subRound===2?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===2?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR1()" ${subOpen&&subRound===2?'disabled':''}>R1 Sub Window ($5) ${subOpen&&subRound===1?'— Close':subOpen&&subRound===2?'— Locked':'— Open'}</button>
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         ${subs.length > 0 ? `<button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoSub()">↩ Undo Last Sub</button>` : ''}
+        <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.markRoundEnd()">📍 Mark Round End</button>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
         <span style="font-size:10px;color:#555;">Round auto-detected from ESPN</span>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">↻ Refresh Odds</button>
@@ -1594,7 +1595,18 @@ function buildSparklines(lbData) {
             ${showLabel ? `<text x="${PAD_L - 5}" y="${y + 3.5}" text-anchor="end" font-size="10" fill="${isZero ? '#999' : '#bbb'}" font-weight="${isZero ? '700' : '400'}">${label}</text>` : ''}`;
   }).join('');
 
-  // Owner lines with end labels
+  // Round markers — vertical lines from live.roundMarkers
+  const roundMarkers = Array.isArray(live?.roundMarkers) ? live.roundMarkers : Object.values(live?.roundMarkers || {});
+  const markerLines = roundMarkers.map((m, idx) => {
+    if (!m?.ts) return '';
+    const firstTs = scoreHistory[0]?.ts, lastTs = scoreHistory[n-1]?.ts;
+    if (!firstTs || !lastTs || m.ts < firstTs || m.ts > lastTs) return '';
+    const xPos = PAD_L + ((m.ts - firstTs) / (lastTs - firstTs)) * chartW;
+    return `<line x1="${xPos}" x2="${xPos}" y1="${PAD_T}" y2="${PAD_T + chartH}" stroke="#aaa" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="${xPos + 3}" y="${PAD_T + 10}" font-size="9" fill="#aaa" font-weight="700">R${m.round}</text>`;
+  }).join('');
+
+  // Owner lines with end labels — score first, then name
   const ownerLines = owners().map(owner => {
     const vals = ownerData[owner];
     const validPts = vals.map((v, i) => v !== null ? {x: toX(i), y: toY(v), v} : null).filter(Boolean);
@@ -1605,21 +1617,16 @@ function buildSparklines(lbData) {
     const labelColor = last.v < 0 ? '#2e7d32' : last.v > 0 ? '#c62828' : '#555';
     return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
             <circle cx="${last.x}" cy="${last.y}" r="2" fill="${color(owner)}"/>
-            <text x="${last.x + 6}" y="${last.y + 3.5}" font-size="10" font-weight="700" fill="${color(owner)}">${owner}</text>
-            <text x="${last.x + 6 + owner.length * 6}" y="${last.y + 3.5}" font-size="10" fill="${labelColor}"> ${label}</text>`;
+            <text x="${last.x + 6}" y="${last.y + 3.5}" font-size="10" font-weight="700" fill="${labelColor}">${label}</text>
+            <text x="${last.x + 6 + label.length * 6}" y="${last.y + 3.5}" font-size="10" fill="${color(owner)}"> ${owner}</text>`;
   }).join('');
-
-  // X axis time labels
-  const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
-  const xLabels = `<text x="${PAD_L}" y="${H - 4}" text-anchor="middle" font-size="10" fill="#bbb">${fmtTime(scoreHistory[0]?.ts)}</text>
-                   <text x="${W - PAD_R}" y="${H - 4}" text-anchor="middle" font-size="10" fill="#bbb">${fmtTime(scoreHistory[n-1]?.ts)}</text>`;
 
   return `<div class="spark-card">
     <div class="spark-title">Score Trend</div>
     <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;">
       ${gridLines}
+      ${markerLines}
       ${ownerLines}
-      ${xLabels}
     </svg>
   </div>`;
 }
@@ -1766,6 +1773,15 @@ window.clearOverride = async function(safeKey, playerName) {
 };
 
 // ── Sub window ─────────────────────────────────────────────────────
+window.markRoundEnd = async function() {
+  const round = live?.round || 1;
+  if (!confirm(`Mark end of Round ${round} on the score trend chart?`)) return;
+  const existing = Array.isArray(live?.roundMarkers) ? live.roundMarkers : Object.values(live?.roundMarkers || {});
+  const newMarkers = [...existing, { round, ts: Date.now() }];
+  await update(liveRef(), { roundMarkers: newMarkers });
+  showToast(`📍 Round ${round} end marked on chart`);
+};
+
 window.setRound = async function(r) {
   await update(liveRef(), { round: r });
 };
