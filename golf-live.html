@@ -1441,7 +1441,11 @@ function renderLive(isFinal) {
       <div class="round-bar">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:15px;font-weight:800;">Round ${live.round||1}</div>
-          ${live.cutLine !== undefined && live.cutLine !== null ? `<span style="font-size:12px;color:#888;">Cut: <strong>${typeof live.cutLine === 'number' ? (live.cutLine === 0 ? 'E' : live.cutLine > 0 ? '+'+live.cutLine : live.cutLine) : live.cutLine}</strong></span>` : ''}
+          ${live.cutLine !== undefined && live.cutLine !== null ? (() => {
+            const cl = live.cutLine;
+            const display = typeof cl === 'number' ? (cl === 0 ? 'E' : cl > 0 ? `+${cl}` : `${cl}`) : cl;
+            return `<span style="display:inline-flex;align-items:center;gap:4px;background:#fff3cd;border:1px solid #ffc107;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700;color:#856404;">✂ Projected Cut: ${display}</span>`;
+          })() : ''}
         </div>
         <div style="font-size:12px;color:#888;display:flex;align-items:center;gap:8px;">
           <span>${owners().length} players · ${subs.length} sub${subs.length!==1?'s':''} used</span>
