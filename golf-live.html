@@ -1559,7 +1559,7 @@ function buildLeaderboard() {
 
 // ── Score trend chart ──────────────────────────────────────────────
 function buildSparklines(lbData) {
-  const W = 900, H = 110, PAD_L = 36, PAD_R = 90, PAD_T = 10, PAD_B = 20;
+  const W = 900, H = 110, PAD_L = 36, PAD_R = 90, PAD_T = 10, PAD_B = 8;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
   const n = scoreHistory.length;
@@ -1618,7 +1618,7 @@ function buildSparklines(lbData) {
     return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
             <circle cx="${last.x}" cy="${last.y}" r="2" fill="${color(owner)}"/>
             <text x="${last.x + 8}" y="${last.y + 3.5}" font-size="10" font-weight="700" fill="${labelColor}">${label}</text>
-            <text x="${last.x + 8 + 36}" y="${last.y + 3.5}" font-size="10" fill="${color(owner)}">${owner}</text>`;
+            <text x="${last.x + 8 + 12}" y="${last.y + 3.5}" font-size="10" fill="${color(owner)}">${owner}</text>`;
   }).join('');
 
   return `<div style="margin-top:14px;">
