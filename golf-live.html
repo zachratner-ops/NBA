@@ -144,10 +144,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* Sparkline */
 .spark-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:16px;margin-top:14px;}
 .spark-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:12px;}
-.spark-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.spark-row:last-child{margin-bottom:0;}
-.spark-owner{font-size:12px;font-weight:700;width:50px;flex-shrink:0;}
-.spark-val{font-size:12px;font-weight:700;width:36px;text-align:right;flex-shrink:0;}
+.spark-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:12px;}
+.spark-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;}
 
 /* Commissioner panel */
 .comm-panel{background:#1a1a1a;border-radius:12px;padding:14px 16px;margin-bottom:14px;}
@@ -1558,24 +1556,91 @@ function buildLeaderboard() {
   });
 }
 
-// ── Sparklines ─────────────────────────────────────────────────────
+// ── Score trend chart ──────────────────────────────────────────────
 function buildSparklines(lbData) {
-  const lines = owners().map(owner => {
-    const vals = scoreHistory.map(h => h.scores[owner]).filter(v => v !== null && v !== undefined);
-    if (vals.length < 2) return '';
-    const min = Math.min(...vals) - 1, max = Math.max(...vals) + 1, range = max - min || 1;
-    const w = 200, h = 28;
-    const pts = vals.map((v,i) => `${(i/(vals.length-1))*w},${h-((v-min)/range)*h}`).join(' ');
-    const cur = vals[vals.length-1];
-    return `<div class="spark-row">
-      <div class="spark-owner" style="color:${color(owner)}">${owner}</div>
-      <svg class="spark-svg" style="flex:1;height:28px;" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-        <polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-      </svg>
-      <div class="spark-val" style="color:${cur<0?'#2e7d32':cur>0?'#c62828':'#1a1a1a'}">${fmtScore(cur)}</div>
+  const W = 600, H = 180, PAD_L = 36, PAD_R = 12, PAD_T = 12, PAD_B = 24;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const n = scoreHistory.length;
+  if (n < 2) return '';
+
+  // Collect all values across all owners to get global min/max
+  const ownerData = {};
+  owners().forEach(owner => {
+    const vals = scoreHistory.map(h => h.scores[owner] !== undefined && h.scores[owner] !== null ? h.scores[owner] : null);
+    ownerData[owner] = vals;
+  });
+  const allVals = Object.values(ownerData).flat().filter(v => v !== null);
+  if (!allVals.length) return '';
+
+  // Y axis: reversed (negative = top, positive = bottom)
+  const rawMin = Math.min(...allVals), rawMax = Math.max(...allVals);
+  // Add padding and round to nearest int
+  const yMin = Math.floor(rawMin) - 1; // most negative — at TOP of chart
+  const yMax = Math.ceil(rawMax) + 1;  // most positive — at BOTTOM of chart
+  const yRange = yMax - yMin || 1;
+
+  const toX = i => PAD_L + (i / (n - 1)) * chartW;
+  // Reversed: yMin maps to y=PAD_T (top), yMax maps to y=PAD_T+chartH (bottom)
+  const toY = v => PAD_T + ((v - yMin) / yRange) * chartH;
+
+  // Y axis gridlines and labels — pick ~5 nice values
+  const step = Math.ceil(yRange / 5) || 1;
+  const yTicks = [];
+  for (let v = Math.ceil(yMin); v <= Math.floor(yMax); v += step) yTicks.push(v);
+
+  const gridLines = yTicks.map(v => {
+    const y = toY(v);
+    const label = v === 0 ? 'E' : v > 0 ? `+${v}` : `${v}`;
+    return `<line x1="${PAD_L}" x2="${W - PAD_R}" y1="${y}" y2="${y}" stroke="#f0f0f0" stroke-width="1"/>
+            <text x="${PAD_L - 4}" y="${y + 4}" text-anchor="end" font-size="9" fill="#aaa">${label}</text>`;
+  }).join('');
+
+  // Zero line (E) — more prominent
+  const zeroY = toY(0);
+  const zeroLine = (zeroY >= PAD_T && zeroY <= PAD_T + chartH)
+    ? `<line x1="${PAD_L}" x2="${W - PAD_R}" y1="${zeroY}" y2="${zeroY}" stroke="#ddd" stroke-width="1.5" stroke-dasharray="4,3"/>`
+    : '';
+
+  // Owner lines
+  const ownerLines = owners().map(owner => {
+    const vals = ownerData[owner];
+    const pts = vals.map((v, i) => v !== null ? `${toX(i)},${toY(v)}` : null).filter(Boolean);
+    if (pts.length < 2) return '';
+    return `<polyline points="${pts.join(' ')}" fill="none" stroke="${color(owner)}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="${toX(vals.findLastIndex(v => v !== null))}" cy="${toY(vals.filter(v=>v!==null).at(-1))}" r="3" fill="${color(owner)}"/>`;
+  }).join('');
+
+  // X axis time labels — first and last
+  const firstTs = scoreHistory[0]?.ts;
+  const lastTs = scoreHistory[n-1]?.ts;
+  const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+  const xLabels = `<text x="${PAD_L}" y="${H}" text-anchor="middle" font-size="9" fill="#aaa">${fmtTime(firstTs)}</text>
+                   <text x="${W - PAD_R}" y="${H}" text-anchor="middle" font-size="9" fill="#aaa">${fmtTime(lastTs)}</text>`;
+
+  // Legend
+  const legend = owners().map(owner => {
+    const vals = ownerData[owner].filter(v => v !== null);
+    if (!vals.length) return '';
+    const cur = vals.at(-1);
+    const scoreStr = cur === 0 ? 'E' : cur > 0 ? `+${cur}` : `${cur}`;
+    return `<div class="spark-legend-item">
+      <svg width="16" height="8" style="flex-shrink:0"><line x1="0" y1="4" x2="16" y2="4" stroke="${color(owner)}" stroke-width="2.5" stroke-linecap="round"/></svg>
+      <span style="color:${color(owner)}">${owner}</span>
+      <span style="color:${cur<0?'#2e7d32':cur>0?'#c62828':'#555'};font-size:10px;">${scoreStr}</span>
     </div>`;
   }).join('');
-  return `<div class="spark-card"><div class="spark-title">Score Trend</div>${lines}</div>`;
+
+  return `<div class="spark-card">
+    <div class="spark-title">Score Trend</div>
+    <svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;">
+      ${gridLines}
+      ${zeroLine}
+      ${ownerLines}
+      ${xLabels}
+    </svg>
+    <div class="spark-legend">${legend}</div>
+  </div>`;
 }
 
 // ── Score refresh ──────────────────────────────────────────────────
