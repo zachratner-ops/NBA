@@ -569,6 +569,10 @@ function renderSetup() {
         ${setupStep === 1 ? `
         <div class="form-group"><label>Tournament name</label>
           <input type="text" id="s-name" placeholder="e.g. 2026 PGA Championship" value="${draft?.name||''}"></div>
+        <div class="form-group"><label>ESPN Event ID</label>
+          <input type="text" id="s-espn" placeholder="e.g. 401811944" value="${draft?.espnEventId||''}" style="font-family:monospace;">
+          <div style="font-size:11px;color:#888;margin-top:4px;">Find at espn.com/golf — in the URL of the leaderboard page</div>
+        </div>
         <div class="form-group"><label>Participants</label>
           <div class="owner-check-grid">${ALL_OWNERS.map(o => `
             <label class="owner-check">
@@ -607,6 +611,7 @@ function renderSetup() {
 
 let setupName = '';
 let setupOwners = [];
+let setupEventId = '';
 
 window.setupStep1Next = function() {
   const nameEl = document.getElementById('s-name');
@@ -614,6 +619,7 @@ window.setupStep1Next = function() {
   const fieldText = document.getElementById('s-field').value.trim();
   if (!fieldText) { alert('Enter at least one player.'); return; }
   setupName = nameEl.value.trim();
+  setupEventId = document.getElementById('s-espn')?.value?.trim() || '';
   setupOwners = ALL_OWNERS.filter(o => document.getElementById('p-' + o)?.checked);
   if (setupOwners.length < 2) { alert('Select at least 2 participants.'); return; }
   setupField = fieldText.split('\n').filter(Boolean).map(l => ({ name: l.trim() }));
@@ -643,7 +649,7 @@ window.submitSetup = async function() {
   const autopickList = [...document.querySelectorAll('.assign-check:checked')].map(el => ({ name: el.value }));
   setupStep = 1;
   connectWS();
-  await proxyApi('/setup', 'POST', { name: setupName, field: setupField, autopickList, owners: setupOwners });
+  await proxyApi('/setup', 'POST', { name: setupName, field: setupField, autopickList, owners: setupOwners, espnEventId: setupEventId });
 };
 
 // Save setup first (so odds have a draft to attach to), then import
@@ -1135,11 +1141,15 @@ window.goLive = async function() {
     subWindowRound: null,
     subs: [],
     pot: (draft.owners?.length || 7) * 25,
-    espnEventId: null,
+    espnEventId: draft.espnEventId || null,
     scores: {},
     lastUpdated: null
   });
   await update(draftRef(), { status: 'live' });
+  // If event ID was set at setup, trigger immediate score fetch
+  if (draft.espnEventId) {
+    proxyApi('/eventid', 'POST', { eventId: draft.espnEventId }).catch(() => {});
+  }
 };
 
 // ── LIVE TRACKER ───────────────────────────────────────────────────
@@ -1173,8 +1183,9 @@ function renderLive(isFinal) {
       <div class="comm-label">Commissioner Controls</div>
       <div class="comm-actions">
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" id="espn-id-input" value="${live.espnEventId||''}" placeholder="ESPN Event ID" style="border:1px solid #444;background:#2a2a2a;color:#fff;border-radius:6px;padding:5px 10px;font-size:12px;width:150px;">
-          <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.setEspnId()">Set</button>
+          <span style="font-size:11px;color:#888;">ESPN ID:</span>
+          <span style="font-size:12px;color:#fff;font-family:monospace;">${live.espnEventId || '<span style="color:#555">not set</span>'}</span>
+          <button class="btn btn-sm btn-outline" style="color:#aaa;border-color:#444;" onclick="window.promptEspnId()">Change</button>
         </div>
         <button class="btn btn-sm ${subOpen&&subRound===1?'btn-red':subOpen&&subRound===2?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===2?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR1()" ${subOpen&&subRound===2?'disabled':''}>R1 Sub Window ($5) ${subOpen&&subRound===1?'— Close':subOpen&&subRound===2?'— Locked':'— Open'}</button>
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
@@ -1659,6 +1670,14 @@ function applyFuzzyScores(espnPlayers) {
     if (!result[name]) result[name] = data;
   });
   return result;
+};
+
+window.promptEspnId = async function() {
+  const val = prompt('Enter new ESPN Event ID:', live?.espnEventId || '');
+  if (val === null) return; // cancelled
+  await update(liveRef(), { espnEventId: val.trim() });
+  await update(draftRef(), { espnEventId: val.trim() });
+  if (val.trim()) proxyApi('/eventid', 'POST', { eventId: val.trim() }).catch(() => {});
 };
 
 window.setEspnId = async function() {
