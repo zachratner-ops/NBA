@@ -1558,7 +1558,7 @@ function buildLeaderboard() {
 
 // ── Score trend chart ──────────────────────────────────────────────
 function buildSparklines(lbData) {
-  const W = 600, H = 130, PAD_L = 32, PAD_R = 80, PAD_T = 10, PAD_B = 20;
+  const W = 600, H = 110, PAD_L = 32, PAD_R = 80, PAD_T = 10, PAD_B = 20;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
   const n = scoreHistory.length;
@@ -1585,12 +1585,13 @@ function buildSparklines(lbData) {
   const yTicks = [];
   for (let v = yMin; v <= yMax; v += 4) yTicks.push(v);
 
-  const gridLines = yTicks.map(v => {
+  const gridLines = yTicks.map((v, idx) => {
     const y = toY(v);
     const isZero = v === 0;
+    const showLabel = isZero || idx % 2 === 0;
     const label = isZero ? 'E' : v > 0 ? `+${v}` : `${v}`;
     return `<line x1="${PAD_L}" x2="${W - PAD_R}" y1="${y}" y2="${y}" stroke="${isZero ? '#ccc' : '#f0f0f0'}" stroke-width="${isZero ? 1.5 : 1}" stroke-dasharray="${isZero ? '4,3' : 'none'}"/>
-            <text x="${PAD_L - 5}" y="${y + 3.5}" text-anchor="end" font-size="8" fill="${isZero ? '#999' : '#bbb'}" font-weight="${isZero ? '700' : '400'}">${label}</text>`;
+            ${showLabel ? `<text x="${PAD_L - 5}" y="${y + 3.5}" text-anchor="end" font-size="8" fill="${isZero ? '#999' : '#bbb'}" font-weight="${isZero ? '700' : '400'}">${label}</text>` : ''}`;
   }).join('');
 
   // Owner lines with end labels
@@ -1602,8 +1603,8 @@ function buildSparklines(lbData) {
     const last = validPts[validPts.length - 1];
     const label = last.v === 0 ? 'E' : last.v > 0 ? `+${last.v}` : `${last.v}`;
     const labelColor = last.v < 0 ? '#2e7d32' : last.v > 0 ? '#c62828' : '#555';
-    return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
-            <circle cx="${last.x}" cy="${last.y}" r="2.5" fill="${color(owner)}"/>
+    return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="${last.x}" cy="${last.y}" r="2" fill="${color(owner)}"/>
             <text x="${last.x + 6}" y="${last.y + 3.5}" font-size="8" font-weight="700" fill="${color(owner)}">${owner}</text>
             <text x="${last.x + 6 + owner.length * 5}" y="${last.y + 3.5}" font-size="8" fill="${labelColor}"> ${label}</text>`;
   }).join('');
