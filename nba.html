@@ -488,7 +488,7 @@ function renderCards(){
       var currGap = leaderTot - (sorted[1] ? sorted[1].tot : 0);
       var ext = currGap - prevGap;
       if (!hasPrev || ext === 0) { gapLine = '— gap unchanged'; gapColor = '#888'; }
-      else if (ext > 0) { gapLine = '▲ extended by ' + ext; gapColor = '#2a9d5c'; }
+      else if (ext > 0) { gapLine = '▲ ' + ext; gapColor = '#2a9d5c'; }
       else { gapLine = '▼ caught by ' + Math.abs(ext); gapColor = '#e05252'; }
     } else {
       var prevBehindMe = prevLeaderTot - prevTot;
