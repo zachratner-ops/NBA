@@ -78,6 +78,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .odds-pill .odds-label{font-size:8px;font-weight:600;opacity:0.75;text-transform:uppercase;letter-spacing:.04em;}
 .dk{background:#1a5c2a;color:#fff;}
 .fd{background:#1a3a5c;color:#fff;}
+.odds-top5{background:#1a4a3a;color:#fff;}
 .odds-top10{background:#1a3a5c;color:#fff;}
 .odds-cut{background:#5c1a1a;color:#fff;}
 .pool-list{max-height:350px;overflow-y:auto;}
@@ -584,6 +585,10 @@ function renderSetup() {
         </div>
         <div class="form-group"><label>Player field (one name per line)</label>
           <textarea id="s-field" placeholder="Scottie Scheffler&#10;Rory McIlroy&#10;…">${setupField.map(p=>p.name).join('\n')}</textarea></div>
+        <div class="form-group"><label>Paste odds from DraftKings / FanDuel <span style="font-size:11px;color:#888;font-weight:400;">(optional — to win, top 5, top 10)</span></label>
+          <textarea id="s-odds" placeholder="Scottie Scheffler&#10;+345&#10;-132&#10;-265&#10;Rory McIlroy&#10;+800&#10;…" style="height:120px;font-family:monospace;font-size:11px;"></textarea>
+          <div style="font-size:11px;color:#888;margin-top:4px;">Copy directly from DK or FD — paste as-is, the parser handles the format</div>
+        </div>
         <button class="btn btn-green" onclick="window.setupStep1Next()">Next: Set Assign List →</button>
         ` : `
         <div style="margin-bottom:16px;">
@@ -615,6 +620,34 @@ let setupName = '';
 let setupOwners = [];
 let setupEventId = '';
 
+function parseOddsPaste(text) {
+  // Format: Name\n\n+odds\n\n+odds\n\n+odds (blank lines between each)
+  const lines = text.split('\n').map(l => l.trim());
+  const map = {};
+  let currentName = null;
+  let oddsBuffer = [];
+  const isOdds = l => /^[+\-−]\d+$/.test(l);
+  const fmtOdds = l => l.replace('−', '-');
+
+  for (const line of lines) {
+    if (!line) continue; // skip blank lines but don't reset state
+    if (isOdds(line)) {
+      if (currentName) oddsBuffer.push(fmtOdds(line));
+    } else {
+      // New name — flush previous
+      if (currentName && oddsBuffer.length > 0) {
+        map[currentName] = { odds_dk: oddsBuffer[0]||null, odds_top5: oddsBuffer[1]||null, odds_top10: oddsBuffer[2]||null };
+      }
+      currentName = line.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      oddsBuffer = [];
+    }
+  }
+  if (currentName && oddsBuffer.length > 0) {
+    map[currentName] = { odds_dk: oddsBuffer[0]||null, odds_top5: oddsBuffer[1]||null, odds_top10: oddsBuffer[2]||null };
+  }
+  return map;
+}
+
 window.setupStep1Next = function() {
   const nameEl = document.getElementById('s-name');
   if (!nameEl?.value.trim()) { alert('Enter a tournament name.'); return; }
@@ -625,6 +658,22 @@ window.setupStep1Next = function() {
   setupOwners = ALL_OWNERS.filter(o => document.getElementById('p-' + o)?.checked);
   if (setupOwners.length < 2) { alert('Select at least 2 participants.'); return; }
   setupField = fieldText.split('\n').filter(Boolean).map(l => ({ name: l.trim() }));
+
+  // Parse pasted odds if provided
+  const oddsText = document.getElementById('s-odds')?.value?.trim();
+  if (oddsText) {
+    const oddsMap = parseOddsPaste(oddsText);
+    setupField = setupField.map(p => {
+      const norm = p.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const match = Object.keys(oddsMap).find(k => k === norm);
+      if (match) return { ...p, ...oddsMap[match] };
+      // Try last name fallback
+      const lastName = norm.split(' ').pop();
+      const lastMatch = Object.keys(oddsMap).find(k => k.split(' ').pop() === lastName);
+      if (lastMatch) return { ...p, ...oddsMap[lastMatch] };
+      return p;
+    });
+  }
   setupStep = 2;
   renderSetup();
 };
@@ -789,7 +838,7 @@ function renderDraft() {
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
-      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">DK</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">DK</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
 
   const apHtml = (draft.autopickList || []).map(p =>
@@ -970,7 +1019,7 @@ window.setPoolSort = function(mode) {
       .filter(p => !q || p.name.toLowerCase().includes(q))
       .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
         <div class="player-name">${p.name}</div>
-        <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">DK</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+        <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">DK</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
       </div>`).join('');
   }
   // Update toggle button styles
@@ -992,7 +1041,7 @@ window.onSearch = function(val) {
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
-      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">DK</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">DK</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
   poolEl.innerHTML = poolHtml;
 };
