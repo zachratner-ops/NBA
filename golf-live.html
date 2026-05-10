@@ -124,9 +124,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .rc-score.out-txt{color:#aaa;font-size:14px;}
 .rc-rank{font-size:11px;color:#888;margin-bottom:9px;}
 .rc-round-meta{font-size:10px;color:#bbb;margin-bottom:6px;}
-.round-score-box{display:inline-flex;align-items:center;background:#f5f5f3;border:1px solid #e0e0e0;border-radius:3px;padding:1px 4px;font-size:10px;color:#888;white-space:nowrap;width:60px;}
-.round-score-val{width:22px;text-align:right;flex-shrink:0;}
-.round-score-thru{width:32px;text-align:left;padding-left:3px;flex-shrink:0;color:#bbb;}
+.round-score-box{display:inline-flex;align-items:center;justify-content:center;gap:2px;background:#f5f5f3;border:1px solid #e0e0e0;border-radius:3px;padding:1px 5px;font-size:10px;color:#888;white-space:nowrap;width:60px;}
 .rc-player{font-size:12px;padding:4px 0;min-height:24px;display:grid;grid-template-columns:1fr 52px 44px;align-items:center;color:#555;border-bottom:0.5px solid #f5f5f3;gap:4px;}
 .rc-player:last-child{border-bottom:none;}
 .rc-player.cut{color:#bbb;text-decoration:line-through;}
@@ -1272,20 +1270,21 @@ function renderLive(isFinal) {
     };
 
     const buildRoundPill = (g, isCut) => {
-      if (isCut) return `<span class="round-score-box"><span class="round-score-val" style="color:#ccc;">—</span><span class="round-score-thru"></span></span>`;
+      if (isCut) return `<span class="round-score-box" style="color:#ccc;">—</span>`;
       const rs = g.roundScore !== null && g.roundScore !== undefined ? fmtScore(g.roundScore) : null;
       const rsCls = g.roundScore < 0 ? 'under' : g.roundScore > 0 ? 'over' : '';
       const thruStr = g.thru || null;
 
-      // Not started — show tee time
+      // Not started — thru may be a tee time ISO string, or teeTime field may have it
       if (rs === null && (!thruStr || thruStr.includes('T') || thruStr.includes(':'))) {
+        // Try teeTime field first, then thru if it looks like an ISO/time string
         const rawTime = g.teeTime || (thruStr && (thruStr.includes('T') || /^\d/.test(thruStr)) ? thruStr : null);
         const formatted = fmtTeeTime(rawTime);
-        if (formatted) return `<span class="round-score-box"><span class="round-score-val" style="color:#ccc;">—</span><span class="round-score-thru">${formatted}</span></span>`;
-        return `<span class="round-score-box"><span class="round-score-val" style="color:#ccc;">—</span><span class="round-score-thru"></span></span>`;
+        if (formatted) return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${formatted}</span>`;
+        return `<span class="round-score-box" style="color:#ccc;">—</span>`;
       }
       const displayThru = thruStr && (thruStr.includes('T') || thruStr.match(/^\d{4}-/)) ? (fmtTeeTime(thruStr) || thruStr) : thruStr;
-      return `<span class="round-score-box"><span class="round-score-val ${rsCls}">${rs !== null ? rs : '—'}</span><span class="round-score-thru">${displayThru || ''}</span></span>`;
+      return `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${displayThru ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${displayThru}</span>` : ''}</span>`;
     };
 
     const playerRows = entry.displayGolfers.map(g => {
