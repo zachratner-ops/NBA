@@ -1619,12 +1619,12 @@ function buildSparklines(lbData) {
     const last = validPts[validPts.length - 1];
     const label = last.v === 0 ? 'E' : last.v > 0 ? `+${last.v}` : `${last.v}`;
     const labelColor = last.v < 0 ? '#2e7d32' : last.v > 0 ? '#c62828' : '#555';
-    return { owner, last, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' ') };
+    return { owner, last, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' '), dotY: last.y };
   }).filter(Boolean);
 
   // Sort by y position to detect overlaps
   labelData.sort((a, b) => a.last.y - b.last.y);
-  const MIN_GAP = 14;
+  const MIN_GAP = 18;
   // Push labels apart if they overlap
   for (let i = 1; i < labelData.length; i++) {
     const prev = labelData[i - 1];
@@ -1634,15 +1634,24 @@ function buildSparklines(lbData) {
     }
   }
 
-  const ownerLines = labelData.map(({ owner, last, label, labelColor, pts }) => {
-    const badgeX = last.x + 8;
+  // Calculate uniform badge width based on longest name + longest score label
+  const maxNameLen = Math.max(...labelData.map(d => d.owner.length));
+  const maxLabelLen = Math.max(...labelData.map(d => d.label.length));
+  const badgeW = maxNameLen * 6 + maxLabelLen * 6 + 16;
+
+  const ownerLines = labelData.map(({ owner, last, label, labelColor, pts, dotY }) => {
+    const badgeX = last.x + 10;
     const badgeY = last.y - 8;
-    const badgeW = owner.length * 6 + label.length * 6 + 16;
+    const connectorY = dotY !== undefined ? dotY : last.y;
+    const connector = Math.abs(connectorY - (last.y)) > 2
+      ? `<line x1="${last.x + 3}" y1="${connectorY}" x2="${badgeX}" y2="${last.y + 2}" stroke="${color(owner)}" stroke-width="0.5" opacity="0.4"/>`
+      : '';
     return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
-            <circle cx="${last.x}" cy="${last.y}" r="2" fill="${color(owner)}"/>
+            <circle cx="${last.x}" cy="${connectorY}" r="2.5" fill="${color(owner)}"/>
+            ${connector}
             <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="#f8f8f8" stroke="${color(owner)}" stroke-width="1"/>
             <text x="${badgeX + 5}" y="${badgeY + 9.5}" font-size="9" font-weight="700" fill="${labelColor}">${label}</text>
-            <text x="${badgeX + 5 + label.length * 6}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
+            <text x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
   }).join('');
 
   return `<div style="margin-top:14px;">
