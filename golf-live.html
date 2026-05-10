@@ -1987,11 +1987,7 @@ window.applyOdds = async function(fieldName, selId) {
 // ── Password gates ─────────────────────────────────────────────────
 const PW_KEY = 'srb_auth';
 (function() {
-  if (sessionStorage.getItem(PW_KEY) !== 'ok') {
-    document.getElementById('pw-gate').classList.add('show');
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => document.getElementById('pw-input').focus(), 50);
-  }
+  sessionStorage.setItem(PW_KEY, 'ok'); // password disabled
 })();
 window.pwCheck = function() {
   const val = document.getElementById('pw-input').value.trim().toLowerCase();
