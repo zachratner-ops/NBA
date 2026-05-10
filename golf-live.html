@@ -918,10 +918,10 @@ function renderDraft() {
           <div id="pick-order-list">${pickOrderHtml}</div>
         </div>
         <div class="card draft-col active">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div class="section-hdr" style="margin-bottom:0;">Available (${draft.field?.length||0})</div>
-            <div style="display:flex;gap:6px;">
-              <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;">
+          <div style="margin-bottom:10px;">
+            <div class="section-hdr" style="margin-bottom:8px;">Available (${draft.field?.length||0})</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+              <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;flex-shrink:0;">
                 <button onclick="window.setPoolSort('dk')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;cursor:pointer;background:${poolSortMode==='dk'?'#1a5c2a':'#f5f5f3'};color:${poolSortMode==='dk'?'#fff':'#888'};">To Win</button>
                 <button onclick="window.setPoolSort('top5')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='top5'?'#1a4a3a':'#f5f5f3'};color:${poolSortMode==='top5'?'#fff':'#888'};">Top 5</button>
                 <button onclick="window.setPoolSort('top10')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='top10'?'#1a3a5c':'#f5f5f3'};color:${poolSortMode==='top10'?'#fff':'#888'};">Top 10</button>
