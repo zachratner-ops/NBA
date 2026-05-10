@@ -1261,10 +1261,9 @@ function renderLive(isFinal) {
       try {
         const d = new Date(raw);
         if (!isNaN(d.getTime())) {
-          const h = d.toLocaleString('en-US', { hour: 'numeric', hour12: true, timeZone: 'America/New_York' });
-          const m = d.toLocaleString('en-US', { minute: '2-digit', timeZone: 'America/New_York' });
-          const ampm = h.includes('AM') ? 'a' : 'p';
-          return h.replace(' AM','').replace(' PM','') + ':' + m + ampm;
+          return d.toLocaleString('en-US', {
+            hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York'
+          }).replace(' AM', 'a').replace(' PM', 'p').replace(' ', '');
         }
       } catch(e) {}
       return null;
