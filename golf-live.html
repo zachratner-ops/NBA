@@ -1643,12 +1643,8 @@ function buildSparklines(lbData) {
     const badgeX = last.x + 10;
     const badgeY = last.y - 8;
     const connectorY = dotY !== undefined ? dotY : last.y;
-    const connector = Math.abs(connectorY - (last.y)) > 2
-      ? `<line x1="${last.x + 3}" y1="${connectorY}" x2="${badgeX}" y2="${last.y + 2}" stroke="${color(owner)}" stroke-width="0.5" opacity="0.4"/>`
-      : '';
     return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
             <circle cx="${last.x}" cy="${connectorY}" r="2.5" fill="${color(owner)}"/>
-            ${connector}
             <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="#f8f8f8" stroke="${color(owner)}" stroke-width="1"/>
             <text x="${badgeX + 5}" y="${badgeY + 9.5}" font-size="9" font-weight="700" fill="${labelColor}">${label}</text>
             <text x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
