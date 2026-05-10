@@ -1355,8 +1355,8 @@ function renderLive(isFinal) {
       if (currScore !== null && currScore !== undefined && prevScore !== null && prevScore !== undefined) {
         const delta = currScore - prevScore;
         if (delta !== 0) {
-          const sign = delta < 0 ? '▼' : '▲';
-          const col = delta < 0 ? '#2a9d5c' : '#e05252'; // under par = good = green
+          const sign = delta < 0 ? '▲' : '▼';
+          const col = delta < 0 ? '#2a9d5c' : '#e05252'; // lower score = good = green
           scoreDeltaHtml = `<div class="rc-trend-row" style="color:${col};">${sign} ${Math.abs(delta)} strokes ${delta < 0 ? 'gained' : 'lost'}</div>`;
         } else {
           scoreDeltaHtml = `<div class="rc-trend-row" style="color:#888;">— no change</div>`;
