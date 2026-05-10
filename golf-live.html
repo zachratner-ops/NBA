@@ -1137,7 +1137,8 @@ function renderComplete() {
 }
 
 window.goLive = async function() {
-  await set(liveRef(), {
+  // Use update not set — preserves scoreHistory across round transitions
+  await update(liveRef(), {
     round: 1,
     subWindowOpen: false,
     subWindowRound: null,
