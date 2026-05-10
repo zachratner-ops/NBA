@@ -1564,7 +1564,7 @@ function buildLeaderboard() {
 
 // ── Score trend chart ──────────────────────────────────────────────
 function buildSparklines(lbData) {
-  const W = 900, H = 160, PAD_L = 36, PAD_R = 90, PAD_T = 10, PAD_B = 8;
+  const W = 900, H = 160, PAD_L = 36, PAD_R = 110, PAD_T = 10, PAD_B = 8;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
   const n = scoreHistory.length;
@@ -1611,19 +1611,38 @@ function buildSparklines(lbData) {
             <text x="${xPos + 3}" y="${PAD_T + 10}" font-size="9" fill="#aaa" font-weight="700">R${m.round}</text>`;
   }).join('');
 
-  // Owner lines with end labels — score first, then name
-  const ownerLines = owners().map(owner => {
+  // Build end labels with overlap detection
+  const labelData = owners().map(owner => {
     const vals = ownerData[owner];
     const validPts = vals.map((v, i) => v !== null ? {x: toX(i), y: toY(v), v} : null).filter(Boolean);
-    if (validPts.length < 2) return '';
-    const pts = validPts.map(p => `${p.x},${p.y}`).join(' ');
+    if (validPts.length < 2) return null;
     const last = validPts[validPts.length - 1];
     const label = last.v === 0 ? 'E' : last.v > 0 ? `+${last.v}` : `${last.v}`;
     const labelColor = last.v < 0 ? '#2e7d32' : last.v > 0 ? '#c62828' : '#555';
+    return { owner, last, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' ') };
+  }).filter(Boolean);
+
+  // Sort by y position to detect overlaps
+  labelData.sort((a, b) => a.last.y - b.last.y);
+  const MIN_GAP = 14;
+  // Push labels apart if they overlap
+  for (let i = 1; i < labelData.length; i++) {
+    const prev = labelData[i - 1];
+    const curr = labelData[i];
+    if (curr.last.y - prev.last.y < MIN_GAP) {
+      curr.last = { ...curr.last, y: prev.last.y + MIN_GAP };
+    }
+  }
+
+  const ownerLines = labelData.map(({ owner, last, label, labelColor, pts }) => {
+    const badgeX = last.x + 8;
+    const badgeY = last.y - 8;
+    const badgeW = owner.length * 6 + label.length * 6 + 16;
     return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
             <circle cx="${last.x}" cy="${last.y}" r="2" fill="${color(owner)}"/>
-            <text x="${last.x + 8}" y="${last.y + 3.5}" font-size="10" font-weight="700" fill="${labelColor}">${label}</text>
-            <text x="${last.x + 8 + 24}" y="${last.y + 3.5}" font-size="10" fill="${color(owner)}">${owner}</text>`;
+            <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="#f8f8f8" stroke="${color(owner)}" stroke-width="1"/>
+            <text x="${badgeX + 5}" y="${badgeY + 9.5}" font-size="9" font-weight="700" fill="${labelColor}">${label}</text>
+            <text x="${badgeX + 5 + label.length * 6}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
   }).join('');
 
   return `<div style="margin-top:14px;">
