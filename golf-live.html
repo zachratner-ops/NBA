@@ -735,15 +735,15 @@ function renderLobby() {
         <div style="margin-bottom:12px;">
           <label style="font-size:12px;color:#888;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px;">Pick Timer</label>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            ${[['2 min','120'],['5 min','300'],['10 min','600'],['2 hr','7200']].map(([label,val]) =>
-              `<button class="btn btn-sm ${(lobbyTimer||7200)==val?'btn-amber':'btn-outline'}" style="${(lobbyTimer||7200)==val?'':'color:#555;border-color:#ddd;'}" onclick="window.setLobbyTimer(${val})">${label}</button>`
+            ${[['2 min','120'],['5 min','300'],['10 min','600'],['4 hr','14400']].map(([label,val]) =>
+              `<button class="btn btn-sm ${(lobbyTimer||14400)==val?'btn-amber':'btn-outline'}" style="${(lobbyTimer||14400)==val?'':'color:#555;border-color:#ddd;'}" onclick="window.setLobbyTimer(${val})">${label}</button>`
             ).join('')}
             <div style="display:flex;align-items:center;gap:4px;">
               <input type="number" id="custom-timer-input" min="1" placeholder="min" style="width:60px;border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;text-align:center;">
               <button class="btn btn-sm btn-outline" style="color:#555;border-color:#ddd;" onclick="window.setCustomTimer()">Set</button>
             </div>
           </div>
-          ${![120,300,600,7200].includes(lobbyTimer||7200) ? `<div style="font-size:11px;color:#2e7d32;margin-top:5px;">Custom: ${Math.floor(lobbyTimer/60)}m ${lobbyTimer%60>0?lobbyTimer%60+'s':''}</div>` : ''}
+          ${![120,300,600,14400].includes(lobbyTimer||14400) ? `<div style="font-size:11px;color:#2e7d32;margin-top:5px;">Custom: ${Math.floor(lobbyTimer/60)}m ${lobbyTimer%60>0?lobbyTimer%60+'s':''}</div>` : ''}
         </div>
         <button class="btn btn-outline" style="width:100%;margin-bottom:6px;" onclick="window.genMain()">${previewOrder?'Re-randomize':'Randomize'} Main Order</button>
         ${mainPrev ? `<div class="order-preview">${mainPrev}</div>` : ''}
@@ -756,7 +756,7 @@ function renderLobby() {
     </div>`;
 }
 
-let lobbyTimer = 7200;
+let lobbyTimer = 14400;
 function shuffleArr(a) { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
 window.setLobbyTimer = function(val) { lobbyTimer = parseInt(val); renderLobby(); };
 window.setCustomTimer = function() {
@@ -903,7 +903,7 @@ function renderDraft() {
         </div>
         <div style="text-align:right;">
           <div style="font-size:11px;color:#888;">Time remaining</div>
-          <div class="timer-val" id="timer-display">2:00:00</div>
+          <div class="timer-val" id="timer-display">4:00:00</div>
         </div>
       </div>
       <div class="draft-tabs">
@@ -981,8 +981,8 @@ function startTimer() {
 }
 
 function getTimerSecs() {
-  if (!draft?.timerStart) return draft?.timerDuration || 7200;
-  return Math.max(0, (draft.timerDuration || 7200) - Math.floor((Date.now() - draft.timerStart) / 1000));
+  if (!draft?.timerStart) return draft?.timerDuration || 14400;
+  return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - draft.timerStart) / 1000));
 }
 function formatTime(s) { return `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
 
@@ -2020,7 +2020,7 @@ window.doReset = async function() {
   // score refresh handled server-side
   ws?.close(); ws = null;
   await fetch(`${PROXY}/golf/${SLUG}/reset`, { method:'POST', headers:{'Content-Type':'application/json'} });
-  await set(draftRef(), { slug:SLUG, name:'', status:'setup', field:[], autopickList:[], owners:ALL_OWNERS, picks:{}, currentPickIndex:0, currentPhase:'main', pickSequence:[], altSequence:[], pot:ALL_OWNERS.length*25, timerStart:null, timerDuration:7200, locked:false, undoStack:[], redoStack:[], makeupPicks:{} });
+  await set(draftRef(), { slug:SLUG, name:'', status:'setup', field:[], autopickList:[], owners:ALL_OWNERS, picks:{}, currentPickIndex:0, currentPhase:'main', pickSequence:[], altSequence:[], pot:ALL_OWNERS.length*25, timerStart:null, timerDuration:14400, locked:false, undoStack:[], redoStack:[], makeupPicks:{} });
   await set(liveRef(), null);
 };
 
