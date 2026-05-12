@@ -993,10 +993,17 @@ function startTimer() {
 
 function getTimerSecs() {
   if (!draft?.timerStart) return draft?.timerDuration || 14400;
-  // If it's currently night hours, don't count any elapsed time — treat timerStart as now
-  // so a page refresh overnight doesn't burn through the timer
-  const effectiveStart = isNightHours() ? Date.now() : draft.timerStart;
-  return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - effectiveStart) / 1000));
+  if (draft.frozenSecsRemaining != null) {
+    if (isNightHours()) {
+      // Overnight: show the exact time remaining when the clock froze at 10pm
+      return Math.round(draft.frozenSecsRemaining);
+    } else {
+      // Daytime but freeze snapshot still in Firebase (server hasn't cleaned it up yet) —
+      // count down from the frozen value starting now, using timerStart as the resume anchor
+      return Math.max(0, Math.round(draft.frozenSecsRemaining) - Math.floor((Date.now() - draft.timerStart) / 1000));
+    }
+  }
+  return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - draft.timerStart) / 1000));
 }
 function formatTime(s) { return `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
 
