@@ -76,10 +76,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .odds-row{display:flex;gap:4px;flex-shrink:0;min-width:140px;justify-content:flex-end;}
 .odds-pill{font-size:10px;font-weight:700;padding:3px 0;border-radius:4px;display:flex;flex-direction:column;align-items:center;gap:0px;line-height:1.2;width:46px;flex-shrink:0;text-align:center;}
 .odds-pill .odds-label{font-size:8px;font-weight:600;opacity:0.75;text-transform:uppercase;letter-spacing:.04em;}
-.dk{background:#1a5c2a;color:#fff;}
-.fd{background:#1a3a5c;color:#fff;}
-.odds-top5{background:#1a4a3a;color:#fff;}
-.odds-top10{background:#1a3a5c;color:#fff;}
+.fd{background:#1a3a8c;color:#fff;}
+.dk{background:#1a6b2e;color:#fff;}
+.odds-top5{background:#2e8b45;color:#fff;}
+.odds-top10{background:#4aab62;color:#111;}
 .odds-cut{background:#5c1a1a;color:#fff;}
 .pool-list{max-height:350px;overflow-y:auto;}
 #pick-order-list{max-height:350px;overflow-y:auto;}
@@ -784,6 +784,12 @@ function sortPool(field) {
   const copy = [...field];
   if (poolSortMode === 'name') {
     copy.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (poolSortMode === 'fd') {
+    copy.sort((a, b) => {
+      const aO = parseOdds(a.odds_fd), bO = parseOdds(b.odds_fd);
+      if (aO === Infinity && bO === Infinity) return a.name.localeCompare(b.name);
+      return aO - bO;
+    });
   } else if (poolSortMode === 'top5') {
     copy.sort((a, b) => {
       const aO = parseOdds(a.odds_top5), bO = parseOdds(b.odds_top5);
@@ -846,7 +852,7 @@ function renderDraft() {
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
       <div class="odds-row">
-        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
     </div>`).join('');
 
   const apHtml = (draft.autopickList || []).map(p =>
@@ -923,9 +929,10 @@ function renderDraft() {
             <div class="section-hdr" style="margin-bottom:8px;">Available (${draft.field?.length||0})</div>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
               <div style="display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;flex-shrink:0;">
-                <button onclick="window.setPoolSort('dk')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;cursor:pointer;background:${poolSortMode==='dk'?'#1a5c2a':'#f5f5f3'};color:${poolSortMode==='dk'?'#fff':'#888'};">To Win</button>
-                <button onclick="window.setPoolSort('top5')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='top5'?'#1a4a3a':'#f5f5f3'};color:${poolSortMode==='top5'?'#fff':'#888'};">Top 5</button>
-                <button onclick="window.setPoolSort('top10')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='top10'?'#1a3a5c':'#f5f5f3'};color:${poolSortMode==='top10'?'#fff':'#888'};">Top 10</button>
+                <button onclick="window.setPoolSort('fd')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;cursor:pointer;background:${poolSortMode==='fd'?'#1a3a8c':'#f5f5f3'};color:${poolSortMode==='fd'?'#fff':'#888'};">FD Win</button>
+                <button onclick="window.setPoolSort('dk')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='dk'?'#1a6b2e':'#f5f5f3'};color:${poolSortMode==='dk'?'#fff':'#888'};">Win</button>
+                <button onclick="window.setPoolSort('top5')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='top5'?'#2e8b45':'#f5f5f3'};color:${poolSortMode==='top5'?'#fff':'#888'};">Top 5</button>
+                <button onclick="window.setPoolSort('top10')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='top10'?'#4aab62':'#f5f5f3'};color:${poolSortMode==='top10'?'#111':'#888'};">Top 10</button>
                 <button onclick="window.setPoolSort('name')" style="font-size:11px;font-weight:700;padding:4px 9px;border:none;border-left:1px solid #ddd;cursor:pointer;background:${poolSortMode==='name'?'#1a1a1a':'#f5f5f3'};color:${poolSortMode==='name'?'#fff':'#888'};">A–Z</button>
               </div>
               <button class="btn btn-sm btn-green" id="pick-btn" onclick="window.confirmPick()" ${selectedPlayer?'':'disabled'}>${selectedPlayer?`Pick ${selectedPlayer.name}`:'Pick...'}</button>
@@ -1043,16 +1050,17 @@ window.setPoolSort = function(mode) {
       .filter(p => !q || p.name.toLowerCase().includes(q))
       .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
         <div class="player-name">${p.name}</div>
-        <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+        <div class="odds-row">${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
       </div>`).join('');
   }
   // Update toggle button styles
   document.querySelectorAll('[onclick*="setPoolSort"]').forEach(btn => {
     const m = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
     const active = m === poolSortMode;
-    if (m === 'dk')    { btn.style.background = active ? '#1a5c2a' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
-    if (m === 'top5')  { btn.style.background = active ? '#1a4a3a' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
-    if (m === 'top10') { btn.style.background = active ? '#1a3a5c' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
+    if (m === 'fd')    { btn.style.background = active ? '#1a3a8c' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
+    if (m === 'dk')    { btn.style.background = active ? '#1a6b2e' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
+    if (m === 'top5')  { btn.style.background = active ? '#2e8b45' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
+    if (m === 'top10') { btn.style.background = active ? '#4aab62' : '#f5f5f3'; btn.style.color = active ? '#111' : '#888'; }
     if (m === 'name')  { btn.style.background = active ? '#1a1a1a' : '#f5f5f3'; btn.style.color = active ? '#fff' : '#888'; }
   });
 };
@@ -1068,7 +1076,7 @@ window.onSearch = function(val) {
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
       <div class="odds-row">
-        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
     </div>`).join('');
   poolEl.innerHTML = poolHtml;
 };
