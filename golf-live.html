@@ -1173,8 +1173,7 @@ window.doUndo = async function() { await proxyApi('/undo', 'POST'); };
 window.removeFromField = async function(name) {
   if (!isComm) return;
   if (!confirm(`Remove ${name} from the field?`)) return;
-  const newField = (draft.field || []).filter(p => p.name !== name);
-  await set(ref(db, `golf/${SLUG}/draft/field`), newField);
+  await proxyApi('/field-remove', 'POST', { name });
 };
 window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 
