@@ -844,7 +844,10 @@ function renderDraft() {
   const poolHtml = sortPool(draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
-      <div class="player-name">${p.name}</div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <div class="player-name" style="flex:1;">${p.name}</div>
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;" title="Remove from field">✕</button>` : ''}
+      </div>
       <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
 
@@ -1005,7 +1008,7 @@ function getTimerSecs() {
   }
   return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - draft.timerStart) / 1000));
 }
-function formatTime(s) { return `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+function formatTime(s) { s = Math.floor(s); return `${Math.floor(s/3600)}:${String(Math.floor((s%3600)/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
 
 function showAutopick() {
   const cur = getCur();
@@ -1071,7 +1074,10 @@ window.onSearch = function(val) {
   const poolHtml = sortPool(draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
-      <div class="player-name">${p.name}</div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <div class="player-name" style="flex:1;">${p.name}</div>
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;" title="Remove from field">✕</button>` : ''}
+      </div>
       <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
   poolEl.innerHTML = poolHtml;
@@ -1165,6 +1171,13 @@ window.switchDraftTab = function(idx) {
   document.querySelectorAll('.draft-col').forEach((c,i) => c.classList.toggle('active', i===idx));
 };
 window.doUndo = async function() { await proxyApi('/undo', 'POST'); };
+
+window.removeFromField = async function(name) {
+  if (!isComm) return;
+  if (!confirm(`Remove ${name} from the field?`)) return;
+  const newField = (draft.field || []).filter(p => p.name !== name);
+  await update(draftRef(), { field: newField });
+};
 window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 
 // ── DRAFT COMPLETE ─────────────────────────────────────────────────
