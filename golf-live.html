@@ -967,12 +967,23 @@ function getCur() {
   return seq?.[draft.currentPickIndex] || null;
 }
 
+function isNightHours() {
+  const h = parseInt(new Date().toLocaleString('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }), 10);
+  return h >= 22 || h < 8; // 10pm-8am ET
+}
+
 function startTimer() {
   clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     if (draft?.status !== 'drafting') { clearInterval(timerInterval); timerInterval = null; return; }
     const el = document.getElementById('timer-display');
     if (!el) { clearInterval(timerInterval); timerInterval = null; return; }
+    if (isNightHours()) {
+      // Timer paused overnight — show remaining time but don't count down or trigger autopick
+      el.textContent = formatTime(getTimerSecs());
+      el.className = 'timer-val';
+      return;
+    }
     const secs = getTimerSecs();
     el.textContent = formatTime(secs);
     el.className = 'timer-val' + (secs<300?' danger':secs<900?' warn':'');
