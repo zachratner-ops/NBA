@@ -1174,7 +1174,7 @@ window.removeFromField = async function(name) {
   if (!isComm) return;
   if (!confirm(`Remove ${name} from the field?`)) return;
   const newField = (draft.field || []).filter(p => p.name !== name);
-  await update(draftRef(), { field: newField });
+  await set(ref(db, `golf/${SLUG}/draft/field`), newField);
 };
 window.doRedo = async function() { await proxyApi('/redo', 'POST'); };
 
