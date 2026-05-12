@@ -844,11 +844,9 @@ function renderDraft() {
   const poolHtml = sortPool(draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
-      <div style="display:flex;align-items:center;gap:4px;">
-        <div class="player-name" style="flex:1;">${p.name}</div>
-        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;" title="Remove from field">✕</button>` : ''}
-      </div>
-      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+      <div class="player-name">${p.name}</div>
+      <div class="odds-row">
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
 
   const apHtml = (draft.autopickList || []).map(p =>
@@ -996,15 +994,9 @@ function startTimer() {
 
 function getTimerSecs() {
   if (!draft?.timerStart) return draft?.timerDuration || 14400;
-  if (draft.frozenSecsRemaining != null) {
-    if (isNightHours()) {
-      // Overnight: show the exact time remaining when the clock froze at 10pm
-      return Math.round(draft.frozenSecsRemaining);
-    } else {
-      // Daytime but freeze snapshot still in Firebase (server hasn't cleaned it up yet) —
-      // count down from the frozen value starting now, using timerStart as the resume anchor
-      return Math.max(0, Math.round(draft.frozenSecsRemaining) - Math.floor((Date.now() - draft.timerStart) / 1000));
-    }
+  // Only use frozen snapshot at night — during the day always use live timerDuration/timerStart
+  if (isNightHours() && draft.frozenSecsRemaining != null) {
+    return Math.floor(draft.frozenSecsRemaining);
   }
   return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - draft.timerStart) / 1000));
 }
@@ -1074,11 +1066,9 @@ window.onSearch = function(val) {
   const poolHtml = sortPool(draft.field || [])
     .filter(p => !q || p.name.toLowerCase().includes(q))
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
-      <div style="display:flex;align-items:center;gap:4px;">
-        <div class="player-name" style="flex:1;">${p.name}</div>
-        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;" title="Remove from field">✕</button>` : ''}
-      </div>
-      <div class="odds-row">${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
+      <div class="player-name">${p.name}</div>
+      <div class="odds-row">
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">To Win</span>${p.odds_dk}</span>`:''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD</span>${p.odds_fd}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}${p.odds_cut?`<span class="odds-pill odds-cut"><span class="odds-label">Cut</span>${p.odds_cut}</span>`:''}</div>
     </div>`).join('');
   poolEl.innerHTML = poolHtml;
 };
