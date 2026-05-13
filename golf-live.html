@@ -1287,6 +1287,7 @@ function renderLive(isFinal) {
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
         <span style="font-size:10px;color:#555;">Round auto-detected from ESPN</span>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">↻ Refresh Odds</button>
+        <button class="btn btn-sm btn-outline" style="color:${showRenamePanel?'#e65100':'#aaa'};border-color:${showRenamePanel?'#e65100':'#444'};" onclick="window.toggleRenamePanel()">✎ Rename Player</button>
         <button class="btn btn-sm btn-outline" style="color:${showOverridePanel?'#e65100':'#aaa'};border-color:${showOverridePanel?'#e65100':'#444'};" onclick="window.toggleScoreOverride()">${showOverridePanel?'✎ Close Override':'✎ Override Score'}</button>
         ${!isFinal
           ? '<button class="btn btn-sm btn-green" onclick="window.openFinalize()">Finalize →</button>'
@@ -1316,6 +1317,20 @@ function renderLive(isFinal) {
             </span>`
           ).join('')}
         </div>` : ''}
+      </div>` : ''}
+      ${showRenamePanel ? `
+      <div style="background:#111;border-top:1px solid #333;padding:10px 20px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <span style="font-size:11px;color:#888;font-weight:700;flex-shrink:0;">RENAME PLAYER</span>
+        <input id="rename-old" list="rename-players" placeholder="Current name…" style="border:1px solid #444;background:#1a1a1a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:200px;">
+        <datalist id="rename-players">
+          ${[...(draft?.field||[]).map(p=>p.name),
+             ...Object.values(draft?.picks||{}).flatMap(p=>[...p.golfers.map(g=>g.name), p.alternate?.name].filter(Boolean))]
+            .filter((v,i,a)=>a.indexOf(v)===i).sort().map(n=>`<option value="${n}">`).join('')}
+        </datalist>
+        <span style="color:#555;font-size:14px;">→</span>
+        <input id="rename-new" placeholder="New name…" style="border:1px solid #444;background:#1a1a1a;color:#fff;border-radius:6px;padding:4px 8px;font-size:12px;width:200px;">
+        <button class="btn btn-sm btn-green" onclick="window.submitRename()">Rename</button>
+        <span style="font-size:11px;color:#555;">Updates field, picks, alternates &amp; scores</span>
       </div>` : ''}
     </div>` : '';
 
@@ -1874,7 +1889,32 @@ let showOverridePanel = false;
 
 window.toggleScoreOverride = function() {
   showOverridePanel = !showOverridePanel;
+  showRenamePanel = false;
   renderScreen();
+};
+
+let showRenamePanel = false;
+
+window.toggleRenamePanel = function() {
+  showRenamePanel = !showRenamePanel;
+  showOverridePanel = false;
+  renderScreen();
+};
+
+window.submitRename = async function() {
+  const oldName = document.getElementById('rename-old')?.value?.trim();
+  const newName = document.getElementById('rename-new')?.value?.trim();
+  if (!oldName || !newName) { alert('Enter both current and new name.'); return; }
+  if (oldName === newName) { alert('Names are the same.'); return; }
+  if (!confirm(`Rename "${oldName}" → "${newName}"?\n\nThis updates the field, picks, alternates, and live scores.`)) return;
+  const data = await proxyApi('/rename-player', 'POST', { oldName, newName });
+  if (data?.ok) {
+    document.getElementById('rename-old').value = '';
+    document.getElementById('rename-new').value = '';
+    showToast(`✓ Renamed ${oldName} → ${newName}`);
+  } else {
+    alert('Rename failed: ' + (data?.error || 'unknown error'));
+  }
 };
 
 window.submitOverride = async function() {
