@@ -1389,7 +1389,7 @@ function renderLive(isFinal) {
         if (formatted) return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${formatted}</span>`;
         return `<span class="round-score-box" style="color:#ccc;">—</span>`;
       }
-      const displayThru = thruStr && (thruStr.includes('T') || thruStr.match(/^\d{4}-/)) ? (fmtTeeTime(thruStr) || thruStr) : thruStr;
+      const displayThru = thruStr && (thruStr.match(/^\d{4}-/) || (thruStr.includes('T') && thruStr.includes('Z'))) ? (fmtTeeTime(thruStr) || thruStr) : thruStr;
       return `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${displayThru ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${displayThru}</span>` : ''}</span>`;
     };
 
