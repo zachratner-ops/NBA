@@ -572,6 +572,7 @@ function renderScreen() {
   }
 }
 
+function color(o) { return ALL_COLORS[o] || '#555'; }
 function scoreFor(name, scores) {
   if (!name || !scores) return undefined;
   if (scores[name]) return scores[name];
