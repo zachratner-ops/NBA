@@ -1584,6 +1584,13 @@ function renderLive(isFinal) {
 // ── Leaderboard computation ────────────────────────────────────────
 function buildLeaderboard() {
   const scores = live?.scores || {};
+  const scoreFor = name => {
+    if (!name) return undefined;
+    if (scores[name]) return scores[name];
+    // Fallback: normalize accents and special chars the same way the server does
+    const norm = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 _-]/g,'_');
+    return scores[norm] || Object.values(scores).find(s => s.espnName === name);
+  };
   const subs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
 
   return owners().map(owner => {
@@ -1606,21 +1613,21 @@ function buildLeaderboard() {
     // Apply live scores — including round score, thru, teeTime, position
     displayGolfers = displayGolfers.map(g => ({
       ...g,
-      liveScore: scores[g.name]?.score,
-      roundScore: scores[g.name]?.roundScore ?? null,
-      thru: scores[g.name]?.thru || null,
-      teeTime: scores[g.name]?.teeTime || null,
-      position: scores[g.name]?.position || null,
-      cut: scores[g.name]?.cut || g.cut
+      liveScore: scoreFor(g.name)?.score,
+      roundScore: scoreFor(g.name)?.roundScore ?? null,
+      thru: scoreFor(g.name)?.thru || null,
+      teeTime: scoreFor(g.name)?.teeTime || null,
+      position: scoreFor(g.name)?.position || null,
+      cut: scoreFor(g.name)?.cut || g.cut
     }));
     if (alternate) {
       alternate = {
         ...alternate,
-        liveScore: scores[alternate.name]?.score,
-        roundScore: scores[alternate.name]?.roundScore ?? null,
-        thru: scores[alternate.name]?.thru || null,
-        teeTime: scores[alternate.name]?.teeTime || null,
-        cut: scores[alternate.name]?.cut || alternate.cut
+        liveScore: scoreFor(alternate.name)?.score,
+        roundScore: scoreFor(alternate.name)?.roundScore ?? null,
+        thru: scoreFor(alternate.name)?.thru || null,
+        teeTime: scoreFor(alternate.name)?.teeTime || null,
+        cut: scoreFor(alternate.name)?.cut || alternate.cut
       };
     }
 
