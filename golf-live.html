@@ -572,7 +572,18 @@ function renderScreen() {
   }
 }
 
-function color(o) { return ALL_COLORS[o] || '#555'; }
+function scoreFor(name, scores) {
+  if (!name || !scores) return undefined;
+  if (scores[name]) return scores[name];
+  const norm = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 _-]/g,'_');
+  if (scores[norm]) return scores[norm];
+  const skeleton = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/_/g,'').replace(/[^a-zA-Z0-9 ]/g,'').toLowerCase();
+  const nameSkel = skeleton(name);
+  const looseMatch = Object.entries(scores).find(([k]) => skeleton(k) === nameSkel);
+  if (looseMatch) return looseMatch[1];
+  return Object.values(scores).find(s => s.espnName === name);
+}
+window._scoreFor = scoreFor;
 function owners() { return draft?.owners || ALL_OWNERS; }
 function fmtScore(s) {
   if (s === null || s === undefined) return '—';
@@ -1608,20 +1619,7 @@ function renderLive(isFinal) {
 // ── Leaderboard computation ────────────────────────────────────────
 function buildLeaderboard() {
   const scores = live?.scores || {};
-  const scoreFor = name => {
-    if (!name) return undefined;
-    if (scores[name]) return scores[name];
-    // Normalize accents and special chars the same way the server does
-    const norm = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 _-]/g,'_');
-    if (scores[norm]) return scores[norm];
-    // Loose match: collapse underscores and compare letter skeletons (handles ø→o vs ø→_)
-    const skeleton = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/_/g,'').replace(/[^a-zA-Z0-9 ]/g,'').toLowerCase();
-    const nameSkel = skeleton(name);
-    const looseMatch = Object.entries(scores).find(([k]) => skeleton(k) === nameSkel);
-    if (looseMatch) return looseMatch[1];
-    // Last resort: match by espnName
-    return Object.values(scores).find(s => s.espnName === name);
-  };
+  const scoreFor = name => window._scoreFor(name, scores);
   const subs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
 
   return owners().map(owner => {
@@ -1708,6 +1706,7 @@ function buildLeaderboard() {
 // ── Leaderboard tab ────────────────────────────────────────────────
 function buildLeaderboardTab() {
   const scores = live?.scores || {};
+  const sf = name => scoreFor(name, scores);
   const draftPicks = draft?.picks || {};
   const allSubs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
   const cutLine = typeof live?.cutLine === 'number' ? live.cutLine : null;
@@ -1733,9 +1732,7 @@ function buildLeaderboardTab() {
   });
 
   // Sort all scored players by score
-  const allPlayers = Object.entries(scoreFor ? {} : scores).concat(
-    Object.entries(scores)
-  ).filter(([,v]) => v).sort((a, b) => {
+  const allPlayers = Object.entries(scores).filter(([,v]) => v).sort((a, b) => {
     if (a[1].cut && !b[1].cut) return 1;
     if (!a[1].cut && b[1].cut) return -1;
     return (a[1].score ?? 999) - (b[1].score ?? 999);
@@ -1750,7 +1747,7 @@ function buildLeaderboardTab() {
     : players.filter(([, v]) => {
         const espnName = v.espnName || '';
         return (ownerForGolfer[espnName] || []).includes(lbFilterOwner) ||
-               (ownerForGolfer[Object.keys(ownerForGolfer).find(k => scoreFor(k)?.espnName === espnName) || ''] || []).includes(lbFilterOwner);
+               (ownerForGolfer[Object.keys(ownerForGolfer).find(k => sf(k)?.espnName === espnName) || ''] || []).includes(lbFilterOwner);
       });
 
   let pos = 1, cutInserted = false;
@@ -1766,7 +1763,7 @@ function buildLeaderboardTab() {
 
     // Owner chips
     const myOwners = Object.entries(ownerForGolfer)
-      .filter(([n]) => n === espnName || scoreFor(n)?.espnName === espnName)
+      .filter(([n]) => n === espnName || sf(n)?.espnName === espnName)
       .flatMap(([,os]) => os);
     const isAlt = alternateNames.has(espnName);
     const chips = [...new Set(myOwners)].map(o => {
