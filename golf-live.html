@@ -1590,9 +1590,10 @@ function buildLeaderboard() {
     // Normalize accents and special chars the same way the server does
     const norm = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 _-]/g,'_');
     if (scores[norm]) return scores[norm];
-    // Also try replacing underscores with the letters they might represent (e.g. ø→o, å→a)
-    const loose = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 -]/g,'');
-    const looseMatch = Object.entries(scores).find(([k]) => k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 -]/g,'') === loose);
+    // Loose match: collapse underscores and compare letter skeletons (handles ø→o vs ø→_)
+    const skeleton = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/_/g,'').replace(/[^a-zA-Z0-9 ]/g,'').toLowerCase();
+    const nameSkel = skeleton(name);
+    const looseMatch = Object.entries(scores).find(([k]) => skeleton(k) === nameSkel);
     if (looseMatch) return looseMatch[1];
     // Last resort: match by espnName
     return Object.values(scores).find(s => s.espnName === name);
