@@ -2165,9 +2165,7 @@ window.confirmSub = async function() {
   if (!alt) return;
   const subRound = live?.subWindowRound || 1;
   const cost = subRound === 1 ? 5 : 15;
-  const newSub = { owner: subOwner, from: subSwapOut, to: alt.name, round: subRound, cost, ts: new Date().toISOString() };
-  const existingSubs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
-  await update(liveRef(), { subs: [...existingSubs, newSub], pot: (live?.pot||0) + cost });
+  await proxyApi('/sub', 'POST', { owner: subOwner, from: subSwapOut, to: alt.name, round: subRound, cost });
   document.getElementById('sub-modal').style.display = 'none';
   showToast(`✓ ${alt.name} subbed in for ${subOwner} (+$${cost})`);
   subOwner = null; subSwapOut = null;
