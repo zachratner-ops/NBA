@@ -1587,9 +1587,15 @@ function buildLeaderboard() {
   const scoreFor = name => {
     if (!name) return undefined;
     if (scores[name]) return scores[name];
-    // Fallback: normalize accents and special chars the same way the server does
+    // Normalize accents and special chars the same way the server does
     const norm = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 _-]/g,'_');
-    return scores[norm] || Object.values(scores).find(s => s.espnName === name);
+    if (scores[norm]) return scores[norm];
+    // Also try replacing underscores with the letters they might represent (e.g. ø→o, å→a)
+    const loose = name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 -]/g,'');
+    const looseMatch = Object.entries(scores).find(([k]) => k.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9 -]/g,'') === loose);
+    if (looseMatch) return looseMatch[1];
+    // Last resort: match by espnName
+    return Object.values(scores).find(s => s.espnName === name);
   };
   const subs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
 
