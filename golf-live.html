@@ -439,6 +439,7 @@ let makeupOwner = null;
 let makeupSlotIndex = null;
 let makeupSelected = null;
 let scoreHistory = [];
+let scrubIndex = null; // null = live, number = index into scoreHistory
 // scoreRefreshInterval removed — server-side polling handles score updates
 let isComm = false;
 
@@ -454,10 +455,14 @@ onValue(draftRef(), snap => {
 });
 onValue(liveRef(), snap => {
   live = snap.val();
-  // Hydrate scoreHistory from Firebase on first load
-  if (live?.scoreHistory && scoreHistory.length === 0) {
+  // Hydrate scoreHistory from Firebase on first load or when new snapshots arrive
+  if (live?.scoreHistory) {
     const sorted = Object.values(live.scoreHistory).sort((a,b) => new Date(a.ts) - new Date(b.ts));
-    scoreHistory = sorted.map(s => ({ ts: new Date(s.ts).getTime(), scores: s.scores }));
+    const newHistory = sorted.map(s => ({ ts: new Date(s.ts).getTime(), scores: s.scores }));
+    if (newHistory.length !== scoreHistory.length) {
+      scoreHistory = newHistory;
+      // Don't reset scrubIndex — keep user's position if they were scrubbing
+    }
   }
   if (draft?.status === 'live' || draft?.status === 'final') renderScreen();
 });
@@ -1260,7 +1265,15 @@ function renderLive(isFinal) {
   lbData.forEach((e, i) => { scoreRank[e.owner] = i; });
   const scoreSortedLeader = lbData.find(e => !e.out) || lbData[0];
 
-  if (lbSortMode === 'pick') {
+  // If scrubbing, re-rank by historical scores at that snapshot
+  const scrubSnap = (scrubIndex !== null && scoreHistory[scrubIndex]) ? scoreHistory[scrubIndex] : null;
+  if (scrubSnap) {
+    lbData.sort((a, b) => {
+      const aS = scrubSnap.scores[a.owner] ?? Infinity;
+      const bS = scrubSnap.scores[b.owner] ?? Infinity;
+      return aS - bS;
+    });
+  } else if (lbSortMode === 'pick') {
     const pickSeqOrder = (draft?.pickSequence || []).map(p => p.owner);
     lbData.sort((a, b) => (pickSeqOrder.indexOf(a.owner)+1||999) - (pickSeqOrder.indexOf(b.owner)+1||999));
   }
@@ -1758,6 +1771,12 @@ function buildSparklines(lbData) {
   const maxLabelLen = Math.max(...labelData.map(d => d.label.length));
   const badgeW = maxNameLen * 6 + maxLabelLen * 6 + 16;
 
+  // Scrub position line
+  const scrubLine = (scrubIndex !== null && scrubIndex < n - 1 && n > 1) ? (() => {
+    const x = toX(scrubIndex);
+    return `<line x1="${x}" x2="${x}" y1="${PAD_T}" y2="${PAD_T + chartH}" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7"/>`;
+  })() : '';
+
   const ownerLines = labelData.map(({ owner, last, label, labelColor, pts, dotY }) => {
     const badgeX = last.x + 10;
     const badgeY = last.y - 8;
@@ -1769,15 +1788,36 @@ function buildSparklines(lbData) {
             <text x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
   }).join('');
 
+  const scrubberHtml = scoreHistory.length >= 2 ? (() => {
+    const idx = scrubIndex !== null ? scrubIndex : scoreHistory.length - 1;
+    const snap = scoreHistory[idx];
+    const ts = snap ? new Date(snap.ts).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
+    const isLive = scrubIndex === null || scrubIndex === scoreHistory.length - 1;
+    return `<div style="padding:8px 20px 12px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:10px;color:#888;white-space:nowrap;flex-shrink:0;">Earlier</span>
+      <input type="range" min="0" max="${scoreHistory.length - 1}" value="${idx}"
+        style="flex:1;accent-color:#1a6b2e;cursor:pointer;"
+        oninput="window.setScrubIndex(parseInt(this.value))">
+      <span style="font-size:10px;color:#888;white-space:nowrap;flex-shrink:0;">Now</span>
+      <span style="font-size:10px;font-weight:700;color:${isLive?'#2a9d5c':'#e65100'};white-space:nowrap;min-width:130px;text-align:right;">
+        ${isLive ? '● Live' : '⏪ ' + ts}
+      </span>
+      ${!isLive ? `<button onclick="window.setScrubIndex(null)" style="background:none;border:1px solid #ccc;border-radius:6px;font-size:10px;padding:2px 8px;cursor:pointer;color:#555;">Back to live</button>` : ''}
+    </div>`;
+  })() : '';
+
   return `<div style="margin-top:14px;">
     <div class="spark-title" style="margin-bottom:6px;">Score Trend</div>
     <div class="spark-card spark-scroll-card" style="padding:16px 20px 14px;">
     <svg class="spark-svg-chart" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;">
       ${gridLines}
       ${markerLines}
+      ${scrubLine}
       ${ownerLines}
     </svg>
-  </div></div>`;
+  </div>
+  ${scrubberHtml}
+  </div>`;
 }
 
 // ── Score refresh ──────────────────────────────────────────────────
@@ -1912,6 +1952,11 @@ let showRenamePanel = false;
 window.toggleRenamePanel = function() {
   showRenamePanel = !showRenamePanel;
   showOverridePanel = false;
+  renderScreen();
+};
+
+window.setScrubIndex = function(idx) {
+  scrubIndex = (idx === null || idx >= scoreHistory.length - 1) ? null : idx;
   renderScreen();
 };
 
