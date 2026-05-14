@@ -1265,15 +1265,7 @@ function renderLive(isFinal) {
   lbData.forEach((e, i) => { scoreRank[e.owner] = i; });
   const scoreSortedLeader = lbData.find(e => !e.out) || lbData[0];
 
-  // If scrubbing, re-rank by historical scores at that snapshot
-  const scrubSnap = (scrubIndex !== null && scoreHistory[scrubIndex]) ? scoreHistory[scrubIndex] : null;
-  if (scrubSnap) {
-    lbData.sort((a, b) => {
-      const aS = scrubSnap.scores[a.owner] ?? Infinity;
-      const bS = scrubSnap.scores[b.owner] ?? Infinity;
-      return aS - bS;
-    });
-  } else if (lbSortMode === 'pick') {
+  if (lbSortMode === 'pick') {
     const pickSeqOrder = (draft?.pickSequence || []).map(p => p.owner);
     lbData.sort((a, b) => (pickSeqOrder.indexOf(a.owner)+1||999) - (pickSeqOrder.indexOf(b.owner)+1||999));
   }
@@ -1743,15 +1735,19 @@ function buildSparklines(lbData) {
             <text x="${xPos + 3}" y="${PAD_T + 10}" font-size="9" fill="#aaa" font-weight="700">R${m.round}</text>`;
   }).join('');
 
-  // Build end labels with overlap detection
+  // Build end labels — at scrub position if scrubbing, otherwise at last point
+  const labelIdx = (scrubIndex !== null && scrubIndex < n) ? scrubIndex : n - 1;
   const labelData = owners().map(owner => {
     const vals = ownerData[owner];
-    const validPts = vals.map((v, i) => v !== null ? {x: toX(i), y: toY(v), v} : null).filter(Boolean);
+    const validPts = vals.map((v, i) => v !== null ? {x: toX(i), y: toY(v), v, i} : null).filter(Boolean);
     if (validPts.length < 2) return null;
-    const last = validPts[validPts.length - 1];
-    const label = last.v === 0 ? 'E' : last.v > 0 ? `+${last.v}` : `${last.v}`;
-    const labelColor = last.v < 0 ? '#2e7d32' : last.v > 0 ? '#c62828' : '#555';
-    return { owner, last, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' '), dotY: last.y };
+    // Find the last valid point at or before labelIdx
+    const atOrBefore = validPts.filter(p => p.i <= labelIdx);
+    if (atOrBefore.length === 0) return null;
+    const anchor = atOrBefore[atOrBefore.length - 1];
+    const label = anchor.v === 0 ? 'E' : anchor.v > 0 ? `+${anchor.v}` : `${anchor.v}`;
+    const labelColor = anchor.v < 0 ? '#2e7d32' : anchor.v > 0 ? '#c62828' : '#555';
+    return { owner, last: anchor, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' '), dotY: anchor.y };
   }).filter(Boolean);
 
   // Sort by y position to detect overlaps
