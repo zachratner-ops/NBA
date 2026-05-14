@@ -1669,7 +1669,7 @@ function buildLeaderboard() {
 
 // ── Score trend chart ──────────────────────────────────────────────
 function buildSparklines(lbData) {
-  const W = 900, H = 160, PAD_L = 36, PAD_R = 110, PAD_T = 10, PAD_B = 8;
+  const W = 900, H = 220, PAD_L = 36, PAD_R = 110, PAD_T = 16, PAD_B = 16;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
   const n = scoreHistory.length;
@@ -1757,7 +1757,7 @@ function buildSparklines(lbData) {
 
   return `<div style="margin-top:14px;">
     <div class="spark-title" style="margin-bottom:6px;">Score Trend</div>
-    <div class="spark-card spark-scroll-card" style="padding:12px 16px 8px;">
+    <div class="spark-card spark-scroll-card" style="padding:16px 20px 14px;">
     <svg class="spark-svg-chart" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;">
       ${gridLines}
       ${markerLines}
