@@ -1767,49 +1767,43 @@ function buildSparklines(lbData) {
   const maxLabelLen = Math.max(...labelData.map(d => d.label.length));
   const badgeW = maxNameLen * 6 + maxLabelLen * 6 + 16;
 
-  // Scrub position line
-  const scrubLine = (scrubIndex !== null && scrubIndex < n - 1 && n > 1) ? (() => {
-    const x = toX(scrubIndex);
-    return `<line x1="${x}" x2="${x}" y1="${PAD_T}" y2="${PAD_T + chartH}" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7"/>`;
-  })() : '';
-
   const ownerLines = labelData.map(({ owner, last, label, labelColor, pts, dotY }) => {
+    const id = owner.replace(/[^a-zA-Z]/g,'');
     const badgeX = last.x + 10;
     const badgeY = last.y - 8;
     const connectorY = dotY !== undefined ? dotY : last.y;
-    return `<polyline points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
-            <circle cx="${last.x}" cy="${connectorY}" r="2.5" fill="${color(owner)}"/>
-            <rect x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="#f8f8f8" stroke="${color(owner)}" stroke-width="1"/>
-            <text x="${badgeX + 5}" y="${badgeY + 9.5}" font-size="9" font-weight="700" fill="${labelColor}">${label}</text>
-            <text x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
+    return `<polyline id="spl-${id}" points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>
+            <circle id="spc-${id}" cx="${last.x}" cy="${connectorY}" r="2.5" fill="${color(owner)}"/>
+            <rect id="spr-${id}" x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="#f8f8f8" stroke="${color(owner)}" stroke-width="1"/>
+            <text id="sps-${id}" x="${badgeX + 5}" y="${badgeY + 9.5}" font-size="9" font-weight="700" fill="${labelColor}">${label}</text>
+            <text id="spn-${id}" x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
   }).join('');
 
   const scrubberHtml = scoreHistory.length >= 2 ? (() => {
     const idx = scrubIndex !== null ? scrubIndex : scoreHistory.length - 1;
+    const isLive = scrubIndex === null || scrubIndex === scoreHistory.length - 1;
     const snap = scoreHistory[idx];
     const ts = snap ? new Date(snap.ts).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : '';
-    const isLive = scrubIndex === null || scrubIndex === scoreHistory.length - 1;
     return `<div style="padding:8px 20px 12px;display:flex;align-items:center;gap:12px;">
       <span style="font-size:10px;color:#888;white-space:nowrap;flex-shrink:0;">Earlier</span>
       <input type="range" min="0" max="${scoreHistory.length - 1}" value="${idx}"
         style="flex:1;accent-color:#1a6b2e;cursor:pointer;"
         oninput="window.setScrubIndex(parseInt(this.value))">
       <span style="font-size:10px;color:#888;white-space:nowrap;flex-shrink:0;">Now</span>
-      <span style="font-size:10px;font-weight:700;color:${isLive?'#2a9d5c':'#e65100'};white-space:nowrap;min-width:130px;text-align:right;">
-        ${isLive ? '● Live' : '⏪ ' + ts}
-      </span>
-      ${!isLive ? `<button onclick="window.setScrubIndex(null)" style="background:none;border:1px solid #ccc;border-radius:6px;font-size:10px;padding:2px 8px;cursor:pointer;color:#555;">Back to live</button>` : ''}
+      <span id="scrub-ts" style="font-size:10px;font-weight:700;color:${isLive?'#2a9d5c':'#e65100'};white-space:nowrap;min-width:130px;text-align:right;">${isLive ? '● Live' : '⏪ ' + ts}</span>
+      <button id="scrub-back-btn" onclick="window.setScrubIndex(null)" style="display:${isLive?'none':'inline-block'};background:none;border:1px solid #ccc;border-radius:6px;font-size:10px;padding:2px 8px;cursor:pointer;color:#555;">Back to live</button>
     </div>`;
   })() : '';
 
   return `<div style="margin-top:14px;">
     <div class="spark-title" style="margin-bottom:6px;">Score Trend</div>
     <div class="spark-card spark-scroll-card" style="padding:16px 20px 14px;">
-    <svg class="spark-svg-chart" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;">
+    <svg id="spark-svg" class="spark-svg-chart" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible;">
       ${gridLines}
       ${markerLines}
-      ${scrubLine}
       ${ownerLines}
+      <rect id="spark-overlay" x="${W - PAD_R}" y="${PAD_T}" width="0" height="${chartH}" fill="rgba(240,240,240,0.55)" pointer-events="none"/>
+      <line id="spark-scrub-line" x1="${W - PAD_R}" x2="${W - PAD_R}" y1="${PAD_T}" y2="${PAD_T + chartH}" stroke="#e65100" stroke-width="1.5" stroke-dasharray="4,3" opacity="0" pointer-events="none"/>
     </svg>
   </div>
   ${scrubberHtml}
@@ -1951,9 +1945,108 @@ window.toggleRenamePanel = function() {
   renderScreen();
 };
 
-window.setScrubIndex = function(idx) {
-  scrubIndex = (idx === null || idx >= scoreHistory.length - 1) ? null : idx;
-  renderScreen();
+window.setScrubIndex = function(rawIdx) {
+  const n = scoreHistory.length;
+  if (!n) return;
+  const isLive = rawIdx === null || rawIdx >= n - 1;
+  scrubIndex = isLive ? null : rawIdx;
+  const idx = isLive ? n - 1 : rawIdx;
+
+  // Read chart dimensions from the SVG viewBox
+  const svg = document.getElementById('spark-svg');
+  if (!svg) { renderScreen(); return; }
+  const W = 900, PAD_L = 36, PAD_R = 110, PAD_T = 16, PAD_B = 16, H = 220;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const toX = i => PAD_L + (i / (n - 1)) * chartW;
+
+  // Recompute Y scale from full history
+  const ownerList = owners();
+  const allVals = scoreHistory.flatMap(h => ownerList.map(o => h.scores[o])).filter(v => v !== null && v !== undefined);
+  if (!allVals.length) return;
+  const rawMin = Math.min(...allVals), rawMax = Math.max(...allVals);
+  const yMin = Math.min(0, Math.floor(rawMin / 4) * 4) - 4;
+  const yMax = Math.max(0, Math.ceil(rawMax / 4) * 4) + 4;
+  const yRange = yMax - yMin || 1;
+  const toY = v => PAD_T + ((v - yMin) / yRange) * chartH;
+
+  const maxLabelLen = Math.max(...ownerList.map(o => {
+    const snap = scoreHistory[idx];
+    const v = snap?.scores[o];
+    return v === undefined ? 1 : v === 0 ? 1 : String(Math.abs(v)+1).length + 1;
+  }));
+  const maxNameLen = Math.max(...ownerList.map(o => o.length));
+  const badgeW = maxNameLen * 6 + maxLabelLen * 6 + 16;
+
+  // Gray overlay — covers area to the right of scrub position
+  const scrubX = toX(idx);
+  const overlayEl = document.getElementById('spark-overlay');
+  const scrubLineEl = document.getElementById('spark-scrub-line');
+  if (overlayEl) {
+    const overlayX = scrubX;
+    const overlayW = (W - PAD_R) - overlayX;
+    overlayEl.setAttribute('x', overlayX);
+    overlayEl.setAttribute('width', Math.max(0, overlayW));
+    overlayEl.setAttribute('opacity', isLive ? 0 : 1);
+  }
+  if (scrubLineEl) {
+    scrubLineEl.setAttribute('x1', scrubX);
+    scrubLineEl.setAttribute('x2', scrubX);
+    scrubLineEl.setAttribute('opacity', isLive ? 0 : 0.7);
+  }
+
+  // Move each owner's dot and badge to the scrub position
+  // Collect positions for overlap resolution
+  const positions = [];
+  ownerList.forEach(owner => {
+    const id = owner.replace(/[^a-zA-Z]/g,'');
+    const vals = scoreHistory.map(h => h.scores[owner] !== undefined ? h.scores[owner] : null);
+    const atOrBefore = vals.map((v, i) => (v !== null && i <= idx) ? {v, i} : null).filter(Boolean);
+    if (!atOrBefore.length) return;
+    const pt = atOrBefore[atOrBefore.length - 1];
+    const x = toX(pt.i);
+    const y = toY(pt.v);
+    const label = pt.v === 0 ? 'E' : pt.v > 0 ? `+${pt.v}` : `${pt.v}`;
+    const labelColor = pt.v < 0 ? '#2e7d32' : pt.v > 0 ? '#c62828' : '#555';
+    positions.push({ id, owner, x, y, label, labelColor });
+  });
+
+  // Sort by Y for overlap resolution
+  positions.sort((a, b) => a.y - b.y);
+  const MIN_GAP = 18;
+  const resolvedY = [...positions.map(p => p.y)];
+  for (let i = 1; i < resolvedY.length; i++) {
+    if (resolvedY[i] - resolvedY[i-1] < MIN_GAP) resolvedY[i] = resolvedY[i-1] + MIN_GAP;
+  }
+
+  positions.forEach(({ id, owner, x, y, label, labelColor }, i) => {
+    const badgeX = x + 10;
+    const badgeY = resolvedY[i] - 8;
+    const dot = document.getElementById(`spc-${id}`);
+    const rect = document.getElementById(`spr-${id}`);
+    const scoreText = document.getElementById(`sps-${id}`);
+    const nameText = document.getElementById(`spn-${id}`);
+    if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); }
+    if (rect) { rect.setAttribute('x', badgeX); rect.setAttribute('y', badgeY); rect.setAttribute('width', badgeW); }
+    if (scoreText) { scoreText.setAttribute('x', badgeX + 5); scoreText.setAttribute('y', badgeY + 9.5); scoreText.setAttribute('fill', labelColor); scoreText.textContent = label; }
+    if (nameText) { nameText.setAttribute('x', badgeX + 5 + maxLabelLen * 6 + 4); nameText.setAttribute('y', badgeY + 9.5); }
+  });
+
+  // Update timestamp label
+  const tsEl = document.getElementById('scrub-ts');
+  if (tsEl) {
+    if (isLive) {
+      tsEl.style.color = '#2a9d5c';
+      tsEl.textContent = '● Live';
+    } else {
+      const snap = scoreHistory[idx];
+      const ts = new Date(snap.ts).toLocaleString('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+      tsEl.style.color = '#e65100';
+      tsEl.textContent = '⏪ ' + ts;
+    }
+  }
+  const backBtn = document.getElementById('scrub-back-btn');
+  if (backBtn) backBtn.style.display = isLive ? 'none' : 'inline-block';
 };
 
 window.submitRename = async function() {
