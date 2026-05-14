@@ -106,6 +106,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pot-total{font-size:28px;font-weight:800;}
 .pot-meta{font-size:12px;color:#aaa;margin-top:2px;}
 .round-bar{background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.live-tabs{display:flex;gap:0;border-bottom:1px solid #e8e8e8;margin-bottom:16px;}
+.live-tab{padding:8px 22px;font-size:13px;font-weight:700;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;letter-spacing:.01em;}
+.live-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+.lb-table{width:100%;border-collapse:collapse;font-size:13px;}
+.lb-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#aaa;padding:6px 8px;border-bottom:0.5px solid #e0e0e0;text-align:left;}
+.lb-table th.r{text-align:center;}
+.lb-table td{padding:7px 8px;border-bottom:0.5px solid #f0f0f0;color:#1a1a1a;vertical-align:middle;}
+.lb-table td.r{text-align:center;}
+.lb-table tr.cut-row td{color:#bbb;}
+.lb-cut-line{background:#fafafa;border-top:0.5px dashed #ccc;border-bottom:0.5px dashed #ccc;}
+.lb-cut-line td{font-size:11px;color:#aaa;padding:4px 8px;}
+.owner-chip{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.lb-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.lb-filter-row select{font-size:12px;padding:4px 10px;border-radius:20px;border:0.5px solid #ddd;background:#fff;color:#555;cursor:pointer;}
 .sub-window-badge{font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;}
 .sub-open-r1{background:#e3f2fd;color:#1565c0;}
 .sub-open-r2{background:#fff3cd;color:#856404;}
@@ -439,7 +453,9 @@ let makeupOwner = null;
 let makeupSlotIndex = null;
 let makeupSelected = null;
 let scoreHistory = [];
-let scrubIndex = null; // null = live, number = index into scoreHistory
+let scrubIndex = null;
+let liveTab = 'standings'; // 'standings' | 'leaderboard'
+let lbFilterOwner = 'all'; // 'all' | owner name
 // scoreRefreshInterval removed — server-side polling handles score updates
 let isComm = false;
 
@@ -1572,8 +1588,11 @@ function renderLive(isFinal) {
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;margin-top:4px;">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#aaa;">Leaderboard</div>
       </div>
-      <div class="results-grid">${cards}</div>
-      ${sparkHtml}
+      <div class="live-tabs">
+        <div class="live-tab ${liveTab==='standings'?'active':''}" onclick="window.setLiveTab('standings')">Standings</div>
+        <div class="live-tab ${liveTab==='leaderboard'?'active':''}" onclick="window.setLiveTab('leaderboard')">Leaderboard</div>
+      </div>
+      ${liveTab === 'leaderboard' ? buildLeaderboardTab() : `<div class="results-grid">${cards}</div>${sparkHtml}`}
     </div>`;
 
   // Refresh "updated X min ago" every minute without full re-render
@@ -1684,6 +1703,117 @@ function buildLeaderboard() {
     if (a.teamScore !== null && b.teamScore === null) return -1;
     return (a.teamScore||0) - (b.teamScore||0);
   });
+}
+
+// ── Leaderboard tab ────────────────────────────────────────────────
+function buildLeaderboardTab() {
+  const scores = live?.scores || {};
+  const draftPicks = draft?.picks || {};
+  const allSubs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
+  const cutLine = typeof live?.cutLine === 'number' ? live.cutLine : null;
+
+  // Build owner → golfer name set (including subs)
+  const ownerForGolfer = {};
+  owners().forEach(owner => {
+    const picks = draftPicks[owner] || { golfers: [] };
+    const ownerSub = allSubs.find(s => s.owner === owner);
+    let golferNames = picks.golfers.map(g => g.name);
+    if (ownerSub) golferNames = golferNames.filter(n => n !== ownerSub.from).concat([ownerSub.to]);
+    golferNames.forEach(n => { ownerForGolfer[n] = (ownerForGolfer[n] || []); ownerForGolfer[n].push(owner); });
+    // Alternate
+    const alt = picks.alternate;
+    if (alt?.name) ownerForGolfer[alt.name] = ownerForGolfer[alt.name] || [];
+  });
+
+  // Also map alternates with an 'A' flag
+  const alternateNames = new Set();
+  owners().forEach(owner => {
+    const alt = draftPicks[owner]?.alternate;
+    if (alt?.name) alternateNames.add(alt.name);
+  });
+
+  // Sort all scored players by score
+  const allPlayers = Object.entries(scoreFor ? {} : scores).concat(
+    Object.entries(scores)
+  ).filter(([,v]) => v).sort((a, b) => {
+    if (a[1].cut && !b[1].cut) return 1;
+    if (!a[1].cut && b[1].cut) return -1;
+    return (a[1].score ?? 999) - (b[1].score ?? 999);
+  });
+  // Deduplicate
+  const seen = new Set();
+  const players = allPlayers.filter(([k]) => { if (seen.has(k)) return false; seen.add(k); return true; });
+
+  // Filter by owner if selected
+  const filtered = lbFilterOwner === 'all'
+    ? players
+    : players.filter(([, v]) => {
+        const espnName = v.espnName || '';
+        return (ownerForGolfer[espnName] || []).includes(lbFilterOwner) ||
+               (ownerForGolfer[Object.keys(ownerForGolfer).find(k => scoreFor(k)?.espnName === espnName) || ''] || []).includes(lbFilterOwner);
+      });
+
+  let pos = 1, cutInserted = false;
+  const rows = filtered.map(([key, p], i) => {
+    const isCut = p.cut;
+    const score = p.score ?? 0;
+    const display = p.display || (score === 0 ? 'E' : score > 0 ? `+${score}` : `${score}`);
+    const scoreColor = score < 0 ? '#1a6b2e' : score > 0 ? '#c62828' : '#888';
+    const rd = p.roundScore !== null && p.roundScore !== undefined ? (p.roundScore === 0 ? 'E' : p.roundScore > 0 ? `+${p.roundScore}` : `${p.roundScore}`) : '—';
+    const rdColor = (p.roundScore ?? 0) < 0 ? '#1a6b2e' : (p.roundScore ?? 0) > 0 ? '#c62828' : '#888';
+    const thru = p.thru || (p.teeTime ? (() => { try { return new Date(p.teeTime).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).replace(' AM','a').replace(' PM','p'); } catch(e){return '—';} })() : '—');
+    const espnName = p.espnName || key.replace(/_/g,' ');
+
+    // Owner chips
+    const myOwners = Object.entries(ownerForGolfer)
+      .filter(([n]) => n === espnName || scoreFor(n)?.espnName === espnName)
+      .flatMap(([,os]) => os);
+    const isAlt = alternateNames.has(espnName);
+    const chips = [...new Set(myOwners)].map(o => {
+      const c = color(o);
+      const bg = c + '22';
+      return `<span class="owner-chip" style="background:${bg};color:${c};">${o}${isAlt?' (A)':''}</span>`;
+    }).join(' ');
+
+    // Insert cut line
+    let cutHtml = '';
+    if (!cutInserted && cutLine !== null && !isCut && i > 0 && filtered[i-1]?.[1]?.score < cutLine && score >= cutLine) {
+      cutHtml = `<tr class="lb-cut-line"><td colspan="6">— Projected cut ${cutLine === 0 ? 'E' : cutLine > 0 ? `+${cutLine}` : cutLine} —</td></tr>`;
+      cutInserted = true;
+    }
+    if (!cutInserted && isCut && !cutHtml) { cutHtml = `<tr class="lb-cut-line"><td colspan="6">— Cut —</td></tr>`; cutInserted = true; }
+
+    // Position: tie logic
+    const prevScore = i > 0 ? filtered[i-1]?.[1]?.score : null;
+    const posDisplay = prevScore === score ? 'T' + pos : (pos = i + 1, pos);
+
+    return `${cutHtml}<tr class="${isCut ? 'cut-row' : ''}">
+      <td class="r" style="color:#aaa;font-size:12px;min-width:32px;">${posDisplay}</td>
+      <td style="font-weight:500;">${espnName}</td>
+      <td class="r" style="font-weight:700;color:${scoreColor};">${display}</td>
+      <td class="r" style="color:#888;font-size:12px;">${thru}</td>
+      <td class="r" style="color:${rdColor};font-size:12px;">${rd}</td>
+      <td>${chips}</td>
+    </tr>`;
+  }).join('');
+
+  const ownerOptions = owners().map(o => `<option value="${o}" ${lbFilterOwner===o?'selected':''}>${o}</option>`).join('');
+
+  return `<div class="lb-filter-row">
+    <select onchange="window.setLbFilter(this.value)">
+      <option value="all" ${lbFilterOwner==='all'?'selected':''}>All players</option>
+      ${ownerOptions}
+    </select>
+    <span style="font-size:11px;color:#aaa;">${filtered.length} player${filtered.length!==1?'s':''} shown</span>
+  </div>
+  <div style="overflow-x:auto;">
+  <table class="lb-table">
+    <thead><tr>
+      <th class="r">Pos</th><th>Player</th><th class="r">Total</th><th class="r">Thru</th><th class="r">Rd</th><th>Owner</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  </div>`;
 }
 
 // ── Score trend chart ──────────────────────────────────────────────
@@ -1949,6 +2079,9 @@ window.toggleRenamePanel = function() {
   showOverridePanel = false;
   renderScreen();
 };
+
+window.setLiveTab = function(tab) { liveTab = tab; renderScreen(); };
+window.setLbFilter = function(val) { lbFilterOwner = val; renderScreen(); };
 
 window.setScrubIndex = function(rawIdx) {
   const n = scoreHistory.length;
