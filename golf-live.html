@@ -1443,13 +1443,14 @@ function renderLive(isFinal) {
       return `<span class="round-score-box">${rs !== null ? `<span class="rc-score-val ${rsCls}" style="font-size:10px;">${rs}</span>` : ''}${displayThru ? `<span style="color:#bbb;${rs!==null?'margin-left:2px;':''}">${displayThru}</span>` : ''}</span>`;
     };
 
+    const cutLineVal = typeof live?.cutLine === 'number' ? live.cutLine : null;
+    const isR2OrEarlier = (live?.round || 1) <= 2;
+
     const playerRows = entry.displayGolfers.map(g => {
       const isCounting = !entry.out && entry.countingNames?.includes(g.name) && !g.cut && !g.subOut;
       const sv = g.cut ? 'CUT' : (g.liveScore !== undefined ? fmtScore(g.liveScore) : '—');
       const svCls = g.liveScore < 0 ? 'under' : g.liveScore > 0 ? 'over' : '';
       // Cut line badge — show if player is on or near the cut line (R1/R2 only)
-      const cutLineVal = typeof live?.cutLine === 'number' ? live.cutLine : null;
-      const isR2OrEarlier = (live?.round || 1) <= 2;
       let cutBadge = '';
       if (!g.cut && cutLineVal !== null && isR2OrEarlier && g.liveScore !== undefined) {
         if (g.liveScore === cutLineVal) cutBadge = `<span title="On the cut line" style="margin-left:3px;font-size:11px;">⚠️</span>`;
