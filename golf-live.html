@@ -1470,8 +1470,13 @@ function renderLive(isFinal) {
       const altCls = !isBenched && alt.liveScore < 0 ? 'under' : !isBenched && alt.liveScore > 0 ? 'over' : '';
       const altLabel = isBenched ? 'Subbed' : 'A';
       const altLabelColor = isBenched ? '#aaa' : '#856404';
+      let altCutBadge = '';
+      if (!alt.cut && !isBenched && cutLineVal !== null && isR2OrEarlier && alt.liveScore !== undefined) {
+        if (alt.liveScore === cutLineVal) altCutBadge = `<span title="On the cut line" style="margin-left:3px;font-size:11px;">⚠️</span>`;
+        else if (alt.liveScore > cutLineVal) altCutBadge = `<span title="Below the cut line" style="margin-left:3px;font-size:11px;">❌</span>`;
+      }
       altRow = `<div class="rc-player alt ${alt.cut?'cut':''}" style="${isBenched?'color:#bbb;':''}">
-        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="alt-lbl" style="color:${altLabelColor}">${altLabel}</span>${alt.name}</span>
+        <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><span class="alt-lbl" style="color:${altLabelColor}">${altLabel}</span>${alt.name}${altCutBadge}</span>
         ${buildRoundPill(alt, alt.cut)}
         <span class="rc-score-val ${altCls}">${altSv}</span>
       </div>`;
