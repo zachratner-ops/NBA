@@ -479,21 +479,29 @@ const histRef  = () => ref(db, `golf/history/${SLUG}`);
 // ── Firebase listeners ─────────────────────────────────────────────
 // ── Firebase listeners ─────────────────────────────────────────────
 onValue(draftRef(), snap => {
-  draft = snap.val() || { status: 'setup', name: '', owners: ALL_OWNERS };
-  renderScreen();
+  try {
+    draft = snap.val() || { status: 'setup', name: '', owners: ALL_OWNERS };
+    renderScreen();
+  } catch(e) {
+    console.error('[draftRef onValue] ERROR:', e);
+  }
 });
 onValue(liveRef(), snap => {
-  live = snap.val();
-  // Hydrate scoreHistory from Firebase on first load or when new snapshots arrive
-  if (live?.scoreHistory) {
-    const sorted = Object.values(live.scoreHistory).sort((a,b) => new Date(a.ts) - new Date(b.ts));
-    const newHistory = sorted.map(s => ({ ts: new Date(s.ts).getTime(), scores: s.scores }));
-    if (newHistory.length !== scoreHistory.length) {
-      scoreHistory = newHistory;
-      // Don't reset scrubIndex — keep user's position if they were scrubbing
+  try {
+    live = snap.val();
+    if (live?.scoreHistory) {
+      const histArr = Array.isArray(live.scoreHistory) ? live.scoreHistory : Object.values(live.scoreHistory);
+      const sorted = histArr.filter(Boolean).sort((a,b) => new Date(a.ts) - new Date(b.ts));
+      const newHistory = sorted.map(s => ({ ts: new Date(s.ts).getTime(), scores: s.scores || {} }));
+      if (newHistory.length !== scoreHistory.length) {
+        scoreHistory = newHistory;
+      }
     }
+    if (draft?.status === 'live' || draft?.status === 'final') renderScreen();
+  } catch(e) {
+    console.error('[liveRef onValue] ERROR:', e);
+    if (draft?.status === 'live' || draft?.status === 'final') renderScreen();
   }
-  if (draft?.status === 'live' || draft?.status === 'final') renderScreen();
 });
 
 // ── WebSocket ──────────────────────────────────────────────────────
