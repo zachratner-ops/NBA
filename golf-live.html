@@ -1773,7 +1773,9 @@ function buildLeaderboardTab() {
     const scoreColor = score < 0 ? '#1a6b2e' : score > 0 ? '#c62828' : '#888';
     const rd = p.roundScore !== null && p.roundScore !== undefined ? (p.roundScore === 0 ? 'E' : p.roundScore > 0 ? `+${p.roundScore}` : `${p.roundScore}`) : '—';
     const rdColor = (p.roundScore ?? 0) < 0 ? '#1a6b2e' : (p.roundScore ?? 0) > 0 ? '#c62828' : '#888';
-    const thruRaw = p.thru || (p.teeTime ? (() => { try { return new Date(p.teeTime).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).replace(' AM','a').replace(' PM','p'); } catch(e){return '—';} })() : '—');
+    const thruRaw = p.thru && (p.thru.includes('T') || p.thru.match(/^\d{4}-/))
+      ? (() => { try { return new Date(p.thru).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).replace(' AM','a').replace(' PM','p'); } catch(e){return p.thru;} })()
+      : p.thru || (p.teeTime ? (() => { try { return new Date(p.teeTime).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).replace(' AM','a').replace(' PM','p'); } catch(e){return '—';} })() : '—');
     const thru = typeof thruRaw === 'string' ? thruRaw.replace(/^Thru\s*/i, '') : thruRaw;
     const espnName = p.espnName || key.replace(/_/g,' ');
 
