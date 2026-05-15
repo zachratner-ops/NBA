@@ -1614,7 +1614,7 @@ function renderLive(isFinal) {
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="font-size:15px;font-weight:800;">Round ${live.round||1}</div>
           </div>
-          ${live.cutLine !== undefined && live.cutLine !== null ? (() => {
+          ${live.cutLine !== undefined && live.cutLine !== null && (live.round || 1) <= 2 ? (() => {
             const cl = live.cutLine;
             const display = typeof cl === 'number' ? (cl === 0 ? 'E' : cl > 0 ? `+${cl}` : `${cl}`) : cl;
             return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
