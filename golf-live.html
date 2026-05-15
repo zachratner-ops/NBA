@@ -1875,14 +1875,11 @@ function buildSparklines(lbData) {
   const roundMarkers = Array.isArray(live?.roundMarkers) ? live.roundMarkers : Object.values(live?.roundMarkers || {});
   const markerLines = roundMarkers.map((m) => {
     if (!m?.ts || n < 2) return '';
-    // Find closest snapshot index to marker timestamp
-    let closestIdx = 0, closestDiff = Infinity;
-    scoreHistory.forEach((snap, i) => {
-      const diff = Math.abs(snap.ts - m.ts);
-      if (diff < closestDiff) { closestDiff = diff; closestIdx = i; }
-    });
-    if (closestIdx === 0 || closestIdx === n - 1) return ''; // don't draw at edges
-    const xPos = toX(closestIdx);
+    // Find last snapshot at or before marker timestamp
+    let markerIdx = -1;
+    scoreHistory.forEach((snap, i) => { if (snap.ts <= m.ts) markerIdx = i; });
+    if (markerIdx <= 0 || markerIdx >= n - 1) return '';
+    const xPos = toX(markerIdx);
     return `<line x1="${xPos}" x2="${xPos}" y1="${PAD_T}" y2="${PAD_T + chartH}" stroke="#aaa" stroke-width="1" stroke-dasharray="3,3"/>
             <text x="${xPos + 3}" y="${PAD_T + 10}" font-size="9" fill="#aaa" font-weight="700">R${m.round}</text>`;
   }).join('');
