@@ -118,8 +118,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lb-cut-line{background:#fafafa;border-top:0.5px dashed #ccc;border-bottom:0.5px dashed #ccc;}
 .lb-cut-line td{font-size:11px;color:#aaa;padding:4px 8px;}
 .owner-chip{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;}
-.lb-filter-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
-.lb-filter-row select{font-size:12px;padding:4px 10px;border-radius:20px;border:0.5px solid #ddd;background:#fff;color:#555;cursor:pointer;}
+.lb-filter-row{display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;}
+.lb-owner-pill{display:inline-flex;align-items:center;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;cursor:pointer;border:1.5px solid transparent;transition:background .15s,border-color .15s;white-space:nowrap;user-select:none;}
+.lb-th-sort{cursor:pointer;user-select:none;}
+.lb-th-sort:hover{background:#f0f0ee;}
+.sort-arrow{margin-left:2px;font-size:9px;color:#ccc;vertical-align:middle;}
+.sort-arrow.on{color:#1a1a1a;}
 .sub-window-badge{font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;}
 .sub-open-r1{background:#e3f2fd;color:#1565c0;}
 .sub-open-r2{background:#fff3cd;color:#856404;}
@@ -458,7 +462,9 @@ let scoreHistory = [];
 let scrubIndex = null;
 let focusOwner = null; // null = show all, string = highlight one owner
 let liveTab = 'standings'; // 'standings' | 'leaderboard'
-let lbFilterOwner = 'all'; // 'all' | owner name
+let lbFilterOwners = new Set(); // empty = all
+let lbSortCol = 'pos'; // 'pos' | 'player' | 'total' | 'thru' | 'rd'
+let lbSortDir = 'asc';
 // scoreRefreshInterval removed — server-side polling handles score updates
 let isComm = false;
 
@@ -1772,17 +1778,56 @@ function buildLeaderboardTab() {
   const seen = new Set();
   const players = allPlayers.filter(([k]) => { if (seen.has(k)) return false; seen.add(k); return true; });
 
-  // Filter by owner if selected
-  const filtered = lbFilterOwner === 'all'
+  // Filter by selected owners (empty set = show all)
+  const filtered = lbFilterOwners.size === 0
     ? players
     : players.filter(([, v]) => {
         const espnName = v.espnName || '';
-        return (ownerForGolfer[espnName] || []).includes(lbFilterOwner) ||
-               (ownerForGolfer[Object.keys(ownerForGolfer).find(k => sf(k)?.espnName === espnName) || ''] || []).includes(lbFilterOwner);
+        const playerOwners = (ownerForGolfer[espnName] || []).concat(
+          ownerForGolfer[Object.keys(ownerForGolfer).find(k => sf(k)?.espnName === espnName) || ''] || []
+        );
+        return playerOwners.some(o => lbFilterOwners.has(o));
       });
 
-  let pos = 1, cutInserted = false;
-  const rows = filtered.map(([key, p], i) => {
+  // Pre-compute score-based positions before any column re-sort
+  const posMap = new Map();
+  { let p = 1, prevS = null;
+    filtered.forEach(([key, v], i) => {
+      if (v.cut) { posMap.set(key, '—'); return; }
+      const s = v.score ?? 0;
+      if (prevS !== null && s === prevS) posMap.set(key, 'T' + p);
+      else { p = i + 1; posMap.set(key, p); }
+      prevS = s;
+    });
+  }
+
+  // Apply column sort (cut players always sink to bottom)
+  const sortedFiltered = [...filtered].sort(([ka, a], [kb, b]) => {
+    const aCut = a.cut ? 1 : 0, bCut = b.cut ? 1 : 0;
+    if (aCut !== bCut) return aCut - bCut;
+    let va, vb;
+    if (lbSortCol === 'player') {
+      va = (a.espnName || ka.replace(/_/g,' ')).toLowerCase();
+      vb = (b.espnName || kb.replace(/_/g,' ')).toLowerCase();
+    } else if (lbSortCol === 'total') {
+      va = a.score ?? 999; vb = b.score ?? 999;
+    } else if (lbSortCol === 'thru') {
+      const toNum = v => typeof v.thru === 'number' ? v.thru : (v.thru === 'F' || v.thru === '18' ? 18 : 0);
+      va = toNum(a); vb = toNum(b);
+    } else if (lbSortCol === 'rd') {
+      va = a.roundScore ?? 999; vb = b.roundScore ?? 999;
+    } else {
+      va = a.score ?? 999; vb = b.score ?? 999; // 'pos' default
+    }
+    const cmp = va < vb ? -1 : va > vb ? 1 : 0;
+    return lbSortDir === 'desc' ? -cmp : cmp;
+  });
+
+  // Cut line only makes sense in score order
+  const showCutLine = lbSortCol === 'pos';
+  let cutInserted = false;
+
+  const rows = sortedFiltered.map(([key, p], i) => {
     const isCut = p.cut;
     const score = p.score ?? 0;
     const display = p.display || (score === 0 ? 'E' : score > 0 ? `+${score}` : `${score}`);
@@ -1806,17 +1851,17 @@ function buildLeaderboardTab() {
       return `<span class="owner-chip" style="background:${bg};color:${c};">${o}${isAlt?' (A)':''}</span>`;
     }).join(' ');
 
-    // Insert cut line
+    // Cut line separator (score sort only)
     let cutHtml = '';
-    if (!cutInserted && cutLine !== null && !isCut && i > 0 && filtered[i-1]?.[1]?.score < cutLine && score >= cutLine) {
-      cutHtml = `<tr class="lb-cut-line"><td colspan="6">— Projected cut ${cutLine === 0 ? 'E' : cutLine > 0 ? `+${cutLine}` : cutLine} —</td></tr>`;
-      cutInserted = true;
+    if (showCutLine) {
+      if (!cutInserted && cutLine !== null && !isCut && i > 0 && sortedFiltered[i-1]?.[1]?.score < cutLine && score >= cutLine) {
+        cutHtml = `<tr class="lb-cut-line"><td colspan="6">— Projected cut ${cutLine === 0 ? 'E' : cutLine > 0 ? `+${cutLine}` : cutLine} —</td></tr>`;
+        cutInserted = true;
+      }
+      if (!cutInserted && isCut && !cutHtml) { cutHtml = `<tr class="lb-cut-line"><td colspan="6">— Cut —</td></tr>`; cutInserted = true; }
     }
-    if (!cutInserted && isCut && !cutHtml) { cutHtml = `<tr class="lb-cut-line"><td colspan="6">— Cut —</td></tr>`; cutInserted = true; }
 
-    // Position: tie logic
-    const prevScore = i > 0 ? filtered[i-1]?.[1]?.score : null;
-    const posDisplay = prevScore === score ? 'T' + pos : (pos = i + 1, pos);
+    const posDisplay = posMap.get(key) ?? '—';
 
     return `${cutHtml}<tr class="${isCut ? 'cut-row' : ''}">
       <td class="r" style="color:#aaa;font-size:12px;min-width:32px;">${posDisplay}</td>
@@ -1828,19 +1873,33 @@ function buildLeaderboardTab() {
     </tr>`;
   }).join('');
 
-  const ownerOptions = owners().map(o => `<option value="${o}" ${lbFilterOwner===o?'selected':''}>${o}</option>`).join('');
+  // Sort arrow helper
+  const arr = col => {
+    if (lbSortCol !== col) return `<span class="sort-arrow">↕</span>`;
+    return `<span class="sort-arrow on">${lbSortDir === 'asc' ? '↑' : '↓'}</span>`;
+  };
+
+  // Owner filter pills
+  const pills = owners().map(o => {
+    const c = color(o);
+    const active = lbFilterOwners.has(o);
+    return `<span class="lb-owner-pill" style="background:${active ? c+'33' : c+'18'};color:${c};${active ? `border-color:${c};` : ''}" onclick="window.toggleLbFilter('${o}')">${o}</span>`;
+  }).join('');
 
   return `<div class="lb-filter-row">
-    <select onchange="window.setLbFilter(this.value)">
-      <option value="all" ${lbFilterOwner==='all'?'selected':''}>All players</option>
-      ${ownerOptions}
-    </select>
-    <span style="font-size:11px;color:#aaa;">${filtered.length} player${filtered.length!==1?'s':''} shown</span>
+    ${pills}
+    ${lbFilterOwners.size > 0 ? `<span style="font-size:11px;color:#aaa;cursor:pointer;" onclick="window.clearLbFilter()">✕ clear</span>` : ''}
+    <span style="font-size:11px;color:#ccc;margin-left:2px;">${filtered.length} player${filtered.length!==1?'s':''}</span>
   </div>
   <div style="overflow-x:auto;">
   <table class="lb-table">
     <thead><tr>
-      <th class="r">Pos</th><th>Player</th><th class="r">Total</th><th class="r">Thru</th><th class="r">Rd</th><th>Owner</th>
+      <th class="r lb-th-sort" onclick="window.setLbColSort('pos')">Pos${arr('pos')}</th>
+      <th class="lb-th-sort" onclick="window.setLbColSort('player')">Player${arr('player')}</th>
+      <th class="r lb-th-sort" onclick="window.setLbColSort('total')">Total${arr('total')}</th>
+      <th class="r lb-th-sort" onclick="window.setLbColSort('thru')">Thru${arr('thru')}</th>
+      <th class="r lb-th-sort" onclick="window.setLbColSort('rd')">Rd${arr('rd')}</th>
+      <th>Owner</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
@@ -2120,7 +2179,17 @@ window.toggleRenamePanel = function() {
 };
 
 window.setLiveTab = function(tab) { liveTab = tab; renderScreen(); };
-window.setLbFilter = function(val) { lbFilterOwner = val; renderScreen(); };
+window.toggleLbFilter = function(owner) {
+  if (lbFilterOwners.has(owner)) lbFilterOwners.delete(owner);
+  else lbFilterOwners.add(owner);
+  renderScreen();
+};
+window.clearLbFilter = function() { lbFilterOwners.clear(); renderScreen(); };
+window.setLbColSort = function(col) {
+  if (lbSortCol === col) lbSortDir = lbSortDir === 'asc' ? 'desc' : 'asc';
+  else { lbSortCol = col; lbSortDir = 'asc'; }
+  renderScreen();
+};
 
 window.toggleFocusOwner = function(owner) {
   focusOwner = focusOwner === owner ? null : owner;
