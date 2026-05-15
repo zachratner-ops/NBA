@@ -1671,7 +1671,8 @@ function buildLeaderboard() {
         roundScore: scoreFor(alternate.name)?.roundScore ?? null,
         thru: scoreFor(alternate.name)?.thru || null,
         teeTime: scoreFor(alternate.name)?.teeTime || null,
-        cut: scoreFor(alternate.name)?.cut || alternate.cut
+        cut: scoreFor(alternate.name)?.cut || alternate.cut,
+        status: scoreFor(alternate.name)?.status || null
       };
     }
 
@@ -1773,7 +1774,7 @@ function buildLeaderboardTab() {
     const scoreColor = score < 0 ? '#1a6b2e' : score > 0 ? '#c62828' : '#888';
     const rd = p.roundScore !== null && p.roundScore !== undefined ? (p.roundScore === 0 ? 'E' : p.roundScore > 0 ? `+${p.roundScore}` : `${p.roundScore}`) : '—';
     const rdColor = (p.roundScore ?? 0) < 0 ? '#1a6b2e' : (p.roundScore ?? 0) > 0 ? '#c62828' : '#888';
-    const thruRaw = p.thru && (p.thru.includes('T') || p.thru.match(/^\d{4}-/))
+    const thruRaw = p.thru && /^\d{4}-/.test(p.thru)
       ? (() => { try { return new Date(p.thru).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).replace(' AM','a').replace(' PM','p'); } catch(e){return p.thru;} })()
       : p.thru || (p.teeTime ? (() => { try { return new Date(p.teeTime).toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',hour12:true}).replace(' AM','a').replace(' PM','p'); } catch(e){return '—';} })() : '—');
     const thru = typeof thruRaw === 'string' ? thruRaw.replace(/^Thru\s*/i, '') : thruRaw;
