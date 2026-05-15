@@ -1426,8 +1426,14 @@ function renderLive(isFinal) {
 
       // Not started — thru may be a tee time ISO string, or teeTime field may have it
       if (rs === null && (!thruStr || thruStr.includes('T') || thruStr.includes(':'))) {
-        // Try teeTime field first, then thru if it looks like an ISO/time string
         const rawTime = g.teeTime || (thruStr && (thruStr.includes('T') || /^\d/.test(thruStr)) ? thruStr : null);
+        const formatted = fmtTeeTime(rawTime);
+        if (formatted) return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${formatted}</span>`;
+        return `<span class="round-score-box" style="color:#ccc;">—</span>`;
+      }
+      // Scheduled but has a prior round score — show tee time only, no round score
+      if (g.status === 'STATUS_SCHEDULED') {
+        const rawTime = g.teeTime || null;
         const formatted = fmtTeeTime(rawTime);
         if (formatted) return `<span class="round-score-box" style="color:#aaa;font-size:9px;">${formatted}</span>`;
         return `<span class="round-score-box" style="color:#ccc;">—</span>`;
@@ -1655,7 +1661,8 @@ function buildLeaderboard() {
       thru: scoreFor(g.name)?.thru || null,
       teeTime: scoreFor(g.name)?.teeTime || null,
       position: scoreFor(g.name)?.position || null,
-      cut: scoreFor(g.name)?.cut || g.cut
+      cut: scoreFor(g.name)?.cut || g.cut,
+      status: scoreFor(g.name)?.status || null
     }));
     if (alternate) {
       alternate = {
