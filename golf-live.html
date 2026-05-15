@@ -456,6 +456,7 @@ let makeupSlotIndex = null;
 let makeupSelected = null;
 let scoreHistory = [];
 let scrubIndex = null;
+let focusOwner = null; // null = show all, string = highlight one owner
 let liveTab = 'standings'; // 'standings' | 'leaderboard'
 let lbFilterOwner = 'all'; // 'all' | owner name
 // scoreRefreshInterval removed — server-side polling handles score updates
@@ -1915,7 +1916,8 @@ function buildSparklines(lbData) {
 
   const ownerPolylines = labelData.map(({ owner, pts }) => {
     const id = owner.replace(/[^a-zA-Z]/g,'');
-    return `<polyline id="spl-${id}" points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="1" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>`;
+    const dimmed = focusOwner && focusOwner !== owner;
+    return `<polyline id="spl-${id}" points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="${dimmed ? 1 : 1.5}" stroke-linejoin="round" stroke-linecap="round" opacity="${dimmed ? 0.12 : 0.9}" style="transition:opacity 0.2s,stroke-width 0.2s;"/>`;
   }).join('');
 
   const ownerLabels = labelData.map(({ owner, last, label, labelColor, dotY }) => {
@@ -1923,10 +1925,15 @@ function buildSparklines(lbData) {
     const badgeX = last.x + 10;
     const badgeY = last.y - 8;
     const connectorY = dotY !== undefined ? dotY : last.y;
-    return `<circle id="spc-${id}" cx="${last.x}" cy="${connectorY}" r="2.5" fill="${color(owner)}"/>
-            <rect id="spr-${id}" x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="#f8f8f8" stroke="${color(owner)}" stroke-width="1"/>
+    const dimmed = focusOwner && focusOwner !== owner;
+    const focused = focusOwner === owner;
+    const groupOpacity = dimmed ? 0.2 : 1;
+    return `<g id="spg-${id}" onclick="window.toggleFocusOwner('${owner}')" style="cursor:pointer;opacity:${groupOpacity};transition:opacity 0.2s;">
+            <circle id="spc-${id}" cx="${last.x}" cy="${connectorY}" r="${focused ? 3.5 : 2.5}" fill="${color(owner)}"/>
+            <rect id="spr-${id}" x="${badgeX}" y="${badgeY}" width="${badgeW}" height="14" rx="4" fill="${focused ? color(owner)+'22' : '#f8f8f8'}" stroke="${color(owner)}" stroke-width="${focused ? 1.5 : 1}"/>
             <text id="sps-${id}" x="${badgeX + 5}" y="${badgeY + 9.5}" font-size="9" font-weight="700" fill="${labelColor}">${label}</text>
-            <text id="spn-${id}" x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" fill="${color(owner)}">${owner}</text>`;
+            <text id="spn-${id}" x="${badgeX + 5 + maxLabelLen * 6 + 4}" y="${badgeY + 9.5}" font-size="9" font-weight="${focused ? '700' : '400'}" fill="${color(owner)}">${owner}</text>
+            </g>`;
   }).join('');
 
   const scrubberHtml = scoreHistory.length >= 2 ? (() => {
@@ -2099,6 +2106,11 @@ window.toggleRenamePanel = function() {
 window.setLiveTab = function(tab) { liveTab = tab; renderScreen(); };
 window.setLbFilter = function(val) { lbFilterOwner = val; renderScreen(); };
 
+window.toggleFocusOwner = function(owner) {
+  focusOwner = focusOwner === owner ? null : owner;
+  renderScreen();
+};
+
 window.setScrubIndex = function(rawIdx) {
   const n = scoreHistory.length;
   if (!n) return;
@@ -2176,14 +2188,18 @@ window.setScrubIndex = function(rawIdx) {
   positions.forEach(({ id, owner, x, y, label, labelColor }, i) => {
     const badgeX = x + 10;
     const badgeY = resolvedY[i] - 8;
+    const group = document.getElementById(`spg-${id}`);
     const dot = document.getElementById(`spc-${id}`);
     const rect = document.getElementById(`spr-${id}`);
     const scoreText = document.getElementById(`sps-${id}`);
     const nameText = document.getElementById(`spn-${id}`);
-    if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); }
+    const dimmed = focusOwner && focusOwner !== owner;
+    const focused = focusOwner === owner;
+    if (group) group.style.opacity = dimmed ? 0.2 : 1;
+    if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', focused ? 3.5 : 2.5); }
     if (rect) { rect.setAttribute('x', badgeX); rect.setAttribute('y', badgeY); rect.setAttribute('width', badgeW); }
     if (scoreText) { scoreText.setAttribute('x', badgeX + 5); scoreText.setAttribute('y', badgeY + 9.5); scoreText.setAttribute('fill', labelColor); scoreText.textContent = label; }
-    if (nameText) { nameText.setAttribute('x', badgeX + 5 + maxLabelLen * 6 + 4); nameText.setAttribute('y', badgeY + 9.5); }
+    if (nameText) { nameText.setAttribute('x', badgeX + 5 + maxLabelLen * 6 + 4); nameText.setAttribute('y', badgeY + 9.5); nameText.setAttribute('font-weight', focused ? '700' : '400'); }
   });
 
   // Update timestamp label
