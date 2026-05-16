@@ -1496,7 +1496,7 @@ function renderLive(isFinal) {
       ? `<div class="sub-btn-wrap"><button class="btn btn-amber" onclick="window.openMakeupModal('${entry.owner}')">Make Pick</button></div>`
       : '';
 
-    const subBtnHtml = !isFinal && subOpen && !entry.hasSubbed && entry.alternate && !entry.alternate.benchedOut
+    const subBtnHtml = !isFinal && (subOpen || entry.out) && !entry.hasSubbed && entry.alternate && !entry.alternate.benchedOut
       ? `<div class="sub-btn-wrap"><button class="btn btn-amber" onclick="window.openSubModal('${entry.owner}')">Sub In Alternate ($${subRound===1?5:15})</button></div>` : '';
 
     // Draft pick number: first pick in pickSequence for this owner
