@@ -1496,7 +1496,7 @@ function renderLive(isFinal) {
       ? `<div class="sub-btn-wrap"><button class="btn btn-amber" onclick="window.openMakeupModal('${entry.owner}')">Make Pick</button></div>`
       : '';
 
-    const subBtnHtml = !isFinal && (subOpen || entry.out) && !entry.hasSubbed && entry.alternate && !entry.alternate.benchedOut
+    const subBtnHtml = !isFinal && !(entry.out && subRound === 2) && (subOpen || entry.out) && !entry.hasSubbed && entry.alternate && !entry.alternate.benchedOut
       ? `<div class="sub-btn-wrap"><button class="btn btn-amber" onclick="window.openSubModal('${entry.owner}')">Sub In Alternate ($${subRound===1?5:15})</button></div>` : '';
 
     // Draft pick number: first pick in pickSequence for this owner
@@ -1959,6 +1959,8 @@ function buildSparklines(lbData) {
 
   // Build end labels — at scrub position if scrubbing, otherwise at last point
   const labelIdx = (scrubIndex !== null && scrubIndex < n) ? scrubIndex : n - 1;
+  const isAtLive = labelIdx === n - 1;
+  const eliminatedOwners = new Set(lbData.filter(e => e.out).map(e => e.owner));
   const labelData = owners().map(owner => {
     const vals = ownerData[owner];
     const validPts = vals.map((v, i) => v !== null ? {x: toX(i), y: toY(v), v, i} : null).filter(Boolean);
@@ -1967,35 +1969,47 @@ function buildSparklines(lbData) {
     const atOrBefore = validPts.filter(p => p.i <= labelIdx);
     if (atOrBefore.length === 0) return null;
     const anchor = atOrBefore[atOrBefore.length - 1];
-    const label = anchor.v === 0 ? 'E' : anchor.v > 0 ? `+${anchor.v}` : `${anchor.v}`;
-    const labelColor = anchor.v < 0 ? '#2e7d32' : anchor.v > 0 ? '#c62828' : '#555';
-    return { owner, last: anchor, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' '), dotY: anchor.y };
+    const isEliminated = isAtLive && eliminatedOwners.has(owner);
+    const label = isEliminated ? 'OUT' : (anchor.v === 0 ? 'E' : anchor.v > 0 ? `+${anchor.v}` : `${anchor.v}`);
+    const labelColor = isEliminated ? '#aaa' : (anchor.v < 0 ? '#2e7d32' : anchor.v > 0 ? '#c62828' : '#555');
+    return { owner, last: anchor, label, labelColor, pts: validPts.map(p => `${p.x},${p.y}`).join(' '), dotY: anchor.y, isEliminated };
   }).filter(Boolean);
 
-  // Sort by y position to detect overlaps
-  labelData.sort((a, b) => a.last.y - b.last.y);
+  // Separate active and eliminated labels
+  const activeLabelData = labelData.filter(d => !d.isEliminated);
+  const eliminatedLabelData = labelData.filter(d => d.isEliminated);
+
+  // Sort and resolve overlaps for active labels only
+  activeLabelData.sort((a, b) => a.last.y - b.last.y);
   const MIN_GAP = 18;
-  // Push labels apart if they overlap
-  for (let i = 1; i < labelData.length; i++) {
-    const prev = labelData[i - 1];
-    const curr = labelData[i];
+  for (let i = 1; i < activeLabelData.length; i++) {
+    const prev = activeLabelData[i - 1];
+    const curr = activeLabelData[i];
     if (curr.last.y - prev.last.y < MIN_GAP) {
       curr.last = { ...curr.last, y: prev.last.y + MIN_GAP };
     }
   }
 
+  // Place eliminated labels at the bottom of the chart, stacked upward
+  const bottomY = PAD_T + chartH;
+  eliminatedLabelData.forEach((d, i) => {
+    d.last = { ...d.last, y: bottomY - i * MIN_GAP };
+  });
+
+  const allLabelData = [...activeLabelData, ...eliminatedLabelData];
+
   // Calculate uniform badge width based on longest name + longest score label
-  const maxNameLen = Math.max(...labelData.map(d => d.owner.length));
-  const maxLabelLen = Math.max(...labelData.map(d => d.label.length));
+  const maxNameLen = Math.max(...allLabelData.map(d => d.owner.length));
+  const maxLabelLen = Math.max(...allLabelData.map(d => d.label.length));
   const badgeW = maxNameLen * 6 + maxLabelLen * 6 + 16;
 
-  const ownerPolylines = labelData.map(({ owner, pts }) => {
+  const ownerPolylines = allLabelData.map(({ owner, pts }) => {
     const id = owner.replace(/[^a-zA-Z]/g,'');
     const dimmed = focusOwner && focusOwner !== owner;
     return `<polyline id="spl-${id}" points="${pts}" fill="none" stroke="${color(owner)}" stroke-width="${dimmed ? 1 : 1.5}" stroke-linejoin="round" stroke-linecap="round" opacity="${dimmed ? 0.12 : 0.9}" style="transition:opacity 0.2s,stroke-width 0.2s;"/>`;
   }).join('');
 
-  const ownerLabels = labelData.map(({ owner, last, label, labelColor, dotY }) => {
+  const ownerLabels = allLabelData.map(({ owner, last, label, labelColor, dotY }) => {
     const id = owner.replace(/[^a-zA-Z]/g,'');
     const badgeX = last.x + 10;
     const badgeY = last.y - 8;
@@ -2248,6 +2262,9 @@ window.setScrubIndex = function(rawIdx) {
 
   // Move each owner's dot and badge to the scrub position
   // Collect positions for overlap resolution
+  const eliminatedSet = new Set(
+    isLive ? buildLeaderboard().filter(e => e.out).map(e => e.owner) : []
+  );
   const positions = [];
   ownerList.forEach(owner => {
     const id = owner.replace(/[^a-zA-Z]/g,'');
@@ -2257,20 +2274,29 @@ window.setScrubIndex = function(rawIdx) {
     const pt = atOrBefore[atOrBefore.length - 1];
     const x = toX(pt.i);
     const y = toY(pt.v);
-    const label = pt.v === 0 ? 'E' : pt.v > 0 ? `+${pt.v}` : `${pt.v}`;
-    const labelColor = pt.v < 0 ? '#2e7d32' : pt.v > 0 ? '#c62828' : '#555';
-    positions.push({ id, owner, x, y, label, labelColor });
+    const isEliminated = eliminatedSet.has(owner);
+    const label = isEliminated ? 'OUT' : (pt.v === 0 ? 'E' : pt.v > 0 ? `+${pt.v}` : `${pt.v}`);
+    const labelColor = isEliminated ? '#aaa' : (pt.v < 0 ? '#2e7d32' : pt.v > 0 ? '#c62828' : '#555');
+    positions.push({ id, owner, x, y, label, labelColor, isEliminated });
   });
 
-  // Sort by Y for overlap resolution
-  positions.sort((a, b) => a.y - b.y);
+  // Separate active and eliminated for independent placement
+  const activePos = positions.filter(p => !p.isEliminated);
+  const eliminatedPos = positions.filter(p => p.isEliminated);
+
+  // Sort by Y for overlap resolution (active only)
+  activePos.sort((a, b) => a.y - b.y);
   const MIN_GAP = 18;
-  const resolvedY = [...positions.map(p => p.y)];
+  const resolvedY = [...activePos.map(p => p.y)];
   for (let i = 1; i < resolvedY.length; i++) {
     if (resolvedY[i] - resolvedY[i-1] < MIN_GAP) resolvedY[i] = resolvedY[i-1] + MIN_GAP;
   }
 
-  positions.forEach(({ id, owner, x, y, label, labelColor }, i) => {
+  // Place eliminated badges at the bottom of the chart, stacked upward
+  const bottomY = PAD_T + chartH;
+  const eliminatedResolvedY = eliminatedPos.map((p, i) => bottomY - i * MIN_GAP);
+
+  activePos.forEach(({ id, owner, x, y, label, labelColor }, i) => {
     const badgeX = x + 10;
     const badgeY = resolvedY[i] - 8;
     const group = document.getElementById(`spg-${id}`);
@@ -2284,6 +2310,23 @@ window.setScrubIndex = function(rawIdx) {
     if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', focused ? 3.5 : 2.5); }
     if (rect) { rect.setAttribute('x', badgeX); rect.setAttribute('y', badgeY); rect.setAttribute('width', badgeW); }
     if (scoreText) { scoreText.setAttribute('x', badgeX + 5); scoreText.setAttribute('y', badgeY + 9.5); scoreText.setAttribute('fill', labelColor); scoreText.textContent = label; }
+    if (nameText) { nameText.setAttribute('x', badgeX + 5 + maxLabelLen * 6 + 4); nameText.setAttribute('y', badgeY + 9.5); nameText.setAttribute('font-weight', focused ? '700' : '400'); }
+  });
+
+  eliminatedPos.forEach(({ id, owner, x, y }, i) => {
+    const badgeX = x + 10;
+    const badgeY = eliminatedResolvedY[i] - 8;
+    const group = document.getElementById(`spg-${id}`);
+    const dot = document.getElementById(`spc-${id}`);
+    const rect = document.getElementById(`spr-${id}`);
+    const scoreText = document.getElementById(`sps-${id}`);
+    const nameText = document.getElementById(`spn-${id}`);
+    const dimmed = focusOwner && focusOwner !== owner;
+    const focused = focusOwner === owner;
+    if (group) group.style.opacity = dimmed ? 0.2 : 1;
+    if (dot) { dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', focused ? 3.5 : 2.5); }
+    if (rect) { rect.setAttribute('x', badgeX); rect.setAttribute('y', badgeY); rect.setAttribute('width', badgeW); }
+    if (scoreText) { scoreText.setAttribute('x', badgeX + 5); scoreText.setAttribute('y', badgeY + 9.5); scoreText.setAttribute('fill', '#aaa'); scoreText.textContent = 'OUT'; }
     if (nameText) { nameText.setAttribute('x', badgeX + 5 + maxLabelLen * 6 + 4); nameText.setAttribute('y', badgeY + 9.5); nameText.setAttribute('font-weight', focused ? '700' : '400'); }
   });
 
