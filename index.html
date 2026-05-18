@@ -143,7 +143,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="main">
 
   <div class="section-label">Active Bets</div>
-  <div class="bets-grid">
+  <div class="bets-grid" id="active-bets-grid">
 
     <a class="bet-card" href="nba.html">
       <div class="card-stripe" style="background:#1565C0;"></div>
@@ -185,22 +185,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </a>
 
-    <div id="golf-card-wrap">
-      <div class="bet-card locked" id="golf-card">
-        <div class="card-stripe" style="background:#2E7D32;"></div>
-        <div class="card-body">
-          <div class="card-sport">⛳ Golf</div>
-          <div class="card-name">2026 PGA Championship</div>
-          <div class="card-desc">Snake draft of the 2026 PGA Championship field. Lowest combined score to par wins.</div>
-          <div class="card-footer">
-            <span class="card-status" id="golf-card-status" style="background:#fff3cd;color:#856404;">🔒 Coming Soon</span>
-            <div><div class="card-leader" id="golf-card-leader"><span>Leader:</span> TBD</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
   </div>
 
   <div class="section-label">History</div>
@@ -235,33 +219,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 
   <div class="section-label">Coming Soon</div>
-  <div class="bets-grid">
-
-    <div class="bet-card upcoming">
-      <div class="card-stripe" style="background:#888;"></div>
-      <div class="card-body">
-        <div class="card-sport">🏀 NBA</div>
-        <div class="card-name">Regular Season Over/Under</div>
-        <div class="card-desc">Season win total predictions. Coming fall 2026.</div>
-        <div class="card-footer">
-          <span class="card-status" style="background:#f5f5f3;color:#888;">🔜 Fall 2026</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="bet-card upcoming">
-      <div class="card-stripe" style="background:#888;"></div>
-      <div class="card-body">
-        <div class="card-sport">🏈 NFL</div>
-        <div class="card-name">NFL Playoff Bet</div>
-        <div class="card-desc">Coming winter 2026.</div>
-        <div class="card-footer">
-          <span class="card-status" style="background:#f5f5f3;color:#888;">🔜 Winter 2026</span>
-        </div>
-      </div>
-    </div>
-
-  </div>
+  <div class="bets-grid" id="coming-soon-grid"></div>
 
   <div class="section-label">All-Time Standings</div>
   <div class="standings-grid">
@@ -6746,22 +6704,52 @@ function pwCheck() {
   <div class="main" style="padding-bottom:0;padding-top:0;">
     <div class="comm-bar">
       <div class="comm-bar-label">⚙ Commissioner Controls</div>
-      <div class="comm-actions">
-        <span id="golf-unlock-status" style="font-size:11px;color:#555;"></span>
-        <button class="btn btn-green" id="btn-unlock-golf" onclick="setGolfUnlocked(true)">🔓 Unlock Golf Card</button>
-        <button class="btn btn-amber" id="btn-lock-golf" onclick="setGolfUnlocked(false)">🔒 Re-lock Golf Card</button>
-      </div>
+      <div class="comm-actions" id="comm-actions"></div>
     </div>
   </div>
 </div>
 
 <script>
+// ── Card definitions ─────────────────────────────────────────────
+const CARDS = [
+  {
+    id: 'us-open-26',
+    sport: '⛳ Golf',
+    color: '#2E7D32',
+    name: '2026 US Open',
+    desc: 'Snake draft of the 2026 US Open field. Lowest combined score to par wins.',
+    href: 'golf-live.html?slug=us-open-26',
+    comingSoonLabel: '🔜 Coming Soon',
+    activeLabel: '🟢 Live',
+    loadLeader: true,
+  },
+  {
+    id: 'nba-ous',
+    sport: '🏀 NBA',
+    color: '#1565C0',
+    name: 'Regular Season Over/Under',
+    desc: 'Season win total predictions. Coming fall 2026.',
+    href: null,
+    comingSoonLabel: '🔜 Fall 2026',
+    activeLabel: '🟢 Active',
+  },
+  {
+    id: 'nfl-playoffs',
+    sport: '🏈 NFL',
+    color: '#D32F2F',
+    name: 'NFL Playoff Bet',
+    desc: 'Coming winter 2026.',
+    href: null,
+    comingSoonLabel: '🔜 Winter 2026',
+    activeLabel: '🟢 Active',
+  },
+];
+
 // ── Commissioner ────────────────────────────────────────────────
 const COMM_PW = 'golf';
-const GOLF_SLUG = 'pga-26';
 const FIREBASE_BASE = 'https://giesener-bets-default-rtdb.firebaseio.com';
 let isComm = false;
-let golfUnlocked = false;
+let cardStates = {};
 
 function toggleComm() {
   if (isComm) {
@@ -6783,10 +6771,9 @@ function checkCommPw() {
     document.getElementById('comm-pw-input').value = '';
     document.getElementById('comm-pw-error').textContent = '';
     document.getElementById('comm-panel').style.display = 'block';
-    // Move panel to top of main content
     const hero = document.querySelector('.hero');
     hero.parentNode.insertBefore(document.getElementById('comm-panel'), hero.nextSibling);
-    updateCommButtons();
+    renderCommPanel();
   } else {
     document.getElementById('comm-pw-error').textContent = 'Wrong password.';
     document.getElementById('comm-pw-input').value = '';
@@ -6794,88 +6781,98 @@ function checkCommPw() {
   }
 }
 
-function updateCommButtons() {
-  document.getElementById('btn-unlock-golf').style.display = golfUnlocked ? 'none' : '';
-  document.getElementById('btn-lock-golf').style.display = golfUnlocked ? '' : 'none';
-  document.getElementById('golf-unlock-status').textContent = golfUnlocked ? '✅ Golf card is live' : '🔒 Golf card is locked';
+function renderCommPanel() {
+  const actions = document.getElementById('comm-actions');
+  actions.innerHTML = CARDS.map(card => {
+    const active = cardStates[card.id] === true;
+    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-size:11px;color:#aaa;">${card.name}:</span>
+      <span style="font-size:11px;color:#555;">${active ? '✅ Active' : '🔒 Coming Soon'}</span>
+      <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''}" onclick="setCardActive('${card.id}',true)">🔓 Activate</button>
+      <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'}" onclick="setCardActive('${card.id}',false)">🔒 Deactivate</button>
+    </div>`;
+  }).join('<div style="width:1px;height:24px;background:#333;margin:0 4px;"></div>');
 }
 
-async function setGolfUnlocked(unlocked) {
-  await fetch(`${FIREBASE_BASE}/site_config/golf_unlocked.json`, {
+async function setCardActive(cardId, active) {
+  await fetch(`${FIREBASE_BASE}/site_config/cards/${cardId}.json`, {
     method: 'PUT',
-    body: JSON.stringify(unlocked),
+    body: JSON.stringify(active),
     headers: { 'Content-Type': 'application/json' }
   });
-  golfUnlocked = unlocked;
-  renderGolfCard(unlocked);
-  updateCommButtons();
+  cardStates[cardId] = active;
+  renderAllCards();
+  if (isComm) renderCommPanel();
 }
 
-// ── Golf card rendering ─────────────────────────────────────────
-function renderGolfCard(unlocked) {
-  const wrap = document.getElementById('golf-card-wrap');
-  const leaderHtml = `<div class="card-leader" id="golf-live-leader"><span>Leader:</span> TBD</div>`;
-  if (unlocked) {
-    wrap.innerHTML = `
-      <a class="bet-card" href="golf-live.html?slug=${GOLF_SLUG}">
-        <div class="card-stripe" style="background:#2E7D32;"></div>
+// ── Card rendering ───────────────────────────────────────────────
+function renderAllCards() {
+  const activeGrid = document.getElementById('active-bets-grid');
+  const comingSoonGrid = document.getElementById('coming-soon-grid');
+  activeGrid.querySelectorAll('[data-card-id]').forEach(el => el.remove());
+  comingSoonGrid.innerHTML = '';
+
+  CARDS.forEach(card => {
+    const active = cardStates[card.id] === true;
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('data-card-id', card.id);
+
+    if (active) {
+      const tag = card.href ? 'a' : 'div';
+      const hrefAttr = card.href ? `href="${card.href}"` : '';
+      wrapper.innerHTML = `<${tag} class="bet-card" ${hrefAttr}>
+        <div class="card-stripe" style="background:${card.color};"></div>
         <div class="card-body">
-          <div class="card-sport">⛳ Golf</div>
-          <div class="card-name">2026 PGA Championship</div>
-          <div class="card-desc">Snake draft of the 2026 PGA Championship field. Lowest combined score to par wins.</div>
+          <div class="card-sport">${card.sport}</div>
+          <div class="card-name">${card.name}</div>
+          <div class="card-desc">${card.desc}</div>
           <div class="card-footer">
-            <span class="card-status status-active">🟢 Live</span>
-            <div>${leaderHtml}</div>
+            <span class="card-status status-active">${card.activeLabel}</span>
+            ${card.loadLeader ? `<div><div class="card-leader" id="leader-${card.id}"><span>Leader:</span> TBD</div></div>` : ''}
           </div>
         </div>
-      </a>`;
-    loadGolfLeader();
-  } else {
-    wrap.innerHTML = `
-      <div class="bet-card locked">
-        <div class="card-stripe" style="background:#2E7D32;"></div>
+      </${tag}>`;
+      activeGrid.appendChild(wrapper);
+      if (card.loadLeader) loadGolfLeader(card.id, card.href.split('slug=')[1]);
+    } else {
+      wrapper.innerHTML = `<div class="bet-card upcoming">
+        <div class="card-stripe" style="background:#888;"></div>
         <div class="card-body">
-          <div class="card-sport">⛳ Golf</div>
-          <div class="card-name">2026 PGA Championship</div>
-          <div class="card-desc">Snake draft of the 2026 PGA Championship field. Lowest combined score to par wins.</div>
+          <div class="card-sport">${card.sport}</div>
+          <div class="card-name">${card.name}</div>
+          <div class="card-desc">${card.desc}</div>
           <div class="card-footer">
-            <span class="card-status" style="background:#fff3cd;color:#856404;">🔒 Coming Soon</span>
-            <div>${leaderHtml}</div>
+            <span class="card-status" style="background:#f5f5f3;color:#888;">${card.comingSoonLabel}</span>
           </div>
         </div>
       </div>`;
-  }
+      comingSoonGrid.appendChild(wrapper);
+    }
+  });
 }
 
-// Pull live leader from Firebase golf live scores
-function loadGolfLeader() {
-  fetch(`${FIREBASE_BASE}/golf/${GOLF_SLUG}/live.json`)
+function loadGolfLeader(cardId, slug) {
+  fetch(`${FIREBASE_BASE}/golf/${slug}/live.json`)
     .then(r => r.json())
     .then(live => {
-      const el = document.getElementById('golf-live-leader');
+      const el = document.getElementById(`leader-${cardId}`);
       if (!el || !live) return;
-      const scores = live.scores || {};
-      const draftData = null; // we don't have picks here, just show score leader
-      // Find the player with the lowest score (most under par)
-      const entries = Object.values(scores).filter(s => !s.cut && s.score !== undefined);
+      const entries = Object.values(live.scores || {}).filter(s => !s.cut && s.score !== undefined);
       if (!entries.length) return;
       entries.sort((a, b) => a.score - b.score);
       const best = entries[0];
-      const name = best.espnName || Object.keys(scores).find(k => scores[k] === best) || '—';
-      const disp = best.display || (best.score === 0 ? 'E' : best.score > 0 ? '+' + best.score : '' + best.score);
+      const name = Object.keys(live.scores).find(k => live.scores[k] === best) || '—';
+      const disp = best.score === 0 ? 'E' : best.score > 0 ? '+' + best.score : '' + best.score;
       el.innerHTML = `<span>Leader:</span> ${name.split(' ').pop()} (${disp})`;
     })
     .catch(() => {});
 }
 
-// Load unlock state from Firebase on page load
-fetch(`${FIREBASE_BASE}/site_config/golf_unlocked.json`)
+// Load card states from Firebase on page load
+fetch(`${FIREBASE_BASE}/site_config/cards.json`)
   .then(r => r.json())
-  .then(val => {
-    golfUnlocked = val === true;
-    renderGolfCard(golfUnlocked);
-  })
-  .catch(() => {});
+  .then(val => { cardStates = val || {}; renderAllCards(); })
+  .catch(() => { renderAllCards(); });
 </script>
 </body>
 </html>
