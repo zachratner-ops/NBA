@@ -6985,7 +6985,7 @@ function buildMajorCard(m) {
     :`<span class="winner-badge" style="background:${COLORS[m.winner]||'#1a1a1a'}">${m.winner?'🏆 '+m.winner+(m.pot?' $'+m.pot:''):''}</span>`;
   return `<div class="major-card">
     <div class="major-header">
-      <div class="major-name">${m.name}</div>
+      <div class="major-name">${m.name}${m.slug && m.hasLiveView?` <a href="golf-live.html?slug=${m.slug}" target="_blank" style="font-size:11px;font-weight:500;color:#aaa;text-decoration:none;margin-left:6px;" onmouseover="this.style.color='#555'" onmouseout="this.style.color='#aaa'">↗ Details</a>`:''}</div>
       <div class="major-meta">${liveBadge}${m.pot?`<span class="pot-pill">Pot: $${m.pot}</span>`:''} ${m.winner?winnerBadge:''}</div>
     </div>
     <div class="results-grid">${cards}</div>

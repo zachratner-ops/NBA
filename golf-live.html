@@ -2530,7 +2530,7 @@ window.doFinalize = async function() {
   const pickOrder = {};
   (draft?.pickSequence || []).forEach((p, i) => { if (!(p.owner in pickOrder)) pickOrder[p.owner] = i + 1; });
 
-  const entry = { slug:SLUG, name:draft?.name||SLUG, year:new Date().getFullYear(), pot:live?.pot||(owners().length*25), winner, owners:ownersData, pickOrder };
+  const entry = { slug:SLUG, name:draft?.name||SLUG, year:new Date().getFullYear(), pot:live?.pot||(owners().length*25), winner, owners:ownersData, pickOrder, hasLiveView:true };
   await set(histRef(), entry);
   await update(draftRef(), { status: 'final' });
   await update(liveRef(), { committedAt: new Date().toISOString() });
