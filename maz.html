@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maz Bachelor Party Text Roulette</title>
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8D48B;
+    --gold-pale: #F7EFD4;
+    --blush: #F2D6D6;
+    --rose: #C47A7A;
+    --deep: #1C0F1F;
+    --deep2: #2E1A33;
+    --purple: #6B3FA0;
+    --purple-light: #9B6FCA;
+    --cream: #FBF5F0;
+    --text-muted: rgba(255,255,255,0.55);
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--deep);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Outfit', sans-serif;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* confetti-like scattered stars */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--gold-light);
+    opacity: 0;
+    animation: twinkle var(--dur) ease-in-out var(--delay) infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: var(--op); transform: scale(1); }
+  }
+
+  /* radial glow behind wheel */
+  .glow {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(107,63,160,0.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1.5rem 2.5rem;
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+  }
+
+  .headline {
+    font-family: 'Italiana', serif;
+    font-size: clamp(30px, 7vw, 48px);
+    color: var(--cream);
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 0.3rem;
+  }
+
+  .headline .accent {
+    color: var(--gold-light);
+  }
+
+  .sub {
+    font-size: 12px;
+    font-weight: 300;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 2rem;
+  }
+
+  /* divider */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 200px;
+    margin-bottom: 1.8rem;
+  }
+  .divider-line {
+    flex: 1;
+    height: 0.5px;
+    background: var(--gold);
+    opacity: 0.4;
+  }
+  .divider-diamond {
+    width: 6px; height: 6px;
+    background: var(--gold);
+    transform: rotate(45deg);
+    opacity: 0.7;
+  }
+
+  .wheel-wrap {
+    position: relative;
+    width: 340px;
+    height: 340px;
+    margin-bottom: 2rem;
+  }
+
+  .pointer-wrap {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .pointer-body {
+    width: 16px; height: 26px;
+    background: var(--gold);
+    clip-path: polygon(50% 100%, 0 0, 100% 0);
+    filter: drop-shadow(0 0 6px rgba(201,168,76,0.6));
+  }
+  .pointer-cap {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--gold-light);
+    border: 2px solid var(--deep);
+    margin-top: -3px;
+  }
+
+  canvas {
+    display: block;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 5px var(--deep),
+      0 0 0 7px var(--gold),
+      0 0 40px rgba(201,168,76,0.25),
+      0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .spin-btn {
+    font-family: 'Italiana', serif;
+    font-size: 20px;
+    color: var(--deep);
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 100%);
+    border: none;
+    padding: 15px 56px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+  }
+  .spin-btn:hover {
+    opacity: 0.9;
+    box-shadow: 0 6px 28px rgba(201,168,76,0.45);
+  }
+  .spin-btn:active { transform: scale(0.97); }
+  .spin-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* modal */
+  .modal-bg {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,5,15,0.75);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 2rem;
+  }
+  .modal-bg.show { display: flex; }
+
+  .modal {
+    background: var(--deep2);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 4px;
+    padding: 2.5rem 2.25rem 2rem;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    position: relative;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+  .modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.75) translateY(20px); opacity: 0; }
+    to   { transform: scale(1) translateY(0);      opacity: 1; }
+  }
+
+  .modal-icon { font-size: 38px; margin-bottom: 1rem; display: block; }
+
+  .modal-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+  }
+
+  .modal-name {
+    font-family: 'Italiana', serif;
+    font-size: 42px;
+    color: var(--cream);
+    line-height: 1.05;
+    margin-bottom: 0.5rem;
+  }
+
+  .modal-sub {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--text-muted);
+    margin-bottom: 1.75rem;
+    line-height: 1.5;
+  }
+
+  .modal-close {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+    background: transparent;
+    border: 0.5px solid rgba(201,168,76,0.4);
+    padding: 10px 30px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .modal-close:hover {
+    background: rgba(201,168,76,0.12);
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+<div class="glow"></div>
+
+<div class="page">
+  <p class="eyebrow">✦ Spin to Decide ✦</p>
+  <h1 class="headline">Maz Bachelor Party<br><span class="accent">Text Roulette</span></h1>
+  <p class="sub">Who's getting the text?</p>
+
+  <div class="divider">
+    <div class="divider-line"></div>
+    <div class="divider-diamond"></div>
+    <div class="divider-line"></div>
+  </div>
+
+  <div class="wheel-wrap">
+    <div class="pointer-wrap">
+      <div class="pointer-body"></div>
+      <div class="pointer-cap"></div>
+    </div>
+    <canvas id="wheel" width="340" height="340"></canvas>
+  </div>
+
+  <button class="spin-btn" id="spinBtn">Spin the Wheel</button>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <span class="modal-icon">💌</span>
+    <p class="modal-label">You're texting</p>
+    <div class="modal-name" id="modalName"></div>
+    <p class="modal-sub" id="modalSub"></p>
+    <button class="modal-close" id="modalClose">Got it</button>
+  </div>
+</div>
+
+<script>
+// generate twinkling stars
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 60; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  const size = Math.random() * 3 + 1;
+  s.style.cssText = `
+    width:${size}px; height:${size}px;
+    left:${Math.random()*100}%; top:${Math.random()*100}%;
+    --dur:${2 + Math.random()*4}s;
+    --delay:${Math.random()*5}s;
+    --op:${0.3 + Math.random()*0.5};
+  `;
+  starsEl.appendChild(s);
+}
+
+const SEGMENTS = [
+  'KP',
+  'Nora',
+  'Rachel\nZuckerman',
+  'Augustina',
+  'Lily',
+  'Angie',
+  'Angie +\nTim Grouptext',
+];
+
+const SUBS = {
+  'KP': "KP's getting the first text. Make it count.",
+  'Nora': "Nora's up. She better respond fast.",
+  'Rachel\nZuckerman': "Rachel Zuckerman has been selected. Ball's in her court.",
+  'Augustina': "Augustina it is. She's probably already planning.",
+  'Lily': "Lily wins the text lottery.",
+  'Angie': "Angie solo. Just her.",
+  'Angie +\nTim Grouptext': "The group chat awakens. Angie AND Tim. Chaos incoming.",
+};
+
+const MODAL_NAMES = {
+  'KP': 'KP',
+  'Nora': 'Nora',
+  'Rachel\nZuckerman': 'Rachel Z.',
+  'Augustina': 'Augustina',
+  'Lily': 'Lily',
+  'Angie': 'Angie',
+  'Angie +\nTim Grouptext': 'Angie + Tim',
+};
+
+// Color palette: deep purples, rose, gold accents
+const COLORS = [
+  '#4A235A', '#6B3FA0', '#8B5E83', '#5C2D6B',
+  '#7B3F7F', '#9B6FCA', '#3D1A4A'
+];
+
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const N = SEGMENTS.length;
+const ARC = (2 * Math.PI) / N;
+const R = 165, CX = 170, CY = 170;
+let angle = 0, spinning = false;
+
+function wrapText(ctx, text, maxWidth) {
+  const lines = text.split('\n');
+  return lines;
+}
+
+function drawWheel(a) {
+  ctx.clearRect(0, 0, 340, 340);
+
+  for (let i = 0; i < N; i++) {
+    const s = a + i * ARC, e = s + ARC;
+
+    // segment
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, s, e);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[i % COLORS.length];
+    ctx.fill();
+
+    // gold separator lines
+    ctx.strokeStyle = 'rgba(201,168,76,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // text
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(s + ARC / 2);
+    ctx.textAlign = 'right';
+
+    const lines = wrapText(ctx, SEGMENTS[i]);
+    const lineH = 15;
+    const totalH = (lines.length - 1) * lineH;
+
+    lines.forEach((line, li) => {
+      const y = -totalH / 2 + li * lineH;
+      // shadow for readability
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 3;
+      const fs = line.length > 10 ? 11 : line.length > 6 ? 13 : 15;
+      ctx.font = `500 ${fs}px 'Outfit', sans-serif`;
+      ctx.fillStyle = 'rgba(251,245,240,0.93)';
+      ctx.fillText(line, R - 12, y + fs * 0.35);
+    });
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // outer gold ring
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(201,168,76,0.6)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // center cap
+  ctx.beginPath();
+  ctx.arc(CX, CY, 22, 0, 2 * Math.PI);
+  ctx.fillStyle = '#1C0F1F';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(201,168,76,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // center dot
+  ctx.beginPath();
+  ctx.arc(CX, CY, 7, 0, 2 * Math.PI);
+  ctx.fillStyle = '#C9A84C';
+  ctx.fill();
+}
+
+drawWheel(angle);
+
+document.getElementById('spinBtn').addEventListener('click', function() {
+  if (spinning) return;
+  spinning = true;
+  this.disabled = true;
+
+  const spins = 7 + Math.random() * 6;
+  const totalRotation = spins * 2 * Math.PI + Math.random() * 2 * Math.PI;
+  const duration = 4000 + Math.random() * 1200;
+  const start = performance.now();
+  const startAngle = angle;
+
+  function ease(t) {
+    return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2;
+  }
+
+  function frame(now) {
+    const t = Math.min((now - start) / duration, 1);
+    angle = startAngle + totalRotation * ease(t);
+    drawWheel(angle);
+    if (t < 1) {
+      requestAnimationFrame(frame);
+    } else {
+      spinning = false;
+      document.getElementById('spinBtn').disabled = false;
+      showResult();
+    }
+  }
+  requestAnimationFrame(frame);
+});
+
+function showResult() {
+  const ptr = -Math.PI / 2;
+  const norm = ((ptr - angle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const idx = Math.floor(norm / ARC) % N;
+  const key = SEGMENTS[idx];
+  document.getElementById('modalName').textContent = MODAL_NAMES[key];
+  document.getElementById('modalSub').textContent = SUBS[key] || 'The wheel has spoken.';
+  document.getElementById('modalBg').classList.add('show');
+}
+
+document.getElementById('modalClose').addEventListener('click', function() {
+  document.getElementById('modalBg').classList.remove('show');
+});
+document.getElementById('modalBg').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+</script>
+</body>
+</html>
