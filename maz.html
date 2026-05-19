@@ -136,6 +136,15 @@
     margin-bottom: 2rem;
   }
 
+  @media (max-height: 750px), (max-width: 400px) {
+    .page { padding: 1rem 1.5rem 1.5rem; }
+    .eyebrow { margin-bottom: 0.3rem; }
+    .headline { font-size: clamp(24px, 6vw, 36px); margin-bottom: 0.2rem; }
+    .sub { margin-bottom: 1rem; }
+    .divider { margin-bottom: 1rem; }
+    .wheel-wrap { width: 280px; height: 280px; margin-bottom: 1.25rem; }
+  }
+
   .pointer-wrap {
     position: absolute;
     top: -10px;
@@ -369,7 +378,11 @@ const canvas = document.getElementById('wheel');
 const ctx = canvas.getContext('2d');
 const N = SEGMENTS.length;
 const ARC = (2 * Math.PI) / N;
-const R = 165, CX = 170, CY = 170;
+
+const isMobile = window.innerWidth <= 400 || window.innerHeight <= 750;
+const SIZE = isMobile ? 280 : 340;
+canvas.width = SIZE; canvas.height = SIZE;
+const R = SIZE / 2 - 5, CX = SIZE / 2, CY = SIZE / 2;
 let angle = 0, spinning = false;
 
 function wrapText(ctx, text, maxWidth) {
@@ -378,7 +391,7 @@ function wrapText(ctx, text, maxWidth) {
 }
 
 function drawWheel(a) {
-  ctx.clearRect(0, 0, 340, 340);
+  ctx.clearRect(0, 0, SIZE, SIZE);
 
   for (let i = 0; i < N; i++) {
     const s = a + i * ARC, e = s + ARC;
