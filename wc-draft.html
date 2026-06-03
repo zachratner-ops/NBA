@@ -1024,15 +1024,109 @@ function renderTracker() {
     <div class="tracker-tab ${trackerTab==='leaderboard'?'active':''}" onclick="switchTrackerTab('leaderboard')">Leaderboard</div>
     <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches</div>
     <div class="tracker-tab ${trackerTab==='teams'?'active':''}" onclick="switchTrackerTab('teams')">Teams</div>
+    <div class="tracker-tab ${trackerTab==='rules'?'active':''}" onclick="switchTrackerTab('rules')">Rules</div>
   </div>`;
   let content='';
   if(trackerTab==='leaderboard')content=lbHtml+(fin.tiePotTotal>0?tiepotHtml:'');
   else if(trackerTab==='matches')content=matchTableHtml;
   else if(trackerTab==='teams')content=teamsHtml;
+  else if(trackerTab==='rules')content=rulesHtml();
 
   el.innerHTML=`<div class="tracker-wrap">${commHtml}${tabsHtml}${content}</div>`;
 }
 window.switchTrackerTab = function(t){trackerTab=t;renderScreen();};
+
+function rulesHtml() {
+  return `<div style="max-width:680px;">
+
+    <div style="background:#006847;color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+      <div style="font-size:18px;font-weight:800;margin-bottom:4px;">⚽ WC2026 Betting Pool</div>
+      <div style="font-size:13px;opacity:.85;">One bet, triple the action. Draft a portfolio of national teams and earn or lose money across three simultaneous components for every match. All balances settled at end of tournament.</div>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:18px 20px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:14px;">The Draft</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <li>🐍 <strong>Snake draft</strong> — all 48 teams distributed, one per pick, every team assigned to exactly one participant</li>
+        <li>🎲 <strong>Pick order</strong> is randomized before the draft</li>
+        <li>📅 <strong>Timing</strong> — after all 48 teams qualify and the group draw is made, before any matches</li>
+        <li>👁 Participants have <strong>full knowledge of group assignments</strong> when picking</li>
+      </ul>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:18px 20px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#2e7d32;margin-bottom:14px;">① Goals — $1 Per Goal</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <li>⚽ Every goal scored by your team earns you <strong>$1 from each other participant</strong></li>
+        <li>📊 Example: your team scores 3 goals with 9 other participants → <strong>+$27</strong></li>
+        <li>🏆 Applies to <strong>all 104 matches</strong> including the Third Place match</li>
+        <li>✅ Goals in <strong>regulation and extra time count</strong></li>
+        <li>❌ Goals in a <strong>penalty shootout do not count</strong></li>
+      </ul>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:18px 20px;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#1565c0;margin-bottom:14px;">② Match Outcome — $10 Per Game</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <li>💰 Every match: <strong>losing team's owner pays $10 to winning team's owner</strong></li>
+        <li>🏆 Applies to all 104 matches including Third Place</li>
+        <li>🤝 If a knockout match goes to a <strong>penalty shootout</strong> → treated as a tie: <strong>no winner/loser, both owners pay $10 into the Tie Side-Pot instead</strong></li>
+        <li>👥 <strong>Same owner, one team wins:</strong> pays themselves → net $0</li>
+        <li>👥 <strong>Same owner, draw or PK:</strong> pays $20 into Tie Side-Pot ($10 per team)</li>
+      </ul>
+    </div>
+
+    <div style="background:#1a1a1a;border-radius:12px;padding:18px 20px;margin-bottom:12px;color:#fff;">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#f9a825;margin-bottom:14px;">③ Raiders/Chargers/Izzy Birth Night Memorial Tie Side-Pot</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;color:#ddd;">
+        <li>🏦 A <strong>group stage draw</strong> or <strong>knockout penalty shootout</strong> → both teams' owners each pay <strong>$10 into the pot</strong></li>
+        <li>📈 At end of tournament, pot splits <strong>50/50</strong>:
+          <div style="margin-top:6px;margin-left:16px;display:flex;flex-direction:column;gap:4px;">
+            <span><span class="tiepot-badge tiepot-most">MOST</span> Participant whose teams had the <strong style="color:#fff;">most tie events</strong> → 50%</span>
+            <span><span class="tiepot-badge tiepot-least">FEWEST</span> Participant whose teams had the <strong style="color:#fff;">fewest tie events</strong> → 50%</span>
+          </div>
+        </li>
+        <li>🔢 <strong>Tiebreaker for most ties:</strong> fewest total games played wins</li>
+        <li>🔢 <strong>Tiebreaker for fewest ties:</strong> most total games played wins</li>
+        <li>➗ If still tied after tiebreaker → split equally</li>
+      </ul>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#888;padding:14px 20px 10px;">Financial Summary</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        ${[
+          ['Your team scores a goal','Collect $1 from each other participant','pos'],
+          ['Another team scores a goal','Pay $1 to that team\'s owner','neg'],
+          ['Your team wins a match','Collect $10 from opponent\'s owner','pos'],
+          ['Your team loses a match','Pay $10 to opponent\'s owner','neg'],
+          ['Your team involved in a draw or PK shootout','Pay $10 into Tie Side-Pot','neg'],
+          ['You own both teams in a draw or PK','Pay $20 into Tie Side-Pot ($10 per team)','neg'],
+          ['You own both teams and one wins','Net $0 — no money changes hands','zero'],
+          ['End of tournament: most ties','Collect 50% of Tie Side-Pot','pos'],
+          ['End of tournament: fewest ties','Collect 50% of Tie Side-Pot','pos'],
+        ].map(([sit, fin, cls], i) => `
+          <tr style="border-top:0.5px solid #f0f0f0;background:${i%2?'#fafafa':'#fff'}">
+            <td style="padding:8px 16px;color:#555;">${sit}</td>
+            <td style="padding:8px 16px;font-weight:700;${cls==='pos'?'color:#2e7d32':cls==='neg'?'color:#c62828':'color:#888'}">${fin}</td>
+          </tr>`).join('')}
+      </table>
+    </div>
+
+    <div style="background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:18px 20px;margin-bottom:24px;">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:14px;">Tournament Format</div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px;">
+        <li>🌍 <strong>48 teams</strong>, 12 groups of 4 (Group Stage: 3 games each, draws possible)</li>
+        <li>⚔️ Top 2 per group + 8 best 3rd-place = <strong>32 teams advance</strong> to knockout</li>
+        <li>🚫 <strong>No draws in knockout</strong> — extra time, then PK if needed</li>
+        <li>⚠️ A match decided by <strong>extra time (no PK) does NOT count as a tie</strong> for the side-pot</li>
+        <li>📊 <strong>104 total matches</strong> — winner plays max 8 games, group exit = exactly 3</li>
+        <li>💵 <strong>No upfront buy-in</strong> — money moves match by match, settled at the end</li>
+      </ul>
+    </div>
+
+  </div>`;
+}
 
 // ── Tracker: match modal ───────────────────────────────────────────
 window.openMatchModal = function(matchId) {
