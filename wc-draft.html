@@ -546,7 +546,7 @@ window.submitSetup = async function() {
   if (selectedOwners.length < 2) { alert('Select at least 2 participants.'); return; }
   connectWS();
   const r = await proxyApi('/setup', 'POST', { name: nameEl.value.trim(), owners: selectedOwners });
-  if (r && r.status) { draft = r; renderScreen(); }
+  if (r && r.status) { draft = r; await pushDraftToFirebase(r); renderScreen(); }
 };
 
 // ── LOBBY ──────────────────────────────────────────────────────────
@@ -583,7 +583,7 @@ window.startDraft = async function() {
   if (!previewOrder) return;
   connectWS();
   const r = await proxyApi('/start', 'POST', { pickOrder: previewOrder });
-  if (r && r.status) { draft = r; renderScreen(); }
+  if (r && r.status) { draft = r; await pushDraftToFirebase(r); renderScreen(); }
 };
 
 // ── DRAFT ──────────────────────────────────────────────────────────
