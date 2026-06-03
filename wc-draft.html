@@ -417,10 +417,18 @@ const WC_GROUPS_MAP = {
 
 const draftRef = () => ref(db, `wc/${SLUG}/draft`);
 
+const STATUS_RANK = { setup:0, lobby:1, drafting:2, complete:3, finalized:4 };
+
 onValue(draftRef(), snap => {
   try {
-    draft = snap.val() || { status: 'setup', name: '', owners: ALL_OWNERS };
-    renderScreen();
+    const newDraft = snap.val() || { status: 'setup', name: '', owners: ALL_OWNERS };
+    const curRank = STATUS_RANK[draft?.status] ?? -1;
+    const newRank = STATUS_RANK[newDraft?.status] ?? 0;
+    // Never let a stale Firebase read downgrade state we've already set locally
+    if (newRank >= curRank) {
+      draft = newDraft;
+      renderScreen();
+    }
   } catch(e) {
     console.error('[draftRef onValue]', e);
   }
