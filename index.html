@@ -26,7 +26,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .bet-card{background:#fff;border-radius:14px;border:0.5px solid #e0e0e0;overflow:hidden;text-decoration:none;color:inherit;display:block;transition:box-shadow .15s,transform .15s;}
 .bet-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.08);transform:translateY(-2px);}
 .bet-card.locked{pointer-events:none;opacity:.5;filter:grayscale(.4);}
-.bet-card.upcoming{opacity:.55;cursor:default;}
+.bet-card.upcoming{opacity:.55;cursor:default;pointer-events:none;}
 .bet-card.upcoming:hover,.bet-card.locked:hover{box-shadow:none;transform:none;}
 
 .card-stripe{height:4px;}
@@ -184,6 +184,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         </div>
       </div>
     </a>
+
+    <div class="bet-card upcoming" id="wc-card" onclick="location.href='wc-draft.html'" style="cursor:pointer;">
+      <div class="card-stripe" style="background:#006847;"></div>
+      <div class="card-body">
+        <div class="card-sport">⚽ World Cup</div>
+        <div class="card-name">FIFA WC 2026</div>
+        <div class="card-desc">Snake draft of all 48 teams. $1/goal from each other participant, $10/match, tie side-pot. Starts June 11.</div>
+        <div class="card-footer">
+          <span class="card-status status-active">🟢 Active</span>
+          <div style="display:flex;gap:12px;align-items:center;">
+            <a href="wc.html" onclick="event.stopPropagation()" style="font-size:12px;font-weight:700;color:#006847;text-decoration:none;">Tracker →</a>
+            <a href="wc-draft.html" onclick="event.stopPropagation()" style="font-size:12px;font-weight:700;color:#1565c0;text-decoration:none;">Draft →</a>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 
@@ -6751,11 +6767,19 @@ const FIREBASE_BASE = 'https://giesener-bets-default-rtdb.firebaseio.com';
 let isComm = false;
 let cardStates = {};
 
+function setWcCardVisibility(visible) {
+  const card = document.getElementById('wc-card');
+  if (!card) return;
+  if (visible) card.classList.remove('upcoming');
+  else card.classList.add('upcoming');
+}
+
 function toggleComm() {
   if (isComm) {
     isComm = false;
     document.getElementById('comm-toggle').classList.remove('active');
     document.getElementById('comm-panel').style.display = 'none';
+    setWcCardVisibility(false);
   } else {
     document.getElementById('comm-pw-modal').style.display = 'flex';
     setTimeout(() => document.getElementById('comm-pw-input').focus(), 50);
@@ -6773,6 +6797,7 @@ function checkCommPw() {
     document.getElementById('comm-panel').style.display = 'block';
     const hero = document.querySelector('.hero');
     hero.parentNode.insertBefore(document.getElementById('comm-panel'), hero.nextSibling);
+    setWcCardVisibility(true);
     renderCommPanel();
   } else {
     document.getElementById('comm-pw-error').textContent = 'Wrong password.';

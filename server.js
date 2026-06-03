@@ -7,6 +7,7 @@ const cron = require('node-cron');
 const app = express();
 
 app.use(express.json());
+app.use(express.static('.'));
 
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -840,16 +841,341 @@ app.post('/golf/:slug/eventid', function(req, res) {
 app.get('/history', function(req, res) { res.json(Object.values(historyStore).sort(function(a,b) { return b.year - a.year; })); });
 app.post('/history', function(req, res) { historyStore[req.body.slug] = req.body; res.json({ ok: true }); });
 
+// ── World Cup 2026 state ──────────────────────────────────────────
+const WC_TEAMS = [
+  { name: 'Mexico', group: 'A', flag: 'mx' }, { name: 'South Africa', group: 'A', flag: 'za' }, { name: 'South Korea', group: 'A', flag: 'kr' }, { name: 'Czechia', group: 'A', flag: 'cz' },
+  { name: 'Canada', group: 'B', flag: 'ca' }, { name: 'Bosnia-Herzegovina', group: 'B', flag: 'ba' }, { name: 'Qatar', group: 'B', flag: 'qa' }, { name: 'Switzerland', group: 'B', flag: 'ch' },
+  { name: 'Brazil', group: 'C', flag: 'br' }, { name: 'Morocco', group: 'C', flag: 'ma' }, { name: 'Haiti', group: 'C', flag: 'ht' }, { name: 'Scotland', group: 'C', flag: 'gb-sct' },
+  { name: 'United States', group: 'D', flag: 'us' }, { name: 'Paraguay', group: 'D', flag: 'py' }, { name: 'Australia', group: 'D', flag: 'au' }, { name: 'Türkiye', group: 'D', flag: 'tr' },
+  { name: 'Germany', group: 'E', flag: 'de' }, { name: 'Curaçao', group: 'E', flag: 'cw' }, { name: 'Ivory Coast', group: 'E', flag: 'ci' }, { name: 'Ecuador', group: 'E', flag: 'ec' },
+  { name: 'Netherlands', group: 'F', flag: 'nl' }, { name: 'Japan', group: 'F', flag: 'jp' }, { name: 'Sweden', group: 'F', flag: 'se' }, { name: 'Tunisia', group: 'F', flag: 'tn' },
+  { name: 'Belgium', group: 'G', flag: 'be' }, { name: 'Egypt', group: 'G', flag: 'eg' }, { name: 'Iran', group: 'G', flag: 'ir' }, { name: 'New Zealand', group: 'G', flag: 'nz' },
+  { name: 'Spain', group: 'H', flag: 'es' }, { name: 'Cape Verde', group: 'H', flag: 'cv' }, { name: 'Saudi Arabia', group: 'H', flag: 'sa' }, { name: 'Uruguay', group: 'H', flag: 'uy' },
+  { name: 'France', group: 'I', flag: 'fr' }, { name: 'Senegal', group: 'I', flag: 'sn' }, { name: 'Iraq', group: 'I', flag: 'iq' }, { name: 'Norway', group: 'I', flag: 'no' },
+  { name: 'Argentina', group: 'J', flag: 'ar' }, { name: 'Algeria', group: 'J', flag: 'dz' }, { name: 'Austria', group: 'J', flag: 'at' }, { name: 'Jordan', group: 'J', flag: 'jo' },
+  { name: 'Portugal', group: 'K', flag: 'pt' }, { name: 'Congo DR', group: 'K', flag: 'cd' }, { name: 'Uzbekistan', group: 'K', flag: 'uz' }, { name: 'Colombia', group: 'K', flag: 'co' },
+  { name: 'England', group: 'L', flag: 'gb-eng' }, { name: 'Croatia', group: 'L', flag: 'hr' }, { name: 'Ghana', group: 'L', flag: 'gh' }, { name: 'Panama', group: 'L', flag: 'pa' }
+];
+
+const wcDrafts = {};
+const ALL_WC_OWNERS = ['Mark','Marc','Jared','Andrew','Zach','Ben','Matt','Mike','Max','Adam'];
+
+function getOrCreateWCDraft(slug) {
+  if (!wcDrafts[slug]) {
+    wcDrafts[slug] = {
+      slug: slug, name: '', status: 'setup',
+      teams: JSON.parse(JSON.stringify(WC_TEAMS)),
+      owners: ALL_WC_OWNERS,
+      pickOrder: [], pickSequence: [],
+      picks: {}, currentPickIndex: 0,
+      undoStack: [], redoStack: []
+    };
+    ALL_WC_OWNERS.forEach(function(o) { wcDrafts[slug].picks[o] = []; });
+  }
+  return wcDrafts[slug];
+}
+
+function generateWCPickSequence(order, numTeams) {
+  const seq = [];
+  let round = 0;
+  while (seq.length < numTeams) {
+    const roundOrder = round % 2 === 0 ? [...order] : [...order].reverse();
+    for (let i = 0; i < roundOrder.length; i++) {
+      if (seq.length >= numTeams) break;
+      seq.push({ owner: roundOrder[i], round: round + 1 });
+    }
+    round++;
+  }
+  return seq;
+}
+
+// ── ESPN World Cup match fetch ─────────────────────────────────────
+async function fetchWCMatches() {
+  try {
+    const result = await httpsGet(
+      'site.api.espn.com',
+      '/apis/site/v2/sports/soccer/fifa.world/scoreboard',
+      { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://www.espn.com/' }
+    );
+    if (result.status !== 200) return { error: 'ESPN returned ' + result.status };
+    const parsed = JSON.parse(result.body);
+    const events = parsed.events || [];
+    const matches = {};
+    events.forEach(function(event) {
+      const comp = event.competitions && event.competitions[0];
+      if (!comp) return;
+      const competitors = comp.competitors || [];
+      const home = competitors.find(function(c) { return c.homeAway === 'home'; });
+      const away = competitors.find(function(c) { return c.homeAway === 'away'; });
+      if (!home || !away) return;
+      const statusName = (comp.status && comp.status.type && comp.status.type.name) || '';
+      const statusDetail = (comp.status && comp.status.type && comp.status.type.detail) || '';
+      const isFinal = statusName === 'STATUS_FINAL';
+      const isLive = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME' || statusName === 'STATUS_END_PERIOD';
+      let group = null, stage = 'group';
+      (comp.notes || []).forEach(function(n) {
+        const txt = (n.headline || n.text || '').toLowerCase();
+        const gm = txt.match(/group ([a-l])/);
+        if (gm) { group = gm[1].toUpperCase(); stage = 'group'; }
+        else if (txt.includes('round of 32')) stage = 'r32';
+        else if (txt.includes('round of 16')) stage = 'r16';
+        else if (txt.includes('quarter')) stage = 'qf';
+        else if (txt.includes('semi')) stage = 'sf';
+        else if (txt.includes('final')) stage = 'final';
+      });
+      const detailLower = statusDetail.toLowerCase();
+      const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
+      matches[event.id] = {
+        id: event.id,
+        date: event.date,
+        name: event.name,
+        stage: stage,
+        group: group,
+        homeTeam: home.team && home.team.displayName,
+        awayTeam: away.team && away.team.displayName,
+        homeScore: (isFinal || isLive) ? parseInt(home.score || '0', 10) : null,
+        awayScore: (isFinal || isLive) ? parseInt(away.score || '0', 10) : null,
+        status: isFinal ? 'final' : isLive ? 'live' : 'scheduled',
+        isPenaltyShootout: espnPK && stage !== 'group'
+      };
+    });
+    return { matches: matches, updated: new Date().toISOString() };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+async function pushWCMatchesToFirebase() {
+  if (!firebaseReady) return { error: 'Firebase not ready' };
+  const result = await fetchWCMatches();
+  if (result.error) return result;
+  try {
+    const db = admin.database();
+    const existingSnap = await db.ref('wc26_live/matches').get();
+    const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
+    const merged = Object.assign({}, result.matches);
+    // Preserve manual isPenaltyShootout overrides set by commissioner
+    Object.keys(existing).forEach(function(id) {
+      if (merged[id] && existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
+        merged[id].isPenaltyShootout = true;
+      }
+    });
+    await db.ref('wc26_live/matches').set(merged);
+    await db.ref('wc26_live/updated').set(result.updated);
+    console.log('WC matches push: ' + Object.keys(merged).length + ' matches');
+    return { ok: true, matchCount: Object.keys(merged).length, updated: result.updated };
+  } catch(e) {
+    return { error: e.message };
+  }
+}
+
+// WC static routes (before parameterized to avoid collision)
+app.get('/wc/matches', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  try {
+    const snap = await admin.database().ref('wc26_live').get();
+    res.json(snap.exists() ? snap.val() : {});
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/wc/matches/seed', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  const SEED_GROUPS = {
+    A:['Mexico','South Africa','South Korea','Czechia'],
+    B:['Canada','Bosnia-Herzegovina','Qatar','Switzerland'],
+    C:['Brazil','Morocco','Haiti','Scotland'],
+    D:['United States','Paraguay','Australia','Türkiye'],
+    E:['Germany','Curaçao','Ivory Coast','Ecuador'],
+    F:['Netherlands','Japan','Sweden','Tunisia'],
+    G:['Belgium','Egypt','Iran','New Zealand'],
+    H:['Spain','Cape Verde','Saudi Arabia','Uruguay'],
+    I:['France','Senegal','Iraq','Norway'],
+    J:['Argentina','Algeria','Austria','Jordan'],
+    K:['Portugal','Congo DR','Uzbekistan','Colombia'],
+    L:['England','Croatia','Ghana','Panama']
+  };
+  // Weighted random goal count: skewed toward 0-2 goals
+  function randGoals() {
+    const r = Math.random();
+    if (r < 0.20) return 0;
+    if (r < 0.50) return 1;
+    if (r < 0.75) return 2;
+    if (r < 0.90) return 3;
+    return 4;
+  }
+  const matches = {};
+  let id = 9000;
+  const baseDate = new Date('2026-06-11T18:00:00Z');
+  Object.entries(SEED_GROUPS).forEach(function([group, teams]) {
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + id - 9000);
+        matches['seed_' + id] = {
+          id: 'seed_' + id,
+          date: d.toISOString(),
+          name: teams[i] + ' vs ' + teams[j],
+          stage: 'group', group: group,
+          homeTeam: teams[i], awayTeam: teams[j],
+          homeScore: randGoals(), awayScore: randGoals(),
+          status: 'final', isPenaltyShootout: false
+        };
+        id++;
+      }
+    }
+  });
+  try {
+    await admin.database().ref('wc26_live/matches').set(matches);
+    await admin.database().ref('wc26_live/updated').set(new Date().toISOString());
+    res.json({ ok: true, matchCount: Object.keys(matches).length });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/wc/matches/refresh', async function(req, res) {
+  const result = await pushWCMatchesToFirebase();
+  if (result.error) return res.status(502).json(result);
+  res.json(result);
+});
+
+app.post('/wc/matches/manual', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  const match = req.body;
+  if (!match.id || !match.homeTeam || !match.awayTeam) return res.status(400).json({ error: 'id, homeTeam, awayTeam required' });
+  try {
+    await admin.database().ref('wc26_live/matches/' + match.id).set(match);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/wc/matches/:id/pk', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  try {
+    await admin.database().ref('wc26_live/matches/' + req.params.id + '/isPenaltyShootout').set(!!req.body.isPenaltyShootout);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// WC draft routes
+app.get('/wc/:slug', function(req, res) { res.json(getOrCreateWCDraft(req.params.slug)); });
+
+app.post('/wc/:slug/setup', function(req, res) {
+  const draft = getOrCreateWCDraft(req.params.slug);
+  const { name, owners } = req.body;
+  if (name) draft.name = name;
+  if (owners && owners.length >= 2) {
+    draft.owners = owners;
+    draft.picks = {};
+    owners.forEach(function(o) { draft.picks[o] = []; });
+  }
+  draft.status = 'lobby';
+  broadcast(req.params.slug, { type: 'state', draft: draft });
+  res.json(draft);
+});
+
+app.post('/wc/:slug/start', function(req, res) {
+  const draft = getOrCreateWCDraft(req.params.slug);
+  if (draft.status !== 'lobby') return res.status(400).json({ error: 'Not in lobby' });
+  draft.pickOrder = (req.body && req.body.pickOrder) || shuffle(draft.owners);
+  draft.pickSequence = generateWCPickSequence(draft.pickOrder, WC_TEAMS.length);
+  draft.currentPickIndex = 0;
+  draft.status = 'drafting';
+  broadcast(req.params.slug, { type: 'state', draft: draft });
+  res.json(draft);
+});
+
+app.post('/wc/:slug/reset', function(req, res) {
+  delete wcDrafts[req.params.slug];
+  const fresh = getOrCreateWCDraft(req.params.slug);
+  broadcast(req.params.slug, { type: 'state', draft: fresh });
+  res.json(fresh);
+});
+
+app.post('/wc/:slug/pick', function(req, res) {
+  const draft = getOrCreateWCDraft(req.params.slug);
+  if (draft.status !== 'drafting') return res.status(400).json({ error: 'Not drafting' });
+  const { owner, team } = req.body;
+  draft.undoStack.push({ teams: JSON.parse(JSON.stringify(draft.teams)), picks: JSON.parse(JSON.stringify(draft.picks)), currentPickIndex: draft.currentPickIndex, status: draft.status });
+  draft.redoStack = [];
+  draft.teams = draft.teams.filter(function(t) { return t.name !== team.name; });
+  if (!draft.picks[owner]) draft.picks[owner] = [];
+  draft.picks[owner].push(team);
+  draft.currentPickIndex++;
+  if (draft.currentPickIndex >= draft.pickSequence.length) draft.status = 'complete';
+  broadcast(req.params.slug, { type: 'state', draft: draft });
+  res.json(draft);
+});
+
+app.post('/wc/:slug/undo', function(req, res) {
+  const draft = getOrCreateWCDraft(req.params.slug);
+  if (!draft.undoStack.length) return res.status(400).json({ error: 'Nothing to undo' });
+  draft.redoStack.push({ teams: JSON.parse(JSON.stringify(draft.teams)), picks: JSON.parse(JSON.stringify(draft.picks)), currentPickIndex: draft.currentPickIndex, status: draft.status });
+  const prev = draft.undoStack.pop();
+  Object.assign(draft, prev);
+  broadcast(req.params.slug, { type: 'state', draft: draft });
+  res.json(draft);
+});
+
+app.post('/wc/:slug/redo', function(req, res) {
+  const draft = getOrCreateWCDraft(req.params.slug);
+  if (!draft.redoStack.length) return res.status(400).json({ error: 'Nothing to redo' });
+  draft.undoStack.push({ teams: JSON.parse(JSON.stringify(draft.teams)), picks: JSON.parse(JSON.stringify(draft.picks)), currentPickIndex: draft.currentPickIndex, status: draft.status });
+  const next = draft.redoStack.pop();
+  Object.assign(draft, next);
+  broadcast(req.params.slug, { type: 'state', draft: draft });
+  res.json(draft);
+});
+
+app.post('/wc/:slug/seed', function(req, res) {
+  const draft = getOrCreateWCDraft(req.params.slug);
+  if (draft.status !== 'drafting') return res.status(400).json({ error: 'Not drafting' });
+  draft.undoStack.push({ teams: JSON.parse(JSON.stringify(draft.teams)), picks: JSON.parse(JSON.stringify(draft.picks)), currentPickIndex: draft.currentPickIndex, status: draft.status });
+  draft.redoStack = [];
+  const remaining = shuffle([...draft.teams]);
+  const seq = draft.pickSequence;
+  let ri = 0;
+  for (let i = draft.currentPickIndex; i < seq.length; i++) {
+    const owner = seq[i].owner;
+    const team = remaining[ri++];
+    if (!team) break;
+    if (!draft.picks[owner]) draft.picks[owner] = [];
+    draft.picks[owner].push(team);
+  }
+  draft.teams = [];
+  draft.currentPickIndex = seq.length;
+  draft.status = 'complete';
+  broadcast(req.params.slug, { type: 'state', draft: draft });
+  res.json(draft);
+});
+
+app.post('/wc/:slug/finalize', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  const draft = getOrCreateWCDraft(req.params.slug);
+  const teamOwners = {};
+  Object.keys(draft.picks).forEach(function(owner) {
+    (draft.picks[owner] || []).forEach(function(team) { teamOwners[team.name] = owner; });
+  });
+  try {
+    const db = admin.database();
+    await db.ref('wc26_live/teamOwners').set(teamOwners);
+    await db.ref('wc26_live/config').set({ participants: draft.owners, draftName: draft.name, finalizedAt: new Date().toISOString() });
+    draft.status = 'finalized';
+    broadcast(req.params.slug, { type: 'state', draft: draft });
+    res.json({ ok: true, teamOwners: teamOwners, participants: draft.owners });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Server + WebSocket ────────────────────────────────────────────
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server: server });
 
 wss.on('connection', function(ws, req) {
-  const slug = new URL(req.url, 'http://localhost').searchParams.get('slug');
+  const url = new URL(req.url, 'http://localhost');
+  const slug = url.searchParams.get('slug');
+  const type = url.searchParams.get('type');
   if (!slug) return ws.close();
   if (!clients[slug]) clients[slug] = new Set();
   clients[slug].add(ws);
-  const draft = getOrCreateDraft(slug);
+  const draft = type === 'wc' ? getOrCreateWCDraft(slug) : getOrCreateDraft(slug);
   ws.send(JSON.stringify({ type: 'state', draft: draft }));
   ws.on('close', function() { clients[slug].delete(ws); });
 });
