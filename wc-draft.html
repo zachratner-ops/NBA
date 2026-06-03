@@ -552,8 +552,17 @@ window.submitSetup = async function() {
   if (!nameEl?.value.trim()) { alert('Enter a draft name.'); return; }
   const selectedOwners = ALL_OWNERS.filter(o => document.getElementById('p-' + o)?.checked);
   if (selectedOwners.length < 2) { alert('Select at least 2 participants.'); return; }
-  connectWS();
-  await proxyApi('/setup', 'POST', { name: nameEl.value.trim(), owners: selectedOwners });
+  const btn = document.querySelector('button[onclick="submitSetup()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
+  try {
+    connectWS();
+    const r = await proxyApi('/setup', 'POST', { name: nameEl.value.trim(), owners: selectedOwners });
+    if (r && r.status) { draft = { ...r }; renderScreen(); }
+    else throw new Error(r?.error || 'Server error');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Open Lobby →'; }
+    showToast('⚠ ' + (e.message.includes('JSON') ? 'Server not ready — try again shortly' : e.message));
+  }
 };
 
 // ── LOBBY ──────────────────────────────────────────────────────────
