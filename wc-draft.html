@@ -211,9 +211,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .refresh-btn:hover{background:#333;} .refresh-btn.spinning svg{animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .updated-txt{font-size:11px;color:#aaa;}
+/* Mobile match cards */
+.match-cards{display:none;}
+.match-card{background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:11px 13px;margin-bottom:8px;}
+.match-card.tie-card{background:#fffdf0;border-color:#ffe082;}
+.match-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#aaa;}
+.match-card-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:6px;}
+.match-card-team{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;min-width:0;}
+.match-card-team.away{flex-direction:row-reverse;text-align:right;}
+.match-card-team span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.match-card-score{font-size:18px;font-weight:800;text-align:center;white-space:nowrap;flex-shrink:0;}
+.match-card-footer{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-top:8px;padding-top:6px;border-top:0.5px solid #f0f0f0;}
+
 @media(max-width:600px){
-  .match-table th:nth-child(5),.match-table td:nth-child(5),
-  .match-table th:nth-child(6),.match-table td:nth-child(6){display:none;}
+  .match-table-wrap{display:none;}
+  .match-cards{display:block;}
   .lb-grid{grid-template-columns:1fr 1fr;}
 }
 </style>
@@ -327,7 +339,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-const PROXY = location.hostname === 'localhost' ? location.origin : 'https://reasonable-illumination-production-6e9a.up.railway.app';
+const PROXY = location.hostname === 'localhost' ? location.origin : 'https://nba-production-4b6c.up.railway.app';
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
   authDomain: "giesener-bets.firebaseapp.com",
@@ -552,17 +564,8 @@ window.submitSetup = async function() {
   if (!nameEl?.value.trim()) { alert('Enter a draft name.'); return; }
   const selectedOwners = ALL_OWNERS.filter(o => document.getElementById('p-' + o)?.checked);
   if (selectedOwners.length < 2) { alert('Select at least 2 participants.'); return; }
-  const btn = document.querySelector('button[onclick="submitSetup()"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Opening…'; }
-  try {
-    connectWS();
-    const r = await proxyApi('/setup', 'POST', { name: nameEl.value.trim(), owners: selectedOwners });
-    if (r && r.status) { draft = { ...r }; renderScreen(); }
-    else throw new Error(r?.error || 'Server error');
-  } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Open Lobby →'; }
-    showToast('⚠ ' + (e.message.includes('JSON') ? 'Server not ready — try again shortly' : e.message));
-  }
+  connectWS();
+  await proxyApi('/setup', 'POST', { name: nameEl.value.trim(), owners: selectedOwners });
 };
 
 // ── LOBBY ──────────────────────────────────────────────────────────
@@ -965,7 +968,45 @@ function renderTracker() {
   }).join('');
   const matchTableHtml=`<div class="match-table-wrap">${matchList.length===0?'<div style="text-align:center;padding:40px;color:#aaa;">No matches played yet</div>':`
     <table class="match-table"><thead><tr><th>Date</th><th>Home</th><th class="c">Score</th><th>Away</th><th>Stage</th><th>Match $</th><th>Goals</th>${isComm?'<th></th>':''}</tr></thead>
-    <tbody>${matchRows}</tbody></table>`}</div>`;
+    <tbody>${matchRows}</tbody></table>`}</div>
+  <div class="match-cards">${matchList.length===0?'<div style="text-align:center;padding:40px;color:#aaa;">No matches played yet</div>':
+    matchList.map(m=>{
+      const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
+      const hs=m.homeScore??'?',as=m.awayScore??'?';
+      const isTie=(m.stage==='group'&&m.homeScore===m.awayScore)||(m.stage!=='group'&&m.isPenaltyShootout);
+      const stageLbl={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'}[m.stage]||m.stage;
+      const grpLbl=m.group?` ${m.group}`:'';
+      const homeWin=!isTie&&(m.homeScore||0)>(m.awayScore||0);
+      const awayWin=!isTie&&(m.awayScore||0)>(m.homeScore||0);
+      let footer='';
+      if(m.status==='final'){
+        if(isTie)footer+=`<span class="money-tie">TIE — −$10 ea</span>`;
+        else if(ho&&ao&&ho!==ao){const wo=homeWin?ho:ao;footer+=`<span class="money-pos">${wo} +$10</span>`;}
+        const tg=(m.homeScore||0)+(m.awayScore||0);if(tg>0)footer+=`<span style="color:#555;">${tg} goals</span>`;
+        if(m.isPenaltyShootout)footer+=`<span class="pk-badge">PK</span>`;
+      }
+      return `<div class="match-card${isTie?' tie-card':''}">
+        <div class="match-card-top">
+          <span>${m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}</span>
+          <span class="stage-badge">${stageLbl}${grpLbl}</span>
+        </div>
+        <div class="match-card-teams">
+          <div class="match-card-team">
+            ${flagImg(WC_FLAGS[m.homeTeam])}
+            <span style="font-weight:${homeWin?700:400}">${m.homeTeam}</span>
+            ${ho?`<span style="font-size:10px;font-weight:700;color:${color(ho)}">${ho}</span>`:''}
+          </div>
+          <div class="match-card-score">${m.status==='live'?`<span style="color:#e65100">${hs}–${as}</span>`:m.status==='final'?`${hs}–${as}`:'–'}</div>
+          <div class="match-card-team away">
+            ${flagImg(WC_FLAGS[m.awayTeam])}
+            <span style="font-weight:${awayWin?700:400}">${m.awayTeam}</span>
+            ${ao?`<span style="font-size:10px;font-weight:700;color:${color(ao)}">${ao}</span>`:''}
+          </div>
+        </div>
+        ${footer?`<div class="match-card-footer">${footer}</div>`:''}
+      </div>`;
+    }).join('')}
+  </div>`;
 
   // Teams
   const teamsHtml=`<div class="teams-grid">${participants.map(p=>{
