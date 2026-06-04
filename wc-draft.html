@@ -1086,18 +1086,19 @@ function renderTracker() {
       ${footer?`<div class="match-card-footer">${footer}</div>`:''}
     </div>`;
   }
-  function mkSection(title, list, key){
-    if(!list.length) return '';
+  function mkSection(title, list, key, emptyMsg){
     const open = key===null ? true : !!matchSections[key];
+    const count = list.length;
     const hdrStyle=`display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border:0.5px solid #e0e0e0;`;
     const hdr = key
-      ? `<div onclick="window.toggleMatchSection('${key}')" style="${hdrStyle}border-radius:${open?'12px 12px 0 0':'12px'};cursor:pointer;user-select:none;">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">${title} <span style="color:#bbb;font-weight:400;">(${list.length})</span></span>
+      ? `<div onclick="window.toggleMatchSection('${key}')" style="${hdrStyle}border-radius:${open&&count?'12px 12px 0 0':'12px'};cursor:pointer;user-select:none;">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">${title} <span style="color:#bbb;font-weight:400;">(${count})</span></span>
           <span style="color:#bbb;font-size:12px;">${open?'▴':'▾'}</span>
         </div>`
-      : `<div style="${hdrStyle}border-radius:12px 12px 0 0;border-bottom:none;">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;">${title} <span style="color:#bbb;font-weight:400;">(${list.length})</span></span>
+      : `<div style="${hdrStyle}border-radius:${count?'12px 12px 0 0':'12px'};${count?'border-bottom:none;':''}">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;">${title} <span style="color:#bbb;font-weight:400;">(${count})</span></span>
         </div>`;
+    if(!count) return `<div style="margin-bottom:12px;">${hdr}</div>`;
     if(!open) return `<div style="margin-bottom:12px;">${hdr}</div>`;
     return `<div style="margin-bottom:12px;">
       ${hdr}
@@ -1111,11 +1112,9 @@ function renderTracker() {
   const todayList=Object.values(matches).filter(m=>isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const completedList=Object.values(matches).filter(m=>m.status==='final'&&!isToday(m.date)).sort((a,b)=>new Date(b.date)-new Date(a.date));
   const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const matchesHtml=(todayList.length+completedList.length+upcomingList.length)===0
-    ?'<div style="text-align:center;padding:60px 20px;color:#aaa;"><div style="font-size:32px;margin-bottom:12px;">⚽</div><div>No match data yet.</div></div>'
-    :(todayList.length?mkSection("Today's Games",todayList,null):'')
-      +mkSection('Completed',completedList,'completed')
-      +mkSection('Upcoming',upcomingList,'upcoming');
+  const matchesHtml=mkSection("Today's Games",todayList,null)
+    +mkSection('Completed',completedList,'completed')
+    +(upcomingList.length?mkSection('Upcoming',upcomingList,'upcoming'):'');
 
   // Per-team W/L/T records
   const teamRecord={};
