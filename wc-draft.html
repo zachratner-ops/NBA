@@ -433,6 +433,7 @@ let trackerTab = 'leaderboard'; // tracker tab state
 let trackerRefreshing = false;
 let autoRefreshInterval = null;
 let lbSort = 'net'; // 'net' | 'draft'
+let matchSections = { completed: false, upcoming: false };
 const WC_GROUPS_MAP = {
   'Mexico':'A','South Africa':'A','South Korea':'A','Czechia':'A',
   'Canada':'B','Bosnia-Herzegovina':'B','Qatar':'B','Switzerland':'B',
@@ -1031,119 +1032,89 @@ function renderTracker() {
     </div>
   </div>` : '';
 
-  // Match table
-  const matchList=Object.values(matches).sort((a,b)=>new Date(a.date)-new Date(b.date)).filter(m=>m.status==='final'||m.status==='live');
-  const matchRows=matchList.map(m=>{
+  // Match tab — three sections: Today / Completed / Upcoming
+  function isToday(ds){if(!ds)return false;const d=new Date(ds),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
+  const SL={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'};
+  function mkRow(m){
     const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
-    const hs=m.homeScore??'?',as=m.awayScore??'?';
+    const hs=m.homeScore??'?',as_=m.awayScore??'?';
     const isTie=(m.stage==='group'&&m.homeScore===m.awayScore)||(m.stage!=='group'&&m.isPenaltyShootout);
-    const stageLbl={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'}[m.stage]||m.stage;
-    const grpLbl=m.group?` ${m.group}`:'';
+    const sl=SL[m.stage]||m.stage,gl=m.group?` ${m.group}`:'';
+    const dl=m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+    const tl_=m.date&&m.status==='scheduled'?new Date(m.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'';
     let mm='',gm='';
     if(m.status==='final'){
       if(isTie)mm=`<span class="money-tie">TIE −$10 ea</span>`;
       else if(ho&&ao&&ho!==ao){const wo=(m.homeScore||0)>(m.awayScore||0)?ho:ao,lo=(m.homeScore||0)>(m.awayScore||0)?ao:ho;mm=`<span class="money-pos">$10 ${lo} → ${wo}</span>`;}
       const tg=(m.homeScore||0)+(m.awayScore||0);if(tg>0)gm=`<span style="color:#555;">${tg}g</span>`;
     }
+    const sc=m.status==='live'?`<span style="color:#e65100;font-weight:700;">${hs}–${as_}</span>`:m.status==='final'?`${hs}–${as_}`:`<span style="color:#bbb;font-size:11px;">${tl_||'—'}</span>`;
     return `<tr class="${isTie?'tie-row':''}">
-      <td style="font-size:11px;color:#aaa;">${m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—'}</td>
+      <td style="font-size:11px;color:#aaa;">${dl}</td>
       <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.homeTeam])}<span style="font-weight:${!isTie&&(m.homeScore||0)>(m.awayScore||0)?700:400}">${m.homeTeam}</span>${ho?`<span class="owner-chip" style="background:${color(ho)}22;color:${color(ho)}">${ho}</span>`:''}</div></td>
-      <td class="score-cell">${m.status==='live'?`<span style="color:#e65100;font-weight:700;">${hs}–${as}</span>`:m.status==='final'?`${hs}–${as}`:'—'}</td>
+      <td class="score-cell">${sc}</td>
       <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.awayTeam])}<span style="font-weight:${!isTie&&(m.awayScore||0)>(m.homeScore||0)?700:400}">${m.awayTeam}</span>${ao?`<span class="owner-chip" style="background:${color(ao)}22;color:${color(ao)}">${ao}</span>`:''}</div></td>
-      <td><span class="stage-badge">${stageLbl}${grpLbl}</span>${m.isPenaltyShootout?' <span class="pk-badge">PK</span>':''}</td>
+      <td><span class="stage-badge">${sl}${gl}</span>${m.isPenaltyShootout?' <span class="pk-badge">PK</span>':''}</td>
       <td>${mm}</td><td>${gm}</td>
       ${isComm?`<td><button class="btn btn-sm btn-outline" onclick="editMatch('${m.id}')" style="font-size:10px;padding:2px 6px;">Edit</button></td>`:''}
     </tr>`;
-  }).join('');
-  // Upcoming fixtures (scheduled only, next 10)
-  const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled').sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const upcomingRows=upcomingList.map(m=>{
+  }
+  function mkCard(m){
     const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
-    const stageLbl={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'}[m.stage]||m.stage;
-    const grpLbl=m.group?` ${m.group}`:'';
-    const dateObj=m.date?new Date(m.date):null;
-    const dateLbl=dateObj?dateObj.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
-    const timeLbl=dateObj?dateObj.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',timeZoneName:'short'}):'';
-    return `<tr>
-      <td style="font-size:11px;color:#aaa;white-space:nowrap;">${dateLbl}<div style="font-size:10px;color:#bbb;">${timeLbl}</div></td>
-      <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.homeTeam])}<span>${m.homeTeam}</span>${ho?`<span class="owner-chip" style="background:${color(ho)}22;color:${color(ho)}">${ho}</span>`:''}</div></td>
-      <td class="c" style="font-size:11px;color:#bbb;font-weight:600;">vs</td>
-      <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.awayTeam])}<span>${m.awayTeam}</span>${ao?`<span class="owner-chip" style="background:${color(ao)}22;color:${color(ao)}">${ao}</span>`:''}</div></td>
-      <td><span class="stage-badge">${stageLbl}${grpLbl}</span></td>
-      ${isComm?`<td><button class="btn btn-sm btn-outline" onclick="editMatch('${m.id}')" style="font-size:10px;padding:2px 6px;">Edit</button></td>`:''}
-    </tr>`;
-  }).join('');
-  const upcomingHtml=upcomingList.length===0?'':`
-    <div style="margin-top:20px;">
-      <div class="match-table-wrap">
-        <div style="padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;border-bottom:0.5px solid #e0e0e0;">Upcoming Fixtures</div>
-        <table class="match-table"><thead><tr><th>Date</th><th>Home</th><th class="c"></th><th>Away</th><th>Stage</th>${isComm?'<th></th>':''}</tr></thead>
-        <tbody>${upcomingRows}</tbody></table>
+    const hs=m.homeScore??'?',as_=m.awayScore??'?';
+    const isTie=(m.stage==='group'&&m.homeScore===m.awayScore)||(m.stage!=='group'&&m.isPenaltyShootout);
+    const sl=SL[m.stage]||m.stage,gl=m.group?` ${m.group}`:'';
+    const dl=m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+    const tl_=m.date&&m.status==='scheduled'?new Date(m.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'';
+    const hw=!isTie&&(m.homeScore||0)>(m.awayScore||0),aw=!isTie&&(m.awayScore||0)>(m.homeScore||0);
+    const sc=m.status==='live'?`<span style="color:#e65100">${hs}–${as_}</span>`:m.status==='final'?`${hs}–${as_}`:`<span style="font-size:14px;color:#bbb;">vs</span>`;
+    let footer='';
+    if(m.status==='final'){
+      if(isTie)footer+=`<span class="money-tie">TIE — −$10 ea</span>`;
+      else if(ho&&ao&&ho!==ao){const wo=hw?ho:ao,lo=hw?ao:ho;footer+=`<span class="money-pos">$10 ${lo} → ${wo}</span>`;}
+      const tg=(m.homeScore||0)+(m.awayScore||0);if(tg>0)footer+=`<span style="color:#555;">${tg} goals</span>`;
+      if(m.isPenaltyShootout)footer+=`<span class="pk-badge">PK</span>`;
+    }
+    return `<div class="match-card${isTie?' tie-card':''}">
+      <div class="match-card-top"><span>${dl}${tl_&&m.status==='scheduled'?' · '+tl_:''}</span><span class="stage-badge">${sl}${gl}</span></div>
+      <div class="match-card-teams">
+        <div class="match-card-team">${flagImg(WC_FLAGS[m.homeTeam])}<span style="font-weight:${hw?700:400}">${m.homeTeam}</span>${ho?`<span style="font-size:10px;font-weight:700;color:${color(ho)}">${ho}</span>`:''}</div>
+        <div class="match-card-score">${sc}</div>
+        <div class="match-card-team away">${flagImg(WC_FLAGS[m.awayTeam])}<span style="font-weight:${aw?700:400}">${m.awayTeam}</span>${ao?`<span style="font-size:10px;font-weight:700;color:${color(ao)}">${ao}</span>`:''}</div>
       </div>
-      <div class="match-cards">
-        ${upcomingList.map(m=>{
-          const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
-          const stageLbl={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'}[m.stage]||m.stage;
-          const grpLbl=m.group?` ${m.group}`:'';
-          const dateObj=m.date?new Date(m.date):null;
-          const dateLbl=dateObj?dateObj.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-          const timeLbl=dateObj?dateObj.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'';
-          return `<div class="match-card">
-            <div class="match-card-top">
-              <span>${dateLbl}${timeLbl?' · '+timeLbl:''}</span>
-              <span class="stage-badge">${stageLbl}${grpLbl}</span>
-            </div>
-            <div class="match-card-teams">
-              <div class="match-card-team">${flagImg(WC_FLAGS[m.homeTeam])}<span>${m.homeTeam}</span>${ho?`<span style="font-size:10px;font-weight:700;color:${color(ho)}">${ho}</span>`:''}</div>
-              <div class="match-card-score" style="font-size:14px;color:#bbb;">vs</div>
-              <div class="match-card-team away">${flagImg(WC_FLAGS[m.awayTeam])}<span>${m.awayTeam}</span>${ao?`<span style="font-size:10px;font-weight:700;color:${color(ao)}">${ao}</span>`:''}</div>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
+      ${footer?`<div class="match-card-footer">${footer}</div>`:''}
     </div>`;
-
-  const matchTableHtml=`<div class="match-table-wrap">${matchList.length===0?'<div style="text-align:center;padding:40px;color:#aaa;">No matches played yet</div>':`
-    <table class="match-table"><thead><tr><th>Date</th><th>Home</th><th class="c">Score</th><th>Away</th><th>Stage</th><th>Match $</th><th>Goals</th>${isComm?'<th></th>':''}</tr></thead>
-    <tbody>${matchRows}</tbody></table>`}</div>
-  <div class="match-cards">${matchList.length===0?'<div style="text-align:center;padding:40px;color:#aaa;">No matches played yet</div>':
-    matchList.map(m=>{
-      const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
-      const hs=m.homeScore??'?',as=m.awayScore??'?';
-      const isTie=(m.stage==='group'&&m.homeScore===m.awayScore)||(m.stage!=='group'&&m.isPenaltyShootout);
-      const stageLbl={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'}[m.stage]||m.stage;
-      const grpLbl=m.group?` ${m.group}`:'';
-      const homeWin=!isTie&&(m.homeScore||0)>(m.awayScore||0);
-      const awayWin=!isTie&&(m.awayScore||0)>(m.homeScore||0);
-      let footer='';
-      if(m.status==='final'){
-        if(isTie)footer+=`<span class="money-tie">TIE — −$10 ea</span>`;
-        else if(ho&&ao&&ho!==ao){const wo=homeWin?ho:ao,lo=homeWin?ao:ho;footer+=`<span class="money-pos">$10 ${lo} → ${wo}</span>`;}
-        const tg=(m.homeScore||0)+(m.awayScore||0);if(tg>0)footer+=`<span style="color:#555;">${tg} goals</span>`;
-        if(m.isPenaltyShootout)footer+=`<span class="pk-badge">PK</span>`;
-      }
-      return `<div class="match-card${isTie?' tie-card':''}">
-        <div class="match-card-top">
-          <span>${m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):''}</span>
-          <span class="stage-badge">${stageLbl}${grpLbl}</span>
-        </div>
-        <div class="match-card-teams">
-          <div class="match-card-team">
-            ${flagImg(WC_FLAGS[m.homeTeam])}
-            <span style="font-weight:${homeWin?700:400}">${m.homeTeam}</span>
-            ${ho?`<span style="font-size:10px;font-weight:700;color:${color(ho)}">${ho}</span>`:''}
-          </div>
-          <div class="match-card-score">${m.status==='live'?`<span style="color:#e65100">${hs}–${as}</span>`:m.status==='final'?`${hs}–${as}`:'–'}</div>
-          <div class="match-card-team away">
-            ${flagImg(WC_FLAGS[m.awayTeam])}
-            <span style="font-weight:${awayWin?700:400}">${m.awayTeam}</span>
-            ${ao?`<span style="font-size:10px;font-weight:700;color:${color(ao)}">${ao}</span>`:''}
-          </div>
-        </div>
-        ${footer?`<div class="match-card-footer">${footer}</div>`:''}
-      </div>`;
-    }).join('')}
-  </div>`;
+  }
+  function mkSection(title, list, key){
+    if(!list.length) return '';
+    const open = key===null ? true : !!matchSections[key];
+    const hdrStyle=`display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border:0.5px solid #e0e0e0;`;
+    const hdr = key
+      ? `<div onclick="window.toggleMatchSection('${key}')" style="${hdrStyle}border-radius:${open?'12px 12px 0 0':'12px'};cursor:pointer;user-select:none;">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">${title} <span style="color:#bbb;font-weight:400;">(${list.length})</span></span>
+          <span style="color:#bbb;font-size:12px;">${open?'▴':'▾'}</span>
+        </div>`
+      : `<div style="${hdrStyle}border-radius:12px 12px 0 0;border-bottom:none;">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;">${title} <span style="color:#bbb;font-weight:400;">(${list.length})</span></span>
+        </div>`;
+    if(!open) return `<div style="margin-bottom:12px;">${hdr}</div>`;
+    return `<div style="margin-bottom:12px;">
+      ${hdr}
+      <div class="match-table-wrap" style="margin-bottom:0;border-top:none;border-radius:0 0 12px 12px;">
+        <table class="match-table"><thead><tr><th>Date</th><th>Home</th><th class="c">Score</th><th>Away</th><th>Stage</th><th>Match $</th><th>Goals</th>${isComm?'<th></th>':''}</tr></thead>
+        <tbody>${list.map(mkRow).join('')}</tbody></table>
+      </div>
+      <div class="match-cards">${list.map(mkCard).join('')}</div>
+    </div>`;
+  }
+  const todayList=Object.values(matches).filter(m=>isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const completedList=Object.values(matches).filter(m=>m.status==='final'&&!isToday(m.date)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const matchesHtml=(todayList.length+completedList.length+upcomingList.length)===0
+    ?'<div style="text-align:center;padding:60px 20px;color:#aaa;"><div style="font-size:32px;margin-bottom:12px;">⚽</div><div>No match data yet.</div></div>'
+    :(todayList.length?mkSection("Today's Games",todayList,null):'')
+      +mkSection('Completed',completedList,'completed')
+      +mkSection('Upcoming',upcomingList,'upcoming');
 
   // Teams
   const teamsHtml=`<div class="teams-grid">${participants.map(p=>{
@@ -1171,7 +1142,7 @@ function renderTracker() {
   </div>`;
   let content='';
   if(trackerTab==='leaderboard')content=lbHtml+(fin.tiePotTotal>0?tiepotHtml:'');
-  else if(trackerTab==='matches')content=matchTableHtml+upcomingHtml;
+  else if(trackerTab==='matches')content=matchesHtml;
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='rules')content=rulesHtml();
 
@@ -1184,6 +1155,7 @@ function renderTracker() {
 }
 window.switchTrackerTab = function(t){trackerTab=t;renderScreen();};
 window.setLbSort = function(s){lbSort=s;renderScreen();};
+window.toggleMatchSection = function(k){matchSections[k]=!matchSections[k];renderScreen();};
 
 function rulesHtml() {
   return `<div style="max-width:680px;">
