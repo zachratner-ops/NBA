@@ -1057,6 +1057,133 @@ app.post('/wc/matches/seed', async function(req, res) {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/wc/matches/seed-full', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+
+  const GROUPS = {
+    A:['Mexico','South Africa','South Korea','Czechia'],
+    B:['Canada','Bosnia-Herzegovina','Qatar','Switzerland'],
+    C:['Brazil','Morocco','Haiti','Scotland'],
+    D:['United States','Paraguay','Australia','Türkiye'],
+    E:['Germany','Curaçao','Ivory Coast','Ecuador'],
+    F:['Netherlands','Japan','Sweden','Tunisia'],
+    G:['Belgium','Egypt','Iran','New Zealand'],
+    H:['Spain','Cape Verde','Saudi Arabia','Uruguay'],
+    I:['France','Senegal','Iraq','Norway'],
+    J:['Argentina','Algeria','Austria','Jordan'],
+    K:['Portugal','Congo DR','Uzbekistan','Colombia'],
+    L:['England','Croatia','Ghana','Panama']
+  };
+
+  function rg() { const r=Math.random(); return r<.20?0:r<.50?1:r<.75?2:r<.90?3:4; }
+  function shuffleArr(a) { const b=[...a]; for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];} return b; }
+  function mkDate(daysFromStart, slot) {
+    const d = new Date('2026-06-11T00:00:00Z');
+    d.setDate(d.getDate() + daysFromStart);
+    d.setUTCHours(15 + (slot % 3) * 3); // 15:00, 18:00, 21:00 UTC
+    return d.toISOString();
+  }
+
+  const matches = {};
+  let mid = 8000;
+  const stats = {}; // team -> { mp,w,d,l,gf,ga,pts }
+  Object.values(GROUPS).flat().forEach(t => { stats[t] = {mp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}; });
+
+  // ── Group stage (days 0–16) ──────────────────────────────────────
+  let gDay = 0, slotInDay = 0;
+  Object.entries(GROUPS).forEach(([grp, teams]) => {
+    for (let i = 0; i < teams.length; i++) {
+      for (let j = i + 1; j < teams.length; j++) {
+        const hs = rg(), as_ = rg();
+        const id = 'fs_g_' + (mid++);
+        matches[id] = { id, date: mkDate(gDay, slotInDay), stage: 'group', group: grp,
+          homeTeam: teams[i], awayTeam: teams[j], homeScore: hs, awayScore: as_, status: 'final', isPenaltyShootout: false };
+        stats[teams[i]].mp++; stats[teams[j]].mp++;
+        stats[teams[i]].gf += hs; stats[teams[i]].ga += as_;
+        stats[teams[j]].gf += as_; stats[teams[j]].ga += hs;
+        if (hs > as_) { stats[teams[i]].w++; stats[teams[i]].pts += 3; stats[teams[j]].l++; }
+        else if (as_ > hs) { stats[teams[j]].w++; stats[teams[j]].pts += 3; stats[teams[i]].l++; }
+        else { stats[teams[i]].d++; stats[teams[i]].pts++; stats[teams[j]].d++; stats[teams[j]].pts++; }
+        slotInDay++;
+        if (slotInDay >= 4) { slotInDay = 0; gDay++; }
+      }
+    }
+    gDay++; slotInDay = 0; // gap day between groups
+  });
+
+  // ── Determine advancing teams ────────────────────────────────────
+  function sortTeams(teams) {
+    return [...teams].sort((a, b) => {
+      const sa = stats[a], sb = stats[b];
+      if (sb.pts !== sa.pts) return sb.pts - sa.pts;
+      const gda = sa.gf - sa.ga, gdb = sb.gf - sb.ga;
+      if (gdb !== gda) return gdb - gda;
+      return sb.gf - sa.gf;
+    });
+  }
+
+  const winners = [], runners = [], thirds = [];
+  Object.entries(GROUPS).forEach(([, teams]) => {
+    const s = sortTeams(teams);
+    winners.push(s[0]); runners.push(s[1]); thirds.push(s[2]);
+  });
+  const best8thirds = sortTeams(thirds).slice(0, 8);
+  const r32teams = shuffleArr([...winners, ...runners, ...best8thirds]); // 32 teams, random bracket
+
+  // ── Knockout helper ──────────────────────────────────────────────
+  function ko(home, away, stage, day, slot) {
+    const hs = rg(), as_ = rg();
+    const isPK = (hs === as_); // draws in knockout → PK
+    const winner = isPK ? (Math.random() < 0.5 ? home : away) : (hs > as_ ? home : away);
+    const id = 'fs_' + stage + '_' + (mid++);
+    matches[id] = { id, date: mkDate(day, slot), stage, homeTeam: home, awayTeam: away,
+      homeScore: hs, awayScore: as_, status: 'final', isPenaltyShootout: isPK };
+    return winner;
+  }
+
+  // R32 — days 17–22 (16 matches, 3/day)
+  let cur = r32teams, nxt = [];
+  for (let i = 0; i < cur.length; i += 2)
+    nxt.push(ko(cur[i], cur[i+1], 'r32', 17 + Math.floor(i / 6), i % 3));
+
+  // R16 — days 23–26 (8 matches, 2/day)
+  cur = nxt; nxt = [];
+  for (let i = 0; i < cur.length; i += 2)
+    nxt.push(ko(cur[i], cur[i+1], 'r16', 23 + Math.floor(i / 2), i % 2));
+
+  // QF — days 27–29 (4 matches)
+  cur = nxt; nxt = [];
+  for (let i = 0; i < cur.length; i += 2)
+    nxt.push(ko(cur[i], cur[i+1], 'qf', 27 + i, 0));
+
+  // SF — days 33–34 (2 matches); track losers for 3rd place
+  cur = nxt; nxt = []; const sfLosers = [];
+  for (let i = 0; i < cur.length; i += 2) {
+    const hs = rg(), as_ = rg(), isPK = (hs === as_);
+    const winner = isPK ? (Math.random() < 0.5 ? cur[i] : cur[i+1]) : (hs > as_ ? cur[i] : cur[i+1]);
+    sfLosers.push(winner === cur[i] ? cur[i+1] : cur[i]);
+    const id = 'fs_sf_' + (mid++);
+    matches[id] = { id, date: mkDate(33 + Math.floor(i/2), 0), stage: 'sf',
+      homeTeam: cur[i], awayTeam: cur[i+1], homeScore: hs, awayScore: as_, status: 'final', isPenaltyShootout: isPK };
+    nxt.push(winner);
+  }
+
+  // 3rd place — day 37
+  ko(sfLosers[0], sfLosers[1], 'sf', 37, 0);
+
+  // Final — day 38
+  ko(nxt[0], nxt[1], 'final', 38, 0);
+
+  const bySt = {};
+  Object.values(matches).forEach(m => { bySt[m.stage] = (bySt[m.stage]||0) + 1; });
+
+  try {
+    await admin.database().ref('wc26_live/matches').set(matches);
+    await admin.database().ref('wc26_live/updated').set(new Date().toISOString());
+    res.json({ ok: true, total: Object.keys(matches).length, byStage: bySt });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/wc/matches/refresh', async function(req, res) {
   const result = await pushWCMatchesToFirebase();
   if (result.error) return res.status(502).json(result);

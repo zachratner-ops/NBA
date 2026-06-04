@@ -941,7 +941,8 @@ function renderTracker() {
     <button class="btn btn-sm btn-amber" onclick="openMatchModal()">+ Add / Edit Match</button>
     <button class="btn btn-sm btn-outline" onclick="loadSchedule()" style="color:#1565c0;border-color:#1565c0;">📅 Load Schedule</button>
     <button class="btn btn-sm btn-outline" onclick="clearMatches()" style="color:#c62828;border-color:#c62828;">🗑 Clear Matches</button>
-    <button class="btn btn-sm btn-outline" onclick="seedMatches()" style="color:#e65100;border-color:#e65100;">⚡ Seed Matches</button>
+    <button class="btn btn-sm btn-outline" onclick="seedMatches()" style="color:#e65100;border-color:#e65100;">⚡ Seed Group Stage</button>
+    <button class="btn btn-sm btn-outline" onclick="seedFullTournament()" style="color:#7B1FA2;border-color:#7B1FA2;">⚡ Seed Full Tournament</button>
     ${updatedAgo?`<span class="updated-txt">Updated ${updatedAgo}</span>`:''}
   </div></div>` : '';
 
@@ -1426,6 +1427,19 @@ window.loadSchedule = async function() {
     else showToast('Error: ' + (data.error || 'unknown'));
   } catch(e) {
     showToast('Error loading schedule');
+    console.error(e);
+  }
+};
+window.seedFullTournament = async function() {
+  if (!confirm('Generate a complete tournament (group stage + all knockout rounds) and overwrite Firebase? Testing only.')) return;
+  showToast('Simulating full tournament…', 20000);
+  try {
+    const r = await fetch(`${PROXY}/wc/matches/seed-full`, { method: 'POST' });
+    const data = await r.json();
+    if (data.ok) showToast(`✓ ${data.total} matches seeded — ${JSON.stringify(data.byStage)}`);
+    else showToast('Error: ' + (data.error || 'unknown'));
+  } catch(e) {
+    showToast('Error seeding tournament');
     console.error(e);
   }
 };
