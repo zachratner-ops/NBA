@@ -200,10 +200,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .teams-card-name{font-size:14px;font-weight:700;}
 .teams-card-net{font-size:13px;font-weight:700;}
 .teams-card-net.pos{color:#2e7d32;} .teams-card-net.neg{color:#c62828;}
-.team-row{display:flex;align-items:center;gap:8px;padding:6px 14px;border-top:0.5px solid #f5f5f3;font-size:12px;}
-.team-name-txt{flex:1;}
-.team-goals{font-size:11px;font-weight:700;color:#2e7d32;}
-.team-group{font-size:10px;color:#bbb;}
+.team-row{display:grid;grid-template-columns:22px 1fr auto auto auto;align-items:center;gap:6px;padding:6px 14px;border-top:0.5px solid #f5f5f3;font-size:12px;}
+.team-name-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.team-goals{font-size:11px;font-weight:700;color:#2e7d32;text-align:right;white-space:nowrap;}
+.team-record{font-size:10px;color:#aaa;text-align:right;white-space:nowrap;}
+.team-group{font-size:10px;color:#bbb;text-align:right;}
 .match-table-wrap{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;margin-bottom:24px;}
 .match-table{width:100%;border-collapse:collapse;font-size:12px;}
 .match-table th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#aaa;padding:8px 12px;border-bottom:0.5px solid #e0e0e0;text-align:left;white-space:nowrap;}
@@ -1116,6 +1117,19 @@ function renderTracker() {
       +mkSection('Completed',completedList,'completed')
       +mkSection('Upcoming',upcomingList,'upcoming');
 
+  // Per-team W/L/T records
+  const teamRecord={};
+  Object.values(matches).filter(m=>m.status==='final').forEach(m=>{
+    const hs=m.homeScore||0,as_=m.awayScore||0;
+    const isTie=(m.stage==='group'&&hs===as_)||(m.stage!=='group'&&m.isPenaltyShootout);
+    [m.homeTeam,m.awayTeam].forEach(t=>{if(t&&!teamRecord[t])teamRecord[t]={w:0,l:0,t:0};});
+    if(m.homeTeam&&m.awayTeam){
+      if(isTie){teamRecord[m.homeTeam].t++;teamRecord[m.awayTeam].t++;}
+      else if(hs>as_){teamRecord[m.homeTeam].w++;teamRecord[m.awayTeam].l++;}
+      else{teamRecord[m.awayTeam].w++;teamRecord[m.homeTeam].l++;}
+    }
+  });
+
   // Teams
   const teamsHtml=`<div class="teams-grid">${participants.map(p=>{
     const myTeams=Object.entries(teamOwners).filter(([,o])=>o===p).map(([n])=>n);
@@ -1123,8 +1137,17 @@ function renderTracker() {
     return `<div class="teams-card"><div class="teams-card-header" style="border-bottom:3px solid ${color(p)}">
       <div class="teams-card-name" style="color:${color(p)}">${p}</div>
       <div class="teams-card-net ${cls}">${fmtMoney(mn)}</div>
-    </div>${myTeams.length===0?'<div class="team-row" style="color:#aaa;font-style:italic;">No teams</div>':
-      myTeams.map(nm=>`<div class="team-row"><span class="team-flag">${flagImg(WC_FLAGS[nm])}</span><span class="team-name-txt">${nm}</span>${fin.goalsByTeam[nm]?`<span class="team-goals">⚽ ${fin.goalsByTeam[nm]}</span>`:''}<span class="team-group">Grp ${WC_GROUPS_MAP[nm]||'?'}</span></div>`).join('')}
+    </div>${myTeams.length===0?'<div style="padding:8px 14px;font-size:12px;color:#aaa;font-style:italic;">No teams</div>':
+      myTeams.map(nm=>{
+        const rec=teamRecord[nm];
+        return `<div class="team-row">
+          <span class="team-flag">${flagImg(WC_FLAGS[nm])}</span>
+          <span class="team-name-txt">${nm}</span>
+          <span class="team-goals">${fin.goalsByTeam[nm]?`⚽ ${fin.goalsByTeam[nm]}g`:''}</span>
+          <span class="team-record">${rec?`🏆 ${rec.w}-${rec.l}-${rec.t}`:''}</span>
+          <span class="team-group">Grp ${WC_GROUPS_MAP[nm]||'?'}</span>
+        </div>`;
+      }).join('')}
     </div>`;
   }).join('')}</div>`;
 
