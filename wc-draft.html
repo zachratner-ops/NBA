@@ -432,6 +432,7 @@ let wcLiveData = null;   // tracker: wc26_live Firebase data
 let trackerTab = 'leaderboard'; // tracker tab state
 let trackerRefreshing = false;
 let autoRefreshInterval = null;
+let lbSort = 'net'; // 'net' | 'draft'
 const WC_GROUPS_MAP = {
   'Mexico':'A','South Africa':'A','South Korea':'A','Czechia':'A',
   'Canada':'B','Bosnia-Herzegovina':'B','Qatar':'B','Switzerland':'B',
@@ -907,7 +908,7 @@ function renderTracker() {
   const participants = config.participants || draft?.owners || Object.keys(ALL_COLORS);
   const updatedStr = wcLiveData.updated || null;
   const fin = computeFinancials(matches, teamOwners, participants);
-  const ranked = [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
+  const ranked = lbSort==='draft' ? [...participants] : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
   const updatedAgo = updatedStr ? (() => {
     const m=Math.floor((Date.now()-new Date(updatedStr))/60000);
     return m<1?'just now':m<60?`${m}m ago`:`${Math.floor(m/60)}h ago`;
@@ -943,7 +944,13 @@ function renderTracker() {
   // Leaderboard
   const fmtStat = v=>v===0?'$0':(v>0?'+$':'-$')+Math.abs(v);
   const cls = v=>v>0?'pos':v<0?'neg':'zero';
-  const lbHtml = `<div class="lb-grid">${ranked.map((p,i)=>{
+  const lbHtml = `<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <div style="display:flex;gap:0;border:0.5px solid #e0e0e0;border-radius:8px;overflow:hidden;">
+      <button onclick="window.setLbSort('net')" style="padding:5px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:${lbSort==='net'?'#1a1a1a':'#fff'};color:${lbSort==='net'?'#fff':'#888'};">Net $</button>
+      <button onclick="window.setLbSort('draft')" style="padding:5px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;border-left:0.5px solid #e0e0e0;background:${lbSort==='draft'?'#1a1a1a':'#fff'};color:${lbSort==='draft'?'#fff':'#888'};">Draft Order</button>
+    </div>
+  </div>
+  <div class="lb-grid">${ranked.map((p,i)=>{
     const n=fin.net[p]||0;
     const isMost=mostTied.includes(p)&&maxTies>0,isLeast=leastTied.includes(p)&&fin.tiePotTotal>0;
     const myTeams=Object.entries(teamOwners).filter(([,o])=>o===p).map(([t])=>t);
@@ -965,7 +972,7 @@ function renderTracker() {
         <div class="lb-stats">
           <div class="lb-stat">
             <span class="lb-stat-icon">⚽</span>
-            <span class="lb-stat-label">Goals</span>
+            <span class="lb-stat-label">Goals<span class="lb-stat-sub">${fin.goalsByOwner[p]||0}g</span></span>
             <span class="lb-stat-val ${cls(goalVal)}">${fmtStat(goalVal)}</span>
           </div>
           <div class="lb-stat">
@@ -976,7 +983,7 @@ function renderTracker() {
         </div>
         <div class="lb-stat" style="border-top:0.5px solid #f0f0f0;padding-top:8px;margin-bottom:10px;">
           <span class="lb-stat-icon">🏦</span>
-          <span class="lb-stat-label">Tie Pot</span>
+          <span class="lb-stat-label">Tie Side Pot</span>
           <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
         </div>
         <div class="lb-teams">
@@ -1035,7 +1042,7 @@ function renderTracker() {
     let mm='',gm='';
     if(m.status==='final'){
       if(isTie)mm=`<span class="money-tie">TIE −$10 ea</span>`;
-      else if(ho&&ao&&ho!==ao){const wo=(m.homeScore||0)>(m.awayScore||0)?ho:ao;mm=`<span class="money-pos">${wo} +$10</span>`;}
+      else if(ho&&ao&&ho!==ao){const wo=(m.homeScore||0)>(m.awayScore||0)?ho:ao,lo=(m.homeScore||0)>(m.awayScore||0)?ao:ho;mm=`<span class="money-pos">$10 ${lo} → ${wo}</span>`;}
       const tg=(m.homeScore||0)+(m.awayScore||0);if(tg>0)gm=`<span style="color:#555;">${tg}g</span>`;
     }
     return `<tr class="${isTie?'tie-row':''}">
@@ -1111,7 +1118,7 @@ function renderTracker() {
       let footer='';
       if(m.status==='final'){
         if(isTie)footer+=`<span class="money-tie">TIE — −$10 ea</span>`;
-        else if(ho&&ao&&ho!==ao){const wo=homeWin?ho:ao;footer+=`<span class="money-pos">${wo} +$10</span>`;}
+        else if(ho&&ao&&ho!==ao){const wo=homeWin?ho:ao,lo=homeWin?ao:ho;footer+=`<span class="money-pos">$10 ${lo} → ${wo}</span>`;}
         const tg=(m.homeScore||0)+(m.awayScore||0);if(tg>0)footer+=`<span style="color:#555;">${tg} goals</span>`;
         if(m.isPenaltyShootout)footer+=`<span class="pk-badge">PK</span>`;
       }
@@ -1176,6 +1183,7 @@ function renderTracker() {
   }
 }
 window.switchTrackerTab = function(t){trackerTab=t;renderScreen();};
+window.setLbSort = function(s){lbSort=s;renderScreen();};
 
 function rulesHtml() {
   return `<div style="max-width:680px;">
