@@ -412,6 +412,7 @@ let isComm = false;
 let wcLiveData = null;   // tracker: wc26_live Firebase data
 let trackerTab = 'leaderboard'; // tracker tab state
 let trackerRefreshing = false;
+let autoRefreshInterval = null;
 const WC_GROUPS_MAP = {
   'Mexico':'A','South Africa':'A','South Korea':'A','Czechia':'A',
   'Canada':'B','Bosnia-Herzegovina':'B','Qatar':'B','Switzerland':'B',
@@ -1080,7 +1081,19 @@ function renderTracker() {
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='rules')content=rulesHtml();
 
-  el.innerHTML=`<div class="tracker-wrap">${commHtml}${tabsHtml}${content}</div>`;
+  const refreshBarHtml=`<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:16px;">
+    ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
+    <button class="refresh-btn" onclick="refreshScores()" style="background:#f5f5f3;color:#666;border:0.5px solid #ddd;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh
+    </button>
+  </div>`;
+
+  el.innerHTML=`<div class="tracker-wrap">${commHtml}${tabsHtml}${refreshBarHtml}${content}</div>`;
+
+  // Auto-refresh every 3 minutes
+  if(!autoRefreshInterval){
+    autoRefreshInterval=setInterval(function(){window.refreshScores();},3*60*1000);
+  }
 }
 window.switchTrackerTab = function(t){trackerTab=t;renderScreen();};
 
@@ -1215,10 +1228,9 @@ window.submitMatch = async function() {
 };
 window.refreshScores = async function() {
   if(trackerRefreshing)return; trackerRefreshing=true;
-  const btn=document.getElementById('refresh-btn');
-  if(btn)btn.classList.add('spinning');
+  document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.add('spinning'));
   try{await fetch(`${PROXY}/wc/matches/refresh`,{method:'POST'});}catch(e){console.error(e);}
-  finally{trackerRefreshing=false;if(btn)btn.classList.remove('spinning');}
+  finally{trackerRefreshing=false;document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.remove('spinning'));}
 };
 window.seedMatches = async function() {
   if(!confirm('Generate 72 random group stage match results and overwrite Firebase? This is for testing only.'))return;
