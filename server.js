@@ -1063,6 +1063,16 @@ app.post('/wc/matches/refresh', async function(req, res) {
   res.json(result);
 });
 
+app.post('/wc/matches/clear', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  try {
+    await admin.database().ref('wc26_live/matches').remove();
+    await admin.database().ref('wc26_live/updated').set(new Date().toISOString());
+    console.log('WC matches cleared by commissioner');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.post('/wc/matches/manual', async function(req, res) {
   if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
   const match = req.body;
