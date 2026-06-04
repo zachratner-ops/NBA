@@ -175,15 +175,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .lb-stat-val.pos{color:#2e7d32;} .lb-stat-val.neg{color:#c62828;} .lb-stat-val.zero{color:#aaa;}
 .lb-teams{border-top:0.5px solid #f0f0f0;padding-top:8px;font-size:11px;color:#888;display:flex;align-items:center;gap:5px;}
 .lb-teams-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-.tiepot-card{background:#1a1a1a;color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;}
-.tiepot-total{font-size:32px;font-weight:800;color:#f9a825;}
-.tiepot-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:2px;}
-.tiepot-sub{font-size:12px;color:#888;margin-top:2px;}
-.tiepot-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px;}
+.tiepot-card{background:#fff;border-radius:14px;border:0.5px solid #e0e0e0;margin-bottom:24px;overflow:hidden;}
+.tiepot-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;}
+.tiepot-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:3px;}
+.tiepot-sub{font-size:12px;color:#aaa;}
+.tiepot-total{font-size:28px;font-weight:800;color:#1a1a1a;letter-spacing:-.02em;}
+.tiepot-winners{display:flex;flex-direction:column;gap:0;border-top:0.5px solid #f0f0f0;}
+.tiepot-winner{display:flex;align-items:center;gap:10px;padding:10px 20px;border-bottom:0.5px solid #f5f5f3;}
+.tiepot-winner:last-child{border-bottom:none;}
+.tiepot-winner-name{flex:1;font-size:13px;font-weight:600;color:#1a1a1a;}
+.tiepot-winner-count{font-size:12px;color:#aaa;}
+.tiepot-payout{font-size:13px;font-weight:700;color:#2e7d32;}
+.tiepot-bars{padding:12px 20px;border-top:0.5px solid #f0f0f0;}
+.tiepot-row{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px;}
 .tiepot-name{font-weight:700;width:56px;}
-.tiepot-bar-wrap{flex:1;height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden;}
-.tiepot-bar{height:6px;border-radius:3px;}
-.tiepot-count{font-size:12px;font-weight:700;width:20px;text-align:right;}
+.tiepot-bar-wrap{flex:1;height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden;}
+.tiepot-bar{height:5px;border-radius:3px;}
+.tiepot-count{font-size:12px;font-weight:700;width:16px;text-align:right;color:#888;}
 .tiepot-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;}
 .tiepot-most{background:#f9a825;color:#1a1a1a;} .tiepot-least{background:#1565c0;color:#fff;}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
@@ -976,23 +984,41 @@ function renderTracker() {
   }).join('')}</div>`;
 
   // Tie pot
-  const tiepotHtml = fin.tiePotTotal>0?`<div class="tiepot-card"><div>
-    <div class="tiepot-label">Raiders/Chargers/Izzy Birth Night Memorial Tie Side-Pot</div>
-    <div class="tiepot-total">$${fin.tiePotTotal}</div>
-    <div class="tiepot-sub">Split 50/50: most ties & fewest ties</div>
-    ${mostTied.length?`<div style="margin-top:8px;font-size:12px;"><span class="tiepot-badge tiepot-most">MOST</span> ${mostTied.join(', ')} (${maxTies})</div>`:''}
-    ${leastTied.length?`<div style="margin-top:4px;font-size:12px;"><span class="tiepot-badge tiepot-least">FEWEST</span> ${leastTied.join(', ')} (${minTies})</div>`:''}
-  </div><div style="flex:1;min-width:200px;">
-    <div class="tiepot-label" style="margin-bottom:8px;">Tie Counts</div>
-    ${[...participants].sort((a,b)=>(fin.tieCount[b]||0)-(fin.tieCount[a]||0)).map(p=>{
-      const tc=fin.tieCount[p]||0,pct=maxTies>0?(tc/maxTies)*100:0;
-      return `<div class="tiepot-row"><span class="tiepot-name" style="color:${color(p)}">${p}</span>
-        <div class="tiepot-bar-wrap"><div class="tiepot-bar" style="width:${pct}%;background:${color(p)}"></div></div>
-        <span class="tiepot-count">${tc}</span>
-        ${mostTied.includes(p)&&maxTies>0?'<span class="tiepot-badge tiepot-most">M</span>':leastTied.includes(p)&&fin.tiePotTotal>0?'<span class="tiepot-badge tiepot-least">L</span>':''}
-      </div>`;
-    }).join('')}
-  </div></div>` : '';
+  const halfPot = Math.round(fin.tiePotTotal / 2);
+  const tiepotHtml = fin.tiePotTotal>0?`<div class="tiepot-card">
+    <div class="tiepot-head">
+      <div>
+        <div class="tiepot-label">Raiders/Chargers/Izzy Birth Night Memorial Tie Side-Pot</div>
+        <div class="tiepot-sub">Split 50/50 · most ties &amp; fewest ties</div>
+      </div>
+      <div class="tiepot-total">$${fin.tiePotTotal}</div>
+    </div>
+    <div class="tiepot-winners">
+      ${mostTied.length?`<div class="tiepot-winner">
+        <span class="tiepot-badge tiepot-most">MOST</span>
+        <span class="tiepot-winner-name">${mostTied.join(', ')}</span>
+        <span class="tiepot-winner-count">${maxTies} tie${maxTies!==1?'s':''}</span>
+        <span class="tiepot-payout">+$${halfPot}</span>
+      </div>`:''}
+      ${leastTied.length?`<div class="tiepot-winner">
+        <span class="tiepot-badge tiepot-least">FEWEST</span>
+        <span class="tiepot-winner-name">${leastTied.join(', ')}</span>
+        <span class="tiepot-winner-count">${minTies} tie${minTies!==1?'s':''}</span>
+        <span class="tiepot-payout">+$${halfPot}</span>
+      </div>`:''}
+    </div>
+    <div class="tiepot-bars">
+      ${[...participants].sort((a,b)=>(fin.tieCount[b]||0)-(fin.tieCount[a]||0)).map(p=>{
+        const tc=fin.tieCount[p]||0,pct=maxTies>0?(tc/maxTies)*100:0;
+        return `<div class="tiepot-row">
+          <span class="tiepot-name" style="color:${color(p)}">${p}</span>
+          <div class="tiepot-bar-wrap"><div class="tiepot-bar" style="width:${pct}%;background:${color(p)}"></div></div>
+          <span class="tiepot-count">${tc}</span>
+          ${mostTied.includes(p)&&maxTies>0?'<span class="tiepot-badge tiepot-most">M</span>':leastTied.includes(p)&&fin.tiePotTotal>0?'<span class="tiepot-badge tiepot-least">L</span>':'<span style="width:24px;display:inline-block;"></span>'}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>` : '';
 
   // Match table
   const matchList=Object.values(matches).sort((a,b)=>new Date(a.date)-new Date(b.date)).filter(m=>m.status==='final'||m.status==='live');
