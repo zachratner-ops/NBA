@@ -1125,6 +1125,12 @@ function renderTracker() {
     <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches</div>
     <div class="tracker-tab ${trackerTab==='teams'?'active':''}" onclick="switchTrackerTab('teams')">Teams</div>
     <div class="tracker-tab ${trackerTab==='rules'?'active':''}" onclick="switchTrackerTab('rules')">Rules</div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:2px;">
+      ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
+      <button class="refresh-btn" onclick="refreshScores()" style="background:#f5f5f3;color:#666;border:0.5px solid #ddd;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh
+      </button>
+    </div>
   </div>`;
   let content='';
   if(trackerTab==='leaderboard')content=lbHtml+(fin.tiePotTotal>0?tiepotHtml:'');
@@ -1132,14 +1138,7 @@ function renderTracker() {
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='rules')content=rulesHtml();
 
-  const refreshBarHtml=`<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:16px;">
-    ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
-    <button class="refresh-btn" onclick="refreshScores()" style="background:#f5f5f3;color:#666;border:0.5px solid #ddd;">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh
-    </button>
-  </div>`;
-
-  el.innerHTML=`<div class="tracker-wrap">${commHtml}${tabsHtml}${refreshBarHtml}${content}</div>`;
+  el.innerHTML=`<div class="tracker-wrap">${commHtml}${tabsHtml}${content}</div>`;
 
   // Auto-refresh every 3 minutes
   if(!autoRefreshInterval){
