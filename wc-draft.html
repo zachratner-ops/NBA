@@ -918,7 +918,9 @@ function renderTracker() {
   const participants = config.participants || draft?.owners || Object.keys(ALL_COLORS);
   const updatedStr = wcLiveData.updated || null;
   const fin = computeFinancials(matches, teamOwners, participants);
-  const ranked = lbSort==='draft' ? [...participants] : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
+  const ranked = lbSort==='draft'
+    ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
+    : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
   const updatedAgo = updatedStr ? (() => {
     const m=Math.floor((Date.now()-new Date(updatedStr))/60000);
     return m<1?'just now':m<60?`${m}m ago`:`${Math.floor(m/60)}h ago`;
