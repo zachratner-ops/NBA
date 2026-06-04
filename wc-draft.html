@@ -906,6 +906,7 @@ function renderTracker() {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh Scores
     </button>
     <button class="btn btn-sm btn-amber" onclick="openMatchModal()">+ Add / Edit Match</button>
+    <button class="btn btn-sm btn-outline" onclick="loadSchedule()" style="color:#1565c0;border-color:#1565c0;">📅 Load Schedule</button>
     <button class="btn btn-sm btn-outline" onclick="seedMatches()" style="color:#e65100;border-color:#e65100;">⚡ Seed Matches</button>
     ${updatedAgo?`<span class="updated-txt">Updated ${updatedAgo}</span>`:''}
   </div></div>` : '';
@@ -1231,6 +1232,19 @@ window.refreshScores = async function() {
   document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.add('spinning'));
   try{await fetch(`${PROXY}/wc/matches/refresh`,{method:'POST'});}catch(e){console.error(e);}
   finally{trackerRefreshing=false;document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.remove('spinning'));}
+};
+window.loadSchedule = async function() {
+  if(!confirm('Fetch the full WC2026 schedule from ESPN and load into Firebase? This will take ~15 seconds.'))return;
+  showToast('Loading schedule…', 20000);
+  try {
+    const r = await fetch(`${PROXY}/wc/schedule/load`, {method:'POST'});
+    const data = await r.json();
+    if(data.ok) showToast(`✓ ${data.total} matches loaded (${data.byStatus.scheduled} scheduled, ${data.byStatus.final} final)`);
+    else showToast('Error: ' + (data.error || 'unknown'));
+  } catch(e) {
+    showToast('Error loading schedule');
+    console.error(e);
+  }
 };
 window.seedMatches = async function() {
   if(!confirm('Generate 72 random group stage match results and overwrite Firebase? This is for testing only.'))return;
