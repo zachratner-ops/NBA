@@ -961,11 +961,11 @@ function renderTracker() {
             <span class="lb-stat-label">Match<span class="lb-stat-sub">${w}W–${l}L–${t}T</span></span>
             <span class="lb-stat-val ${cls(matchVal)}">${fmtStat(matchVal)}</span>
           </div>
-          <div class="lb-stat">
-            <span class="lb-stat-icon">🏦</span>
-            <span class="lb-stat-label">Tie Pot<span class="lb-stat-sub">${t} tie${t!==1?'s':''}${isMost?' · <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' · <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span></span>
-            <span class="lb-stat-val ${potVal>0?'neg':'zero'}">−$${potVal}</span>
-          </div>
+        </div>
+        <div class="lb-stat" style="border-top:0.5px solid #f0f0f0;padding-top:8px;margin-bottom:10px;">
+          <span class="lb-stat-icon">🏦</span>
+          <span class="lb-stat-label">Tie Pot</span>
+          <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
         </div>
         <div class="lb-teams">
           <div class="lb-teams-dot" style="background:${dotColor}"></div>
