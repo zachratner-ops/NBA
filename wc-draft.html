@@ -976,6 +976,7 @@ function renderTracker() {
           <div>
             <div class="lb-rank">#${i+1}</div>
             <div class="lb-name" style="color:${color(p)}">${p}</div>
+            ${(()=>{const pk=draft?.pickOrder?draft.pickOrder.indexOf(p)+1:0;return pk?`<div style="font-size:10px;color:#bbb;margin-top:2px;font-weight:500;">Pick #${pk}</div>`:''})()}
           </div>
           <div class="lb-net ${cls(n)}">${fmtMoney(n)}</div>
         </div>
