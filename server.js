@@ -890,55 +890,71 @@ function generateWCPickSequence(order, numTeams) {
 }
 
 // ── ESPN World Cup match fetch ─────────────────────────────────────
-async function fetchWCMatches() {
+
+function parseESPNEvents(events) {
+  const matches = {};
+  events.forEach(function(event) {
+    const comp = event.competitions && event.competitions[0];
+    if (!comp) return;
+    const competitors = comp.competitors || [];
+    const home = competitors.find(function(c) { return c.homeAway === 'home'; });
+    const away = competitors.find(function(c) { return c.homeAway === 'away'; });
+    if (!home || !away) return;
+    const statusName = (comp.status && comp.status.type && comp.status.type.name) || '';
+    const statusDetail = (comp.status && comp.status.type && comp.status.type.detail) || '';
+    const isFinal = statusName === 'STATUS_FINAL';
+    const isLive = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME' || statusName === 'STATUS_END_PERIOD';
+    let group = null, stage = 'group';
+    (comp.notes || []).forEach(function(n) {
+      const txt = (n.headline || n.text || '').toLowerCase();
+      const gm = txt.match(/group ([a-l])/);
+      if (gm) { group = gm[1].toUpperCase(); stage = 'group'; }
+      else if (txt.includes('round of 32')) stage = 'r32';
+      else if (txt.includes('round of 16')) stage = 'r16';
+      else if (txt.includes('quarter')) stage = 'qf';
+      else if (txt.includes('semi')) stage = 'sf';
+      else if (txt.includes('final')) stage = 'final';
+    });
+    const detailLower = statusDetail.toLowerCase();
+    const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
+    matches[event.id] = {
+      id: event.id,
+      date: event.date,
+      name: event.name,
+      stage: stage,
+      group: group,
+      homeTeam: home.team && home.team.displayName,
+      awayTeam: away.team && away.team.displayName,
+      homeScore: (isFinal || isLive) ? parseInt(home.score || '0', 10) : null,
+      awayScore: (isFinal || isLive) ? parseInt(away.score || '0', 10) : null,
+      status: isFinal ? 'final' : isLive ? 'live' : 'scheduled',
+      isPenaltyShootout: espnPK && stage !== 'group'
+    };
+  });
+  return matches;
+}
+
+async function fetchWCMatchesForDate(dateStr) {
+  // dateStr: YYYYMMDD, or null/undefined for today's scoreboard
+  const path = '/apis/site/v2/sports/soccer/fifa.world/scoreboard' + (dateStr ? '?dates=' + dateStr : '');
   try {
     const result = await httpsGet(
       'site.api.espn.com',
-      '/apis/site/v2/sports/soccer/fifa.world/scoreboard',
+      path,
       { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://www.espn.com/' }
     );
-    if (result.status !== 200) return { error: 'ESPN returned ' + result.status };
+    if (result.status !== 200) return {};
     const parsed = JSON.parse(result.body);
-    const events = parsed.events || [];
-    const matches = {};
-    events.forEach(function(event) {
-      const comp = event.competitions && event.competitions[0];
-      if (!comp) return;
-      const competitors = comp.competitors || [];
-      const home = competitors.find(function(c) { return c.homeAway === 'home'; });
-      const away = competitors.find(function(c) { return c.homeAway === 'away'; });
-      if (!home || !away) return;
-      const statusName = (comp.status && comp.status.type && comp.status.type.name) || '';
-      const statusDetail = (comp.status && comp.status.type && comp.status.type.detail) || '';
-      const isFinal = statusName === 'STATUS_FINAL';
-      const isLive = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME' || statusName === 'STATUS_END_PERIOD';
-      let group = null, stage = 'group';
-      (comp.notes || []).forEach(function(n) {
-        const txt = (n.headline || n.text || '').toLowerCase();
-        const gm = txt.match(/group ([a-l])/);
-        if (gm) { group = gm[1].toUpperCase(); stage = 'group'; }
-        else if (txt.includes('round of 32')) stage = 'r32';
-        else if (txt.includes('round of 16')) stage = 'r16';
-        else if (txt.includes('quarter')) stage = 'qf';
-        else if (txt.includes('semi')) stage = 'sf';
-        else if (txt.includes('final')) stage = 'final';
-      });
-      const detailLower = statusDetail.toLowerCase();
-      const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
-      matches[event.id] = {
-        id: event.id,
-        date: event.date,
-        name: event.name,
-        stage: stage,
-        group: group,
-        homeTeam: home.team && home.team.displayName,
-        awayTeam: away.team && away.team.displayName,
-        homeScore: (isFinal || isLive) ? parseInt(home.score || '0', 10) : null,
-        awayScore: (isFinal || isLive) ? parseInt(away.score || '0', 10) : null,
-        status: isFinal ? 'final' : isLive ? 'live' : 'scheduled',
-        isPenaltyShootout: espnPK && stage !== 'group'
-      };
-    });
+    return parseESPNEvents(parsed.events || []);
+  } catch(e) {
+    console.error('fetchWCMatchesForDate error for ' + dateStr + ':', e.message);
+    return {};
+  }
+}
+
+async function fetchWCMatches() {
+  try {
+    const matches = await fetchWCMatchesForDate(null);
     return { matches: matches, updated: new Date().toISOString() };
   } catch(e) {
     return { error: e.message };
@@ -1053,6 +1069,98 @@ app.post('/wc/matches/:id/pk', async function(req, res) {
     await admin.database().ref('wc26_live/matches/' + req.params.id + '/isPenaltyShootout').set(!!req.body.isPenaltyShootout);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// WC: raw ESPN response — ?date=YYYYMMDD optional, defaults to today
+app.get('/wc/matches/raw', async function(req, res) {
+  try {
+    const dateStr = req.query.date || null;
+    const path = '/apis/site/v2/sports/soccer/fifa.world/scoreboard' + (dateStr ? '?dates=' + dateStr : '');
+    const result = await httpsGet(
+      'site.api.espn.com',
+      path,
+      { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://www.espn.com/' }
+    );
+    const parsed = result.status === 200 ? JSON.parse(result.body) : null;
+    const events = parsed ? (parsed.events || []) : [];
+    res.json({
+      status: result.status,
+      date: dateStr || 'today',
+      eventCount: events.length,
+      matchesParsed: parseESPNEvents(events),
+      raw: parsed
+    });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// WC: load full tournament schedule from ESPN into Firebase
+// Fetches every date Jun 11 – Jul 19 2026; merges without overwriting final matches
+app.post('/wc/schedule/load', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+
+  const startDate = new Date('2026-06-11');
+  const endDate   = new Date('2026-07-19');
+  const dates = [];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    dates.push('' + y + m + day);
+  }
+
+  console.log('WC schedule load: fetching ' + dates.length + ' dates from ESPN...');
+  const allFetched = {};
+  const BATCH = 5;
+  for (let i = 0; i < dates.length; i += BATCH) {
+    const batch = dates.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map(function(d) { return fetchWCMatchesForDate(d); }));
+    results.forEach(function(m) { Object.assign(allFetched, m); });
+    if (i + BATCH < dates.length) await new Promise(function(r) { setTimeout(r, 300); });
+  }
+
+  console.log('WC schedule load: ESPN returned ' + Object.keys(allFetched).length + ' matches across all dates');
+
+  try {
+    const db = admin.database();
+    const existingSnap = await db.ref('wc26_live/matches').get();
+    const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
+
+    // Merge rules:
+    // 1. Start with what ESPN returned for all dates
+    // 2. Never downgrade a final match back to scheduled
+    // 3. Preserve any manual isPenaltyShootout override from commissioner
+    // 4. Keep any manually-added matches (e.g. seed data) not present in ESPN results
+    const merged = Object.assign({}, allFetched);
+    Object.keys(existing).forEach(function(id) {
+      if (merged[id]) {
+        if (existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
+          merged[id].isPenaltyShootout = true;
+        }
+        if (existing[id].status === 'final' && merged[id].status !== 'final') {
+          merged[id] = existing[id];
+        }
+      } else {
+        merged[id] = existing[id];
+      }
+    });
+
+    await db.ref('wc26_live/matches').set(merged);
+    await db.ref('wc26_live/updated').set(new Date().toISOString());
+
+    const byStatus = { scheduled: 0, live: 0, final: 0, other: 0 };
+    Object.values(merged).forEach(function(m) {
+      if (byStatus[m.status] !== undefined) byStatus[m.status]++;
+      else byStatus.other++;
+    });
+
+    console.log('WC schedule load complete:', Object.keys(merged).length, 'total matches, status breakdown:', byStatus);
+    res.json({ ok: true, total: Object.keys(merged).length, byStatus: byStatus, updated: new Date().toISOString() });
+  } catch(e) {
+    console.error('WC schedule load Firebase error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // WC draft routes
