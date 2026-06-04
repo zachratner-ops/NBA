@@ -891,6 +891,9 @@ function generateWCPickSequence(order, numTeams) {
 
 // ── ESPN World Cup match fetch ─────────────────────────────────────
 
+const TEAM_TO_GROUP = {};
+WC_TEAMS.forEach(function(t) { TEAM_TO_GROUP[t.name] = t.group; });
+
 function parseESPNEvents(events) {
   const matches = {};
   events.forEach(function(event) {
@@ -917,14 +920,20 @@ function parseESPNEvents(events) {
     });
     const detailLower = statusDetail.toLowerCase();
     const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
+    const homeTeamName = home.team && home.team.displayName;
+    const awayTeamName = away.team && away.team.displayName;
+    // ESPN notes are empty for scheduled games — derive group from our team list
+    if (!group && stage === 'group') {
+      group = TEAM_TO_GROUP[homeTeamName] || TEAM_TO_GROUP[awayTeamName] || null;
+    }
     matches[event.id] = {
       id: event.id,
       date: event.date,
       name: event.name,
       stage: stage,
       group: group,
-      homeTeam: home.team && home.team.displayName,
-      awayTeam: away.team && away.team.displayName,
+      homeTeam: homeTeamName,
+      awayTeam: awayTeamName,
       homeScore: (isFinal || isLive) ? parseInt(home.score || '0', 10) : null,
       awayScore: (isFinal || isLive) ? parseInt(away.score || '0', 10) : null,
       status: isFinal ? 'final' : isLive ? 'live' : 'scheduled',
