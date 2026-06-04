@@ -194,6 +194,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tiepot-count{font-size:12px;font-weight:700;width:16px;text-align:right;color:#888;}
 .tiepot-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;}
 .tiepot-most{background:#f9a825;color:#1a1a1a;} .tiepot-least{background:#1565c0;color:#fff;}
+.groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:24px;}
+.group-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
+.group-card-hdr{padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;background:#fafafa;border-bottom:0.5px solid #e0e0e0;}
+.group-table{width:100%;border-collapse:collapse;font-size:11px;}
+.group-table th{padding:4px 6px;color:#aaa;font-weight:700;font-size:10px;text-align:center;border-bottom:0.5px solid #f0f0f0;}
+.group-table td{padding:5px 6px;border-top:0.5px solid #f5f5f3;text-align:center;vertical-align:middle;}
+.group-table tr.qualify td{background:#f0f9f0;}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
 .teams-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .teams-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
@@ -1153,10 +1160,89 @@ function renderTracker() {
     </div>`;
   }).join('')}</div>`;
 
+  // ── Groups tab ────────────────────────────────────────────────────
+  // Build group→teams from WC_GROUPS_MAP
+  const GRP_TEAMS={};
+  Object.entries(WC_GROUPS_MAP).forEach(([team,grp])=>{if(!GRP_TEAMS[grp])GRP_TEAMS[grp]=[];GRP_TEAMS[grp].push(team);});
+
+  // Compute standings
+  const grpStandings={};
+  ['A','B','C','D','E','F','G','H','I','J','K','L'].forEach(grp=>{
+    const s={};
+    (GRP_TEAMS[grp]||[]).forEach(t=>{s[t]={mp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0};});
+    Object.values(matches).filter(m=>m.status==='final'&&m.stage==='group').forEach(m=>{
+      if((m.group||WC_GROUPS_MAP[m.homeTeam])!==grp)return;
+      if(!s[m.homeTeam]||!s[m.awayTeam])return;
+      const hs=m.homeScore||0,as_=m.awayScore||0;
+      s[m.homeTeam].mp++;s[m.awayTeam].mp++;
+      s[m.homeTeam].gf+=hs;s[m.homeTeam].ga+=as_;
+      s[m.awayTeam].gf+=as_;s[m.awayTeam].ga+=hs;
+      if(hs>as_){s[m.homeTeam].w++;s[m.homeTeam].pts+=3;s[m.awayTeam].l++;}
+      else if(as_>hs){s[m.awayTeam].w++;s[m.awayTeam].pts+=3;s[m.homeTeam].l++;}
+      else{s[m.homeTeam].d++;s[m.homeTeam].pts++;s[m.awayTeam].d++;s[m.awayTeam].pts++;}
+    });
+    grpStandings[grp]=Object.entries(s).map(([name,st])=>({name,...st,gd:st.gf-st.ga}))
+      .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
+  });
+
+  const groupCardsHtml=['A','B','C','D','E','F','G','H','I','J','K','L'].map(grp=>{
+    const rows=grpStandings[grp]||[];
+    return `<div class="group-card">
+      <div class="group-card-hdr">Group ${grp}</div>
+      <table class="group-table">
+        <thead><tr>
+          <th style="width:18px;"></th>
+          <th style="text-align:left;padding-left:4px;">Team</th>
+          <th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>
+        </tr></thead>
+        <tbody>${rows.map((r,i)=>`<tr${i<2?' class="qualify"':''}>
+          <td style="font-size:10px;color:#bbb;text-align:center;">${i+1}</td>
+          <td style="text-align:left;"><div style="display:flex;align-items:center;gap:5px;padding-left:4px;">
+            ${flagImg(WC_FLAGS[r.name])}
+            <span style="font-weight:${i<2?600:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85px;">${r.name}</span>
+            ${teamOwners[r.name]?`<span class="owner-chip" style="background:${color(teamOwners[r.name])}22;color:${color(teamOwners[r.name])};font-size:10px;padding:1px 5px;">${teamOwners[r.name]}</span>`:''}
+          </div></td>
+          <td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
+          <td style="font-weight:600;color:${r.gd>0?'#2e7d32':r.gd<0?'#c62828':'#888'}">${r.gd>0?'+':''}${r.gd}</td>
+          <td style="font-weight:700;">${r.pts}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  const KNOCKOUT_STAGES=[{key:'r32',label:'Round of 32'},{key:'r16',label:'Round of 16'},{key:'qf',label:'Quarterfinals'},{key:'sf',label:'Semifinals'},{key:'final',label:'Final'}];
+  const knockoutHtml=KNOCKOUT_STAGES.map(({key,label})=>{
+    const sm=Object.values(matches).filter(m=>m.stage===key).sort((a,b)=>new Date(a.date)-new Date(b.date));
+    if(!sm.length)return '';
+    return `<div class="match-table-wrap" style="margin-bottom:12px;">
+      <div style="padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;border-bottom:0.5px solid #e0e0e0;background:#fafafa;">${label} <span style="font-weight:400;color:#bbb;">(${sm.length})</span></div>
+      <table class="match-table"><tbody>${sm.map(m=>{
+        const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
+        const hs=m.homeScore,as_=m.awayScore;
+        const dl=m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+        const hw=m.status==='final'&&!m.isPenaltyShootout&&hs>as_,aw=m.status==='final'&&!m.isPenaltyShootout&&as_>hs;
+        const sc=m.status==='final'?`${hs}–${as_}${m.isPenaltyShootout?' <span class="pk-badge">PK</span>':''}`:m.status==='live'?`<span style="color:#e65100;font-weight:700;">${hs}–${as_}</span>`:'–';
+        return `<tr>
+          <td style="font-size:11px;color:#aaa;">${dl}</td>
+          <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.homeTeam])}<span style="font-weight:${hw?700:400}">${m.homeTeam||'TBD'}</span>${ho?`<span class="owner-chip" style="background:${color(ho)}22;color:${color(ho)}">${ho}</span>`:''}</div></td>
+          <td class="score-cell">${sc}</td>
+          <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.awayTeam])}<span style="font-weight:${aw?700:400}">${m.awayTeam||'TBD'}</span>${ao?`<span class="owner-chip" style="background:${color(ao)}22;color:${color(ao)}">${ao}</span>`:''}</div></td>
+        </tr>`;
+      }).join('')}</tbody></table>
+    </div>`;
+  }).join('');
+
+  const groupsTabHtml=`
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:12px;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 advance</span></div>
+    <div class="groups-grid">${groupCardsHtml}</div>
+    ${knockoutHtml?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin:8px 0 12px;">Knockout Round</div>${knockoutHtml}`:''}
+  `;
+
   const tabsHtml=`<div class="tracker-tabs">
     <div class="tracker-tab ${trackerTab==='leaderboard'?'active':''}" onclick="switchTrackerTab('leaderboard')">Leaderboard</div>
     <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches</div>
     <div class="tracker-tab ${trackerTab==='teams'?'active':''}" onclick="switchTrackerTab('teams')">Teams</div>
+    <div class="tracker-tab ${trackerTab==='groups'?'active':''}" onclick="switchTrackerTab('groups')">Groups</div>
     <div class="tracker-tab ${trackerTab==='rules'?'active':''}" onclick="switchTrackerTab('rules')">Rules</div>
     <div class="tracker-tabs-refresh" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:2px;">
       ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
@@ -1169,6 +1255,7 @@ function renderTracker() {
   if(trackerTab==='leaderboard')content=lbHtml+(fin.tiePotTotal>0?tiepotHtml:'');
   else if(trackerTab==='matches')content=matchesHtml;
   else if(trackerTab==='teams')content=teamsHtml;
+  else if(trackerTab==='groups')content=groupsTabHtml;
   else if(trackerTab==='rules')content=rulesHtml();
 
   el.innerHTML=`<div class="tracker-wrap">${commHtml}${tabsHtml}${content}</div>`;
