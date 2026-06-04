@@ -978,7 +978,8 @@ async function pushWCMatchesToFirebase() {
     const db = admin.database();
     const existingSnap = await db.ref('wc26_live/matches').get();
     const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
-    const merged = Object.assign({}, result.matches);
+    // Start from existing (preserves full schedule), overlay today's fresh results
+    const merged = Object.assign({}, existing, result.matches);
     // Preserve manual isPenaltyShootout overrides set by commissioner
     Object.keys(existing).forEach(function(id) {
       if (merged[id] && existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
