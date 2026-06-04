@@ -967,7 +967,7 @@ function renderTracker() {
     </tr>`;
   }).join('');
   // Upcoming fixtures (scheduled only, next 10)
-  const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled').sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,10);
+  const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled').sort((a,b)=>new Date(a.date)-new Date(b.date));
   const upcomingRows=upcomingList.map(m=>{
     const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
     const stageLbl={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'}[m.stage]||m.stage;
