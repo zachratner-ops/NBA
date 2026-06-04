@@ -157,17 +157,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* ── Live tracker styles ────────────────────────────────────────── */
 .tracker-wrap{max-width:1200px;margin:0 auto;padding:20px;}
-.lb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
-.lb-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
+.lb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-bottom:24px;}
+.lb-card{background:#fff;border-radius:14px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .lb-stripe{height:4px;}
-.lb-body{padding:14px 16px;}
-.lb-rank{font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-.lb-name{font-size:15px;font-weight:700;margin-bottom:6px;}
-.lb-net{font-size:26px;font-weight:800;letter-spacing:-.02em;}
+.lb-body{padding:16px;}
+.lb-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px;}
+.lb-rank{font-size:10px;font-weight:700;color:#bbb;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;}
+.lb-name{font-size:16px;font-weight:800;letter-spacing:-.01em;}
+.lb-net{font-size:22px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;}
 .lb-net.pos{color:#2e7d32;} .lb-net.neg{color:#c62828;} .lb-net.zero{color:#1a1a1a;}
-.lb-breakdown{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:#888;margin-top:4px;border-top:1px solid #f0f0f0;padding-top:4px;}
-.lb-breakdown span{white-space:nowrap;}
-.lb-sub2{font-size:11px;color:#aaa;margin-top:4px;}
+.lb-stats{border-top:0.5px solid #f0f0f0;padding-top:10px;display:flex;flex-direction:column;gap:7px;margin-bottom:10px;}
+.lb-stat{display:flex;align-items:center;gap:6px;font-size:12px;}
+.lb-stat-icon{width:16px;text-align:center;flex-shrink:0;}
+.lb-stat-label{flex:1;color:#666;font-weight:500;}
+.lb-stat-sub{font-size:10px;color:#bbb;font-weight:400;margin-left:3px;}
+.lb-stat-val{font-size:12px;font-weight:700;white-space:nowrap;}
+.lb-stat-val.pos{color:#2e7d32;} .lb-stat-val.neg{color:#c62828;} .lb-stat-val.zero{color:#aaa;}
+.lb-teams{border-top:0.5px solid #f0f0f0;padding-top:8px;font-size:11px;color:#888;display:flex;align-items:center;gap:5px;}
+.lb-teams-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .tiepot-card{background:#1a1a1a;color:#fff;border-radius:12px;padding:16px 20px;margin-bottom:24px;display:flex;align-items:flex-start;gap:24px;flex-wrap:wrap;}
 .tiepot-total{font-size:32px;font-weight:800;color:#f9a825;}
 .tiepot-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:2px;}
@@ -833,10 +840,12 @@ function computeFinancials(matches, teamOwners, participants) {
   const n = participants.length;
   const net = {}, netGoals = {}, netMatch = {}, tiePotPaid = {};
   const goalsByOwner = {}, goalsByTeam = {}, tieCount = {}, gamesPlayed = {};
+  const wins = {}, losses = {};
   let tiePotTotal = 0;
   participants.forEach(p => {
     net[p]=0; netGoals[p]=0; netMatch[p]=0; tiePotPaid[p]=0;
     goalsByOwner[p]=0; tieCount[p]=0; gamesPlayed[p]=0;
+    wins[p]=0; losses[p]=0;
   });
   Object.values(matches||{}).filter(m=>m.status==='final').forEach(m => {
     const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
@@ -860,10 +869,10 @@ function computeFinancials(matches, teamOwners, participants) {
       else if (ao!==undefined&&ao===ho){net[ho]-=20;netMatch[ho]-=20;tiePotPaid[ho]+=20;tieCount[ho]+=2;tiePotTotal+=20;}
     } else if (ho!==undefined&&ao!==undefined) {
       const wo=hs>as?ho:ao, lo=hs>as?ao:ho;
-      if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;}
+      if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;wins[wo]++;losses[lo]++;}
     }
   });
-  return {net,netGoals,netMatch,tiePotPaid,goalsByOwner,goalsByTeam,tieCount,tiePotTotal,gamesPlayed};
+  return {net,netGoals,netMatch,tiePotPaid,goalsByOwner,goalsByTeam,tieCount,tiePotTotal,gamesPlayed,wins,losses};
 }
 function fmtMoney(n){return n===0?'$0':(n>0?'+$':'-$')+Math.abs(n).toLocaleString();}
 
@@ -912,18 +921,58 @@ function renderTracker() {
     ${updatedAgo?`<span class="updated-txt">Updated ${updatedAgo}</span>`:''}
   </div></div>` : '';
 
+  // Eliminated teams: lost a decisive knockout match (non-PK)
+  const eliminatedTeams = new Set();
+  Object.values(matches).filter(m=>m.status==='final'&&m.stage!=='group'&&!m.isPenaltyShootout).forEach(m=>{
+    if((m.homeScore||0)>(m.awayScore||0)) eliminatedTeams.add(m.awayTeam);
+    else if((m.awayScore||0)>(m.homeScore||0)) eliminatedTeams.add(m.homeTeam);
+  });
+
   // Leaderboard
-  const gFmt = v=>v>0?`+$${v}`:v<0?`-$${Math.abs(v)}`:'$0';
+  const fmtStat = v=>v===0?'$0':(v>0?'+$':'-$')+Math.abs(v);
+  const cls = v=>v>0?'pos':v<0?'neg':'zero';
   const lbHtml = `<div class="lb-grid">${ranked.map((p,i)=>{
-    const n=fin.net[p]||0,cls=n>0?'pos':n<0?'neg':'zero';
+    const n=fin.net[p]||0;
     const isMost=mostTied.includes(p)&&maxTies>0,isLeast=leastTied.includes(p)&&fin.tiePotTotal>0;
-    return `<div class="lb-card"><div class="lb-stripe" style="background:${color(p)}"></div><div class="lb-body">
-      <div class="lb-rank">#${i+1}</div>
-      <div class="lb-name" style="color:${color(p)}">${p}</div>
-      <div class="lb-net ${cls}">${fmtMoney(n)}</div>
-      <div class="lb-breakdown"><span>Goals ${gFmt(fin.netGoals[p]||0)}</span><span>W/L ${gFmt(fin.netMatch[p]||0)}</span><span>Pot −$${fin.tiePotPaid[p]||0}</span></div>
-      <div class="lb-sub2">${fin.tieCount[p]||0} ties${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</div>
-    </div></div>`;
+    const myTeams=Object.entries(teamOwners).filter(([,o])=>o===p).map(([t])=>t);
+    const totalTeams=myTeams.length;
+    const aliveTeams=myTeams.filter(t=>!eliminatedTeams.has(t)).length;
+    const w=fin.wins[p]||0,l=fin.losses[p]||0,t=fin.tieCount[p]||0;
+    const goalVal=fin.netGoals[p]||0,matchVal=fin.netMatch[p]||0,potVal=fin.tiePotPaid[p]||0;
+    const dotColor=aliveTeams>0?color(p):'#ddd';
+    return `<div class="lb-card">
+      <div class="lb-stripe" style="background:${color(p)}"></div>
+      <div class="lb-body">
+        <div class="lb-top">
+          <div>
+            <div class="lb-rank">#${i+1}</div>
+            <div class="lb-name" style="color:${color(p)}">${p}</div>
+          </div>
+          <div class="lb-net ${cls(n)}">${fmtMoney(n)}</div>
+        </div>
+        <div class="lb-stats">
+          <div class="lb-stat">
+            <span class="lb-stat-icon">⚽</span>
+            <span class="lb-stat-label">Goals</span>
+            <span class="lb-stat-val ${cls(goalVal)}">${fmtStat(goalVal)}</span>
+          </div>
+          <div class="lb-stat">
+            <span class="lb-stat-icon">🏆</span>
+            <span class="lb-stat-label">Match<span class="lb-stat-sub">${w}W–${l}L–${t}T</span></span>
+            <span class="lb-stat-val ${cls(matchVal)}">${fmtStat(matchVal)}</span>
+          </div>
+          <div class="lb-stat">
+            <span class="lb-stat-icon">🏦</span>
+            <span class="lb-stat-label">Tie Pot<span class="lb-stat-sub">${t} tie${t!==1?'s':''}${isMost?' · <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' · <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span></span>
+            <span class="lb-stat-val ${potVal>0?'neg':'zero'}">−$${potVal}</span>
+          </div>
+        </div>
+        <div class="lb-teams">
+          <div class="lb-teams-dot" style="background:${dotColor}"></div>
+          <span>${aliveTeams} of ${totalTeams} teams alive</span>
+        </div>
+      </div>
+    </div>`;
   }).join('')}</div>`;
 
   // Tie pot
