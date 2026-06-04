@@ -200,8 +200,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .teams-card-name{font-size:14px;font-weight:700;}
 .teams-card-net{font-size:13px;font-weight:700;}
 .teams-card-net.pos{color:#2e7d32;} .teams-card-net.neg{color:#c62828;}
-.team-row{display:grid;grid-template-columns:22px 1fr auto auto auto;align-items:center;gap:6px;padding:6px 14px;border-top:0.5px solid #f5f5f3;font-size:12px;}
+.team-row{display:grid;grid-template-columns:22px 1fr 16px 30px 16px 46px 34px;align-items:center;gap:4px;padding:6px 14px;border-top:0.5px solid #f5f5f3;font-size:12px;}
 .team-name-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.team-emoji{font-size:11px;text-align:center;line-height:1;}
 .team-goals{font-size:11px;font-weight:700;color:#2e7d32;text-align:right;white-space:nowrap;}
 .team-record{font-size:10px;color:#aaa;text-align:right;white-space:nowrap;}
 .team-group{font-size:10px;color:#bbb;text-align:right;}
@@ -1142,8 +1143,10 @@ function renderTracker() {
         return `<div class="team-row">
           <span class="team-flag">${flagImg(WC_FLAGS[nm])}</span>
           <span class="team-name-txt">${nm}</span>
-          <span class="team-goals">${fin.goalsByTeam[nm]?`⚽ ${fin.goalsByTeam[nm]}g`:''}</span>
-          <span class="team-record">${rec?`🏆 ${rec.w}-${rec.l}-${rec.t}`:''}</span>
+          <span class="team-emoji">⚽</span>
+          <span class="team-goals">${fin.goalsByTeam[nm]?`${fin.goalsByTeam[nm]}g`:''}</span>
+          <span class="team-emoji">🏆</span>
+          <span class="team-record">${rec?`${rec.w}-${rec.l}-${rec.t}`:''}</span>
           <span class="team-group">Grp ${WC_GROUPS_MAP[nm]||'?'}</span>
         </div>`;
       }).join('')}
