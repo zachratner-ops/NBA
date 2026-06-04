@@ -617,7 +617,7 @@ function renderLobby() {
         <div style="margin-bottom:16px;">${ownerList.map(o =>
           `<div class="owner-item"><div style="width:8px;height:8px;border-radius:50%;background:${color(o)}"></div>
            <span style="color:${color(o)};font-weight:700;">${o}</span></div>`).join('')}</div>
-        <div style="font-size:12px;color:#888;margin-bottom:8px;">48 teams · ${ownerList.length} participants · snake draft</div>
+        <div style="font-size:12px;color:#888;margin-bottom:8px;">${Math.floor(48/ownerList.length)*ownerList.length} teams · ${ownerList.length} participants · ${Math.floor(48/ownerList.length)} per person · snake draft</div>
         <button class="btn btn-outline" style="width:100%;margin-bottom:6px;" onclick="genOrder()">${previewOrder?'Re-randomize':'Randomize'} Pick Order</button>
         ${previewOrder ? `<div class="order-preview">${previewOrder.map((o,i)=>`<span style="color:${color(o)};font-weight:700;">${i+1}. ${o}</span>`).join('  ')}</div>` : ''}
         ${snakePreview ? `<div style="font-size:11px;color:#888;margin-top:6px;margin-bottom:4px;">Snake preview: ${snakePreview} →…</div>` : ''}
@@ -763,7 +763,7 @@ function renderDraft() {
           <div class="team-grid-wrap">${groupPillsHtml}${groupHtml}</div>
         </div>
         <div class="card draft-col active" style="padding:10px;">
-          <div class="section-hdr">Rosters (${Object.values(draft.picks||{}).reduce((s,a)=>s+(a?.length||0),0)}/48 picked)</div>
+          <div class="section-hdr">Rosters (${Object.values(draft.picks||{}).reduce((s,a)=>s+(a?.length||0),0)}/${draft.pickSequence?.length||0} picked)</div>
           <div class="roster-grid-wrap"><div class="roster-grid">${rosterHtml}</div></div>
         </div>
       </div>

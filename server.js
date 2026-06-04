@@ -1331,7 +1331,9 @@ app.post('/wc/:slug/start', function(req, res) {
   const draft = getOrCreateWCDraft(req.params.slug);
   if (draft.status !== 'lobby') return res.status(400).json({ error: 'Not in lobby' });
   draft.pickOrder = (req.body && req.body.pickOrder) || shuffle(draft.owners);
-  draft.pickSequence = generateWCPickSequence(draft.pickOrder, WC_TEAMS.length);
+  const teamsPerOwner = Math.floor(WC_TEAMS.length / draft.owners.length);
+  const totalToPick = teamsPerOwner * draft.owners.length;
+  draft.pickSequence = generateWCPickSequence(draft.pickOrder, totalToPick);
   draft.currentPickIndex = 0;
   draft.status = 'drafting';
   broadcast(req.params.slug, { type: 'state', draft: draft });
