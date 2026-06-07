@@ -841,6 +841,78 @@ app.post('/golf/:slug/eventid', function(req, res) {
 app.get('/history', function(req, res) { res.json(Object.values(historyStore).sort(function(a,b) { return b.year - a.year; })); });
 app.post('/history', function(req, res) { historyStore[req.body.slug] = req.body; res.json({ ok: true }); });
 
+// ── WC GroupMe draft announcements ───────────────────────────────
+const WC_GROUPME_BOT_ID = '4439e0c6bfe4ab692465ff0ac5';
+
+// Member IDs — combined entries tag both people
+const WC_GROUPME_MEMBERS = {
+  'Marc':       ['5774512'],
+  'Matt':       ['4584150'],
+  'Andrew':     ['5774515'],
+  'Zach':       ['5774513'],
+  'Jared':      ['5774445'],
+  'Mike':       ['5774511'],
+  'Ben + Mark': ['5774514', '104265229'],
+  'Adam + Max': ['5774510', '2921868'],
+};
+
+function flagEmojiWC(code) {
+  if (!code || code.length !== 2) return '';
+  const u = code.toUpperCase();
+  return String.fromCodePoint(0x1F1E6 + u.charCodeAt(0) - 65) +
+         String.fromCodePoint(0x1F1E6 + u.charCodeAt(1) - 65);
+}
+
+async function postWCPickGroupMe(draft, team, pickerOwner, pickIndex) {
+  const seq = draft.pickSequence || [];
+  const total = seq.length;
+  const round = (seq[pickIndex] || {}).round || '?';
+  const nextPick = seq[pickIndex + 1];
+  const nextOwner = nextPick ? nextPick.owner : null;
+  const flag = flagEmojiWC(team.flag || '');
+  const mentionTag = nextOwner ? ('@' + nextOwner) : '';
+
+  const lines = [
+    '⚽ Pick ' + (pickIndex + 1) + ' of ' + total + ' · Round ' + round,
+    '',
+    pickerOwner + ' selects ' + team.name + (flag ? ' ' + flag : '') + ' (Group ' + team.group + ')',
+    '',
+    nextOwner ? ('On the clock: ' + mentionTag) : '🎉 Draft complete!',
+  ];
+  const text = lines.join('\n');
+
+  const attachments = [];
+  if (nextOwner && mentionTag) {
+    const ids = WC_GROUPME_MEMBERS[nextOwner] || [];
+    if (ids.length > 0) {
+      const start = text.indexOf(mentionTag);
+      attachments.push({
+        type: 'mentions',
+        user_ids: ids,
+        loci: ids.map(function() { return [start, mentionTag.length]; }),
+      });
+    }
+  }
+
+  const body = JSON.stringify({ bot_id: WC_GROUPME_BOT_ID, text: text, attachments: attachments });
+  try {
+    await new Promise(function(resolve, reject) {
+      const req = https.request({
+        hostname: 'api.groupme.com',
+        path: '/v3/bots/post',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, function(r) { r.resume(); r.on('end', resolve); });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    console.log('WC GroupMe pick ' + (pickIndex + 1) + ' posted');
+  } catch(e) {
+    console.error('WC GroupMe post failed:', e.message);
+  }
+}
+
 // ── World Cup 2026 state ──────────────────────────────────────────
 const WC_TEAMS = [
   { name: 'Mexico', group: 'A', flag: 'mx' }, { name: 'South Africa', group: 'A', flag: 'za' }, { name: 'South Korea', group: 'A', flag: 'kr' }, { name: 'Czechia', group: 'A', flag: 'cz' },
@@ -1356,10 +1428,13 @@ app.post('/wc/:slug/pick', function(req, res) {
   draft.teams = draft.teams.filter(function(t) { return t.name !== team.name; });
   if (!draft.picks[owner]) draft.picks[owner] = [];
   draft.picks[owner].push(team);
+  const justPickedIndex = draft.currentPickIndex;
   draft.currentPickIndex++;
   if (draft.currentPickIndex >= draft.pickSequence.length) draft.status = 'complete';
   broadcast(req.params.slug, { type: 'state', draft: draft });
   res.json(draft);
+  // Post to GroupMe after responding (non-blocking)
+  postWCPickGroupMe(draft, team, owner, justPickedIndex).catch(function(e) { console.error('WC GroupMe error:', e.message); });
 });
 
 app.post('/wc/:slug/undo', function(req, res) {
