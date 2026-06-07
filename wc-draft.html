@@ -115,18 +115,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .header-bar{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:12px 20px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:41px;z-index:40;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 .section-hdr{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:10px;}
 
-/* Password gate */
-.pw-gate{display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;align-items:center;justify-content:center;}
-.pw-gate.show{display:flex;}
-.pw-box{text-align:center;padding:40px 20px;max-width:340px;width:100%;}
-.pw-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
-.pw-sub{font-size:14px;color:#666;margin-bottom:32px;}
-.pw-input{width:100%;background:#2a2a2a;border:1px solid #333;border-radius:10px;padding:13px 16px;font-size:16px;color:#fff;font-family:inherit;text-align:center;letter-spacing:.08em;}
-.pw-input:focus{outline:none;border-color:#555;}
-.pw-input::placeholder{color:#555;letter-spacing:0;}
-.pw-btn{margin-top:12px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;}
-.pw-btn:hover{background:#ddd;}
-.pw-error{font-size:12px;color:#e53935;margin-top:10px;min-height:16px;}
 
 /* Modals */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;}
@@ -262,15 +250,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="toast" id="toast"></div>
 
-<div class="pw-gate" id="pw-gate">
-  <div class="pw-box">
-    <div class="pw-title">World Cup 2026</div>
-    <div class="pw-sub">Enter the password to continue</div>
-    <input class="pw-input" id="pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')pwCheck()">
-    <button class="pw-btn" onclick="pwCheck()">Enter →</button>
-    <div class="pw-error" id="pw-error"></div>
-  </div>
-</div>
 
 <div class="modal-bg" id="comm-pw-modal" style="display:none;">
   <div class="modal" style="max-width:360px;">
@@ -380,7 +359,6 @@ const FIREBASE_CONFIG = {
 
 const ALL_COLORS = { 'Ben + Mark':'#C62828',Marc:'#F9A825',Jared:'#2E7D32',Andrew:'#E65100',Zach:'#1565C0','Adam + Max':'#4E342E',Matt:'#AD1457',Mike:'#00838F' };
 const ALL_OWNERS = ['Ben + Mark','Marc','Jared','Andrew','Zach','Adam + Max','Matt','Mike'];
-const PW_MAIN = 'rudy';
 const WC_FLAGS = {
   'Mexico':'mx','South Africa':'za','South Korea':'kr','Czechia':'cz',
   'Canada':'ca','Bosnia-Herzegovina':'ba','Qatar':'qa','Switzerland':'ch',
@@ -516,21 +494,6 @@ function showToast(msg, duration = 2500) {
 function color(o) { return ALL_COLORS[o] || '#555'; }
 function owners() { return draft?.owners || ALL_OWNERS; }
 
-// ── Password gate ──────────────────────────────────────────────────
-const stored = sessionStorage.getItem('wc_pw');
-if (stored !== PW_MAIN) document.getElementById('pw-gate').classList.add('show');
-
-window.pwCheck = function() {
-  const val = document.getElementById('pw-input').value.trim().toLowerCase();
-  if (val === PW_MAIN) {
-    sessionStorage.setItem('wc_pw', val);
-    document.getElementById('pw-gate').classList.remove('show');
-  } else {
-    document.getElementById('pw-error').textContent = 'Wrong password.';
-    document.getElementById('pw-input').value = '';
-    setTimeout(() => { document.getElementById('pw-error').textContent = ''; }, 2000);
-  }
-};
 
 window.toggleCommMode = function() {
   if (isComm) {
