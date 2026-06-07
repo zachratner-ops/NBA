@@ -842,7 +842,7 @@ app.get('/history', function(req, res) { res.json(Object.values(historyStore).so
 app.post('/history', function(req, res) { historyStore[req.body.slug] = req.body; res.json({ ok: true }); });
 
 // ── WC GroupMe draft announcements ───────────────────────────────
-const WC_GROUPME_BOT_ID = '4439e0c6bfe4ab692465ff0ac5';
+const WC_GROUPME_BOT_ID = '8445fbf5c50a56a0be94d9e488';
 
 // Member IDs — combined entries tag both people
 const WC_GROUPME_MEMBERS = {
