@@ -858,7 +858,7 @@ const WC_TEAMS = [
 ];
 
 const wcDrafts = {};
-const ALL_WC_OWNERS = ['Mark','Marc','Jared','Andrew','Zach','Ben','Matt','Mike','Max','Adam'];
+const ALL_WC_OWNERS = ['Ben + Mark','Marc','Jared','Andrew','Zach','Adam + Max','Matt','Mike'];
 
 function getOrCreateWCDraft(slug) {
   if (!wcDrafts[slug]) {
