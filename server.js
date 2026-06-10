@@ -448,6 +448,15 @@ cron.schedule('0 14 * * *', async function() {
   console.log('Cron: NBA push result:', result);
 });
 
+// ── 9am ET daily WC cron (13:00 UTC) — runs Jun 11 – Jul 19 only ──
+cron.schedule('0 13 * * *', async function() {
+  const todayET = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
+  if (todayET < '2026-06-11' || todayET > '2026-07-19') return;
+  console.log('Cron: WC daily GroupMe starting...');
+  const result = await postWCDailyGroupMe();
+  console.log('Cron: WC daily GroupMe result:', result);
+});
+
 // ── WebSocket ─────────────────────────────────────────────────────
 const clients = {};
 function broadcast(slug, msg) {
@@ -1067,6 +1076,184 @@ async function pushWCMatchesToFirebase() {
   }
 }
 
+// ── WC daily standings GroupMe ────────────────────────────────────
+
+function computeWCFinancials(matches, teamOwners, participants) {
+  const n = participants.length;
+  const net = {}, tieCount = {};
+  let tiePotTotal = 0;
+  participants.forEach(function(p) { net[p] = 0; tieCount[p] = 0; });
+  Object.values(matches || {}).filter(function(m) { return m.status === 'final'; }).forEach(function(m) {
+    const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
+    const hs = m.homeScore || 0, as_ = m.awayScore || 0;
+    if (ho !== undefined && hs > 0) {
+      net[ho] += hs * (n - 1);
+      participants.forEach(function(p) { if (p !== ho) net[p] -= hs; });
+    }
+    if (ao !== undefined && as_ > 0) {
+      net[ao] += as_ * (n - 1);
+      participants.forEach(function(p) { if (p !== ao) net[p] -= as_; });
+    }
+    const isTie = (m.stage === 'group' && hs === as_) || (m.stage !== 'group' && m.isPenaltyShootout);
+    if (isTie) {
+      if (ho !== undefined) { net[ho] -= 10; tieCount[ho]++; tiePotTotal += 10; }
+      if (ao !== undefined && ao !== ho) { net[ao] -= 10; tieCount[ao]++; tiePotTotal += 10; }
+      else if (ao !== undefined && ao === ho) { net[ho] -= 20; tieCount[ho] += 2; tiePotTotal += 20; }
+    } else if (ho !== undefined && ao !== undefined && ho !== ao) {
+      const wo = hs > as_ ? ho : ao, lo = hs > as_ ? ao : ho;
+      net[wo] += 10; net[lo] -= 10;
+    }
+  });
+  return { net, tieCount, tiePotTotal };
+}
+
+function wcDateInET(isoStr) {
+  return new Date(new Date(isoStr).getTime() - 4 * 3600000).toISOString().slice(0, 10);
+}
+
+function wcTimeInET(isoStr) {
+  const d = new Date(new Date(isoStr).getTime() - 4 * 3600000);
+  const h = d.getUTCHours(), m = d.getUTCMinutes();
+  const ap = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return h12 + (m ? ':' + String(m).padStart(2, '0') : '') + ' ' + ap + ' ET';
+}
+
+function wcStageName(m) {
+  if (m.stage === 'group') return m.group ? 'Group ' + m.group : 'Group';
+  if (m.stage === 'r32') return 'R32';
+  if (m.stage === 'r16') return 'R16';
+  if (m.stage === 'qf') return 'QF';
+  if (m.stage === 'sf') return 'SF';
+  if (m.stage === 'final') return 'Final';
+  return '';
+}
+
+async function postWCDailyGroupMe() {
+  if (!firebaseReady) return { error: 'Firebase not ready' };
+
+  await pushWCMatchesToFirebase();
+
+  const db = admin.database();
+  const snap = await db.ref('wc26_live').get();
+  if (!snap.exists()) return { error: 'No WC data in Firebase' };
+  const data = snap.val();
+  const matches = data.matches || {};
+  const teamOwners = data.teamOwners || {};
+  const config = data.config || {};
+  const participants = config.participants || ALL_WC_OWNERS;
+
+  const fin = computeWCFinancials(matches, teamOwners, participants);
+
+  const nowET = new Date(Date.now() - 4 * 3600000);
+  const todayET = nowET.toISOString().slice(0, 10);
+  const ydDate = new Date(nowET);
+  ydDate.setUTCDate(ydDate.getUTCDate() - 1);
+  const yesterdayET = ydDate.toISOString().slice(0, 10);
+
+  const allMatches = Object.values(matches);
+  const finalYest = allMatches
+    .filter(function(m) { return m.status === 'final' && wcDateInET(m.date) === yesterdayET; })
+    .sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+  const todayMatches = allMatches
+    .filter(function(m) { return wcDateInET(m.date) === todayET && m.status !== 'final'; })
+    .sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+
+  const WC_FLAG_MAP = {};
+  WC_TEAMS.forEach(function(t) { WC_FLAG_MAP[t.name] = t.flag || ''; });
+  function tl(team) { return flagEmojiWC(WC_FLAG_MAP[team] || '') + ' ' + team; }
+
+  const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DO = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const todayDt = new Date(todayET + 'T12:00:00Z');
+  const ydDt = new Date(yesterdayET + 'T12:00:00Z');
+
+  const lines = [
+    '⚽ WC2026 Daily Update — ' + DO[todayDt.getUTCDay()] + ' ' + MO[todayDt.getUTCMonth()] + ' ' + todayDt.getUTCDate(),
+  ];
+
+  lines.push('');
+  if (finalYest.length > 0) {
+    lines.push('📋 Yesterday\'s Results (' + MO[ydDt.getUTCMonth()] + ' ' + ydDt.getUTCDate() + ')');
+    finalYest.forEach(function(m) {
+      const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
+      const hs = m.homeScore, as_ = m.awayScore;
+      const isTie = (m.stage === 'group' && hs === as_) || (m.stage !== 'group' && m.isPenaltyShootout);
+      const suffix = m.isPenaltyShootout && m.stage !== 'group' ? ' (PKs)' : isTie ? ' (TIE)' : '';
+      let ownerStr = '';
+      if (ho && ao && ho !== ao) ownerStr = '  (' + ho + ' vs ' + ao + ')';
+      else if (ho) ownerStr = '  (' + ho + ')';
+      else if (ao) ownerStr = '  (' + ao + ')';
+      lines.push(tl(m.homeTeam) + ' ' + hs + '-' + as_ + ' ' + tl(m.awayTeam) + suffix + ownerStr);
+    });
+  } else {
+    lines.push('📋 No matches played yesterday (' + MO[ydDt.getUTCMonth()] + ' ' + ydDt.getUTCDate() + ')');
+  }
+
+  lines.push('');
+  if (todayMatches.length > 0) {
+    lines.push('📅 Today\'s Matches (' + MO[todayDt.getUTCMonth()] + ' ' + todayDt.getUTCDate() + ')');
+    todayMatches.forEach(function(m) {
+      const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
+      let ownerStr = '';
+      if (ho && ao && ho !== ao) ownerStr = '  (' + ho + ' vs ' + ao + ')';
+      else if (ho) ownerStr = '  (' + ho + ')';
+      else if (ao) ownerStr = '  (' + ao + ')';
+      const timeStr = m.status === 'live' ? ' 🔴 LIVE' : '  ' + wcTimeInET(m.date);
+      lines.push(tl(m.homeTeam) + ' vs ' + tl(m.awayTeam) + timeStr + ownerStr);
+    });
+  } else {
+    lines.push('📅 No matches today (' + MO[todayDt.getUTCMonth()] + ' ' + todayDt.getUTCDate() + ')');
+  }
+
+  const ranked = [...participants].sort(function(a, b) { return (fin.net[b] || 0) - (fin.net[a] || 0); });
+  lines.push('');
+  lines.push('🏆 Standings');
+  const medals = ['🥇','🥈','🥉'];
+  ranked.forEach(function(p, i) {
+    const val = fin.net[p] || 0;
+    const valStr = val > 0 ? '+$' + val : val < 0 ? '-$' + Math.abs(val) : '$0';
+    lines.push((i < 3 ? medals[i] : (i + 1) + '.') + ' ' + p + '  ' + valStr);
+  });
+
+  lines.push('');
+  lines.push('⚖️ Tie pot: $' + fin.tiePotTotal);
+  if (fin.tiePotTotal > 0) {
+    const maxTies = Math.max(...participants.map(function(p) { return fin.tieCount[p] || 0; }));
+    const minTies = Math.min(...participants.map(function(p) { return fin.tieCount[p] || 0; }));
+    const mostTied = participants.filter(function(p) { return (fin.tieCount[p] || 0) === maxTies; });
+    const leastTied = participants.filter(function(p) { return (fin.tieCount[p] || 0) === minTies; });
+    if (maxTies > 0) lines.push('  Most ties: ' + mostTied.map(function(p) { return p + ' (' + (fin.tieCount[p] || 0) + ')'; }).join(', '));
+    if (minTies < maxTies) lines.push('  Fewest ties: ' + leastTied.map(function(p) { return p + ' (' + (fin.tieCount[p] || 0) + ')'; }).join(', '));
+  }
+
+  lines.push('');
+  lines.push('🔗 gyou.in/wc.html');
+
+  const text = lines.join('\n');
+  console.log('WC daily GroupMe:\n' + text);
+
+  const body = JSON.stringify({ bot_id: WC_GROUPME_BOT_ID, text: text });
+  try {
+    await new Promise(function(resolve, reject) {
+      const req = https.request({
+        hostname: 'api.groupme.com',
+        path: '/v3/bots/post',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, function(r) { r.resume(); r.on('end', resolve); });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    console.log('WC daily GroupMe posted — ' + finalYest.length + ' results, ' + todayMatches.length + ' upcoming');
+    return { ok: true, matchesYesterday: finalYest.length, matchesToday: todayMatches.length };
+  } catch(e) {
+    console.error('WC daily GroupMe failed:', e.message);
+    return { error: e.message };
+  }
+}
+
 // WC static routes (before parameterized to avoid collision)
 app.get('/wc/matches', async function(req, res) {
   if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
@@ -1258,6 +1445,12 @@ app.post('/wc/matches/seed-full', async function(req, res) {
 
 app.post('/wc/matches/refresh', async function(req, res) {
   const result = await pushWCMatchesToFirebase();
+  if (result.error) return res.status(502).json(result);
+  res.json(result);
+});
+
+app.post('/wc/groupme', async function(req, res) {
+  const result = await postWCDailyGroupMe();
   if (result.error) return res.status(502).json(result);
   res.json(result);
 });
