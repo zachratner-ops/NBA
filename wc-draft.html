@@ -185,7 +185,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:24px;}
 .group-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .group-card-hdr{padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;background:#fafafa;border-bottom:0.5px solid #e0e0e0;}
-.group-table{width:100%;border-collapse:collapse;font-size:11px;}
+.group-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;}
 .group-table th{padding:4px 6px;color:#aaa;font-weight:700;font-size:10px;text-align:center;border-bottom:0.5px solid #f0f0f0;}
 .group-table td{padding:5px 6px;border-top:0.5px solid #f5f5f3;text-align:center;vertical-align:middle;}
 .group-table tr.qualify td{background:#f0f9f0;}
@@ -1169,14 +1169,14 @@ function renderTracker() {
         <thead><tr>
           <th style="width:18px;"></th>
           <th style="text-align:left;padding-left:4px;">Team</th>
-          <th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th>
+          <th style="width:22px;">P</th><th style="width:22px;">W</th><th style="width:22px;">D</th><th style="width:22px;">L</th><th style="width:28px;">GD</th><th style="width:28px;">Pts</th>
         </tr></thead>
         <tbody>${rows.map((r,i)=>`<tr${i<2?' class="qualify"':''}>
           <td style="font-size:10px;color:#bbb;text-align:center;">${i+1}</td>
-          <td style="text-align:left;"><div style="display:flex;align-items:center;gap:5px;padding-left:4px;">
+          <td style="text-align:left;overflow:hidden;"><div style="display:flex;align-items:center;gap:5px;padding-left:4px;overflow:hidden;">
             ${flagImg(WC_FLAGS[r.name])}
-            <span style="font-weight:${i<2?600:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:85px;">${r.name}</span>
-            ${teamOwners[r.name]?`<span class="owner-chip" style="background:${color(teamOwners[r.name])}22;color:${color(teamOwners[r.name])};font-size:10px;padding:1px 5px;">${teamOwners[r.name]}</span>`:''}
+            <span style="font-weight:${i<2?600:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex-shrink:1;">${r.name}</span>
+            ${teamOwners[r.name]?`<span class="owner-chip" style="background:${color(teamOwners[r.name])}22;color:${color(teamOwners[r.name])};font-size:10px;padding:1px 5px;white-space:nowrap;flex-shrink:0;">${teamOwners[r.name]}</span>`:''}
           </div></td>
           <td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
           <td style="font-weight:600;color:${r.gd>0?'#2e7d32':r.gd<0?'#c62828':'#888'}">${r.gd>0?'+':''}${r.gd}</td>
