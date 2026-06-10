@@ -124,6 +124,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="comm-bar-btn" id="commish-save-R1" onclick="commishSaveRound('R1')">📸 Save End of R1</button>
   <button class="comm-bar-btn" id="commish-save-R2" onclick="commishSaveRound('R2')">📸 Save End of R2</button>
   <button class="comm-bar-btn" id="commish-save-R3" onclick="commishSaveRound('R3')">📸 Save End of R3</button>
+  <span class="comm-bar-label" style="margin-left:12px;">Season Archive</span>
+  <button class="comm-bar-btn" id="commish-save-season" onclick="commishSaveSeason()">🏆 Save Season to History</button>
 </div>
 
 <!-- Commissioner password modal -->
@@ -1091,6 +1093,33 @@ async function commishSaveRound(round) {
       setTimeout(function() { btn.textContent = origLabel; btn.disabled = false; }, 3000);
     } else if (res.status === 409) {
       alert(round + ' has already been saved and is read-only.');
+      btn.textContent = origLabel; btn.disabled = false;
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch(e) {
+    btn.textContent = '❌ Error';
+    alert('Save failed: ' + e.message);
+    setTimeout(function() { btn.textContent = origLabel; btn.disabled = false; }, 2000);
+  }
+}
+
+async function commishSaveSeason() {
+  const year = new Date().getFullYear();
+  if (!confirm('Save the ' + year + ' season final results to history? This is permanent and cannot be overwritten.')) return;
+  var btn = document.getElementById('commish-save-season');
+  var origLabel = btn.textContent;
+  btn.textContent = '⏳ Saving...';
+  btn.disabled = true;
+  try {
+    var res = await fetch(NBA_PROXY + '/nba/save-season/' + year, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    var data = await res.json();
+    if (res.ok && data.ok) {
+      btn.textContent = '✅ Saved!';
+      alert('Season ' + year + ' saved! Winner: ' + data.winner + '. It will appear in nba-history.html.');
+      setTimeout(function() { btn.textContent = origLabel; btn.disabled = false; }, 4000);
+    } else if (res.status === 409) {
+      alert(year + ' has already been saved and is read-only.');
       btn.textContent = origLabel; btn.disabled = false;
     } else {
       throw new Error(data.error || 'Unknown error');

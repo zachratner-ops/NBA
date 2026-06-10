@@ -667,6 +667,59 @@ app.get('/nba/rounds', async function(req, res) {
   }
 });
 
+// NBA: save final season results to history (commissioner only, read-only once written)
+app.post('/nba/save-season/:year', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  const year = parseInt(req.params.year, 10);
+  if (isNaN(year) || year < 2018 || year > 2050) return res.status(400).json({ error: 'Invalid year' });
+  try {
+    const db = admin.database();
+    const existing = await db.ref('nba_history/' + year).get();
+    if (existing.exists()) {
+      return res.status(409).json({ error: year + ' already saved. Season history is read-only once written.' });
+    }
+    const snap = await db.ref('nba26_live/scores').get();
+    if (!snap.exists()) return res.status(404).json({ error: 'No live score data found' });
+    const liveData = snap.val();
+    const sanitizedPlayers = liveData.players || {};
+
+    const owners = {};
+    NBA_OWNERS.forEach(function(o) {
+      const playerList = o.players.map(function(p) {
+        return { name: p, pts: sanitizedPlayers[normalizeName(p)] || 0 };
+      });
+      owners[o.name] = {
+        score: playerList.reduce(function(sum, p) { return sum + p.pts; }, 0),
+        players: playerList,
+      };
+    });
+
+    const winner = (req.body && req.body.winner)
+      ? req.body.winner
+      : Object.entries(owners).sort(function(a, b) { return b[1].score - a[1].score; })[0][0];
+    const pot = (req.body && req.body.pot) ? Number(req.body.pot) : 250;
+
+    const record = { year: year, pot: pot, winner: winner, savedAt: new Date().toISOString(), owners: owners };
+    await db.ref('nba_history/' + year).set(record);
+    console.log('Season history saved: ' + year + ', winner: ' + winner);
+    res.json({ ok: true, year: year, winner: winner, pot: pot });
+  } catch(e) {
+    console.error('Save season error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// NBA: read all saved season history from Firebase
+app.get('/nba/history', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not initialized' });
+  try {
+    const snap = await admin.database().ref('nba_history').get();
+    res.json(snap.exists() ? snap.val() : {});
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Legacy
 app.get('/all', async function(req, res) {
   const scoreData = await fetchNBAScores();

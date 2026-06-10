@@ -209,9 +209,11 @@ const NBA_DRAFT = {
   2026: { Max:1, Throuple:2, Andrew:3, Jared:4, Zach:5 },
 };
 
+const NBA_PROXY = 'https://reasonable-illumination-production-6e9a.up.railway.app';
+
 // Full NBA playoff history data
 // Each season: { year, pot, winner, owners: { name: { score, players:[{name,pts}] } } }
-const SEASONS = [
+let SEASONS = [
   {
     year: 2018, pot: null, winner: 'Ben',
     owners: {
@@ -305,12 +307,11 @@ function showTab(tab) {
 // ── All-time standings ────────────────────────────────────────────────────────
 const BUY_IN = 50; // per year, winner take all
 
-// Pre-compute once
-const _atData = (()=>{
+function computeAtData() {
   const wins={}, apps={}, earnings={}, wagered={};
   SEASONS.forEach(s => {
     const participants = Object.keys(s.owners).length;
-    const pot = participants * BUY_IN;
+    const pot = s.pot || participants * BUY_IN;
     Object.keys(s.owners).forEach(o => {
       const key = o === 'Triplets' ? 'Throuple' : o;
       apps[key] = (apps[key]||0) + 1;
@@ -325,7 +326,8 @@ const _atData = (()=>{
     earned:earnings[p]||0, spent:wagered[p]||0,
     net:(earnings[p]||0)-(wagered[p]||0)
   }));
-})();
+}
+let _atData = [];
 
 function renderAllTime(sortBy) {
   const sorted = _atData.slice().sort(sortBy==='net'
@@ -351,8 +353,11 @@ function sortAllTime(by) {
 }
 
 function buildAllTime() {
+  _atData = computeAtData();
   renderAllTime('wins');
-  document.getElementById('page-sub').textContent = `${SEASONS.length} seasons · 2018–2025`;
+  const years = SEASONS.map(s => s.year);
+  const minY = Math.min(...years), maxY = Math.max(...years);
+  document.getElementById('page-sub').textContent = `${SEASONS.length} seasons · ${minY}–${maxY}`;
 }
 
 // ── Jump nav ──────────────────────────────────────────────────────────────────
@@ -721,11 +726,24 @@ function buildStats() {
     '<div class="stats-grid">' + pick1Html + stealBustHtml + '</div>';
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
-buildAllTime();
-buildJumpNav();
-buildSeasons();
-buildStats();
+// ── Init — fetch Firebase history then render ─────────────────────────────────
+(async function() {
+  try {
+    const res = await fetch(NBA_PROXY + '/nba/history');
+    if (res.ok) {
+      const remote = await res.json();
+      const existing = new Set(SEASONS.map(s => s.year));
+      Object.values(remote).forEach(s => {
+        if (s && s.year && !existing.has(s.year)) SEASONS.push(s);
+      });
+      SEASONS.sort((a, b) => a.year - b.year);
+    }
+  } catch(e) { /* network unavailable — fall back to hardcoded data */ }
+  buildAllTime();
+  buildJumpNav();
+  buildSeasons();
+  buildStats();
+})();
 </script>
 <!-- Feedback modal -->
 <div class="fb-overlay" id="fb-overlay" onclick="fbClose(event)">
