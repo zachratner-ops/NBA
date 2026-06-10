@@ -982,7 +982,7 @@ function renderTracker() {
 
   // Tie pot
   const halfPot = Math.round(fin.tiePotTotal / 2);
-  const tiepotHtml = fin.tiePotTotal>0?`<div class="tiepot-card">
+  const tiepotHtml = `<div class="tiepot-card">
     <div class="tiepot-head">
       <div>
         <div class="tiepot-label">Raiders/Chargers/Izzy Birth Night Memorial Tie Side-Pot</div>
@@ -1015,7 +1015,7 @@ function renderTracker() {
         </div>`;
       }).join('')}
     </div>
-  </div>` : '';
+  </div>`;
 
   // Match tab — three sections: Today / Completed / Upcoming
   function isToday(ds){if(!ds)return false;const d=new Date(ds),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
@@ -1228,7 +1228,7 @@ function renderTracker() {
     </div>
   </div>`;
   let content='';
-  if(trackerTab==='leaderboard')content=lbHtml+(fin.tiePotTotal>0?tiepotHtml:'');
+  if(trackerTab==='leaderboard')content=lbHtml+tiepotHtml;
   else if(trackerTab==='matches')content=matchesHtml;
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='groups')content=groupsTabHtml;
