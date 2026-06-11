@@ -428,7 +428,7 @@ let trackerRefreshing = false;
 let autoRefreshInterval = null;
 let autoRefreshMs = null;
 let lbSort = 'net'; // 'net' | 'draft'
-let matchSections = { completed: true, upcoming: false };
+let matchSections = { completed: true, tomorrow: true, upcoming: false };
 const WC_GROUPS_MAP = {
   'Mexico':'A','South Africa':'A','South Korea':'A','Czechia':'A',
   'Canada':'B','Bosnia-Herzegovina':'B','Qatar':'B','Switzerland':'B',
@@ -1049,6 +1049,7 @@ function renderTracker() {
 
   // Match tab — three sections: Today / Completed / Upcoming
   function isToday(ds){if(!ds)return false;const d=new Date(ds),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
+  function isTomorrow(ds){if(!ds)return false;const d=new Date(ds),n=new Date();n.setDate(n.getDate()+1);return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
   const SL={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'};
   function mkRow(m){
     const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
@@ -1127,9 +1128,11 @@ function renderTracker() {
   }
   const todayList=Object.values(matches).filter(m=>isToday(m.date)&&m.status!=='final').sort((a,b)=>new Date(a.date)-new Date(b.date));
   const completedList=Object.values(matches).filter(m=>m.status==='final').sort((a,b)=>new Date(b.date)-new Date(a.date));
-  const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const tomorrowList=Object.values(matches).filter(m=>m.status==='scheduled'&&isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)&&!isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const matchesHtml=mkSection("Today's Games",todayList,null)
     +mkSection('Completed',completedList,'completed')
+    +(tomorrowList.length?mkSection("Tomorrow's Games",tomorrowList,'tomorrow'):'')
     +(upcomingList.length?mkSection('Upcoming',upcomingList,'upcoming'):'');
 
   // Per-team W/L/T records
