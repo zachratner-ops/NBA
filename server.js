@@ -1072,8 +1072,15 @@ function parseESPNEvents(events) {
     if (!home || !away) return;
     const statusName = (comp.status && comp.status.type && comp.status.type.name) || '';
     const statusDetail = (comp.status && comp.status.type && comp.status.type.detail) || '';
-    const isFinal = statusName === 'STATUS_FINAL';
-    const isLive = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_HALFTIME' || statusName === 'STATUS_END_PERIOD';
+    const isFinal = statusName === 'STATUS_FINAL' || statusName === 'STATUS_FULL_TIME';
+    const isLive = statusName === 'STATUS_IN_PROGRESS'
+      || statusName === 'STATUS_FIRST_HALF'
+      || statusName === 'STATUS_SECOND_HALF'
+      || statusName === 'STATUS_HALFTIME'
+      || statusName === 'STATUS_END_PERIOD'
+      || statusName === 'STATUS_EXTRA_TIME'
+      || statusName === 'STATUS_OVERTIME'
+      || statusName === 'STATUS_PENALTY';
     let group = null, stage = 'group';
     (comp.notes || []).forEach(function(n) {
       const txt = (n.headline || n.text || '').toLowerCase();
@@ -1089,7 +1096,8 @@ function parseESPNEvents(events) {
     const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
     const displayClock = (comp.status && comp.status.displayClock) || null;
     const clockLabel = statusName === 'STATUS_HALFTIME' ? 'HT'
-      : statusName === 'STATUS_END_PERIOD' ? 'ET'
+      : (statusName === 'STATUS_END_PERIOD' || statusName === 'STATUS_EXTRA_TIME' || statusName === 'STATUS_OVERTIME') ? 'ET'
+      : statusName === 'STATUS_PENALTY' ? 'PK'
       : (isLive && displayClock) ? displayClock
       : null;
     // Normalize ESPN display names to our internal WC team names
