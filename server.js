@@ -457,6 +457,17 @@ cron.schedule('0 13 * * *', async function() {
   console.log('Cron: WC daily GroupMe result:', result);
 });
 
+// ── WC live score refresh — every 5 min, 14:00-04:00 UTC, Jun 11–Jul 19 ──
+// Covers game windows across all WC 2026 host cities (ET noon to midnight+)
+cron.schedule('*/5 14-23,0-4 * * *', async function() {
+  const todayET = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
+  if (todayET < '2026-06-11' || todayET > '2026-07-19') return;
+  if (!firebaseReady) return;
+  const result = await pushWCMatchesToFirebase();
+  if (result.ok) console.log('WC live cron: ' + result.matchCount + ' matches synced');
+  else if (result.error) console.error('WC live cron error:', result.error);
+});
+
 // ── WebSocket ─────────────────────────────────────────────────────
 const clients = {};
 function broadcast(slug, msg) {
@@ -1025,6 +1036,28 @@ function generateWCPickSequence(order, numTeams) {
 
 // ── ESPN World Cup match fetch ─────────────────────────────────────
 
+// ESPN uses official FIFA display names which differ from our internal names
+const ESPN_WC_NAME_MAP = {
+  'Korea Republic':               'South Korea',
+  'Turkey':                       'Türkiye',
+  'Bosnia and Herzegovina':       'Bosnia-Herzegovina',
+  'Bosnia & Herzegovina':         'Bosnia-Herzegovina',
+  "Côte d'Ivoire":                'Ivory Coast',
+  "Cote d'Ivoire":                'Ivory Coast',
+  'Cabo Verde':                   'Cape Verde',
+  'DR Congo':                     'Congo DR',
+  'Congo, DR':                    'Congo DR',
+  'Democratic Republic of Congo': 'Congo DR',
+  'Curacao':                      'Curaçao',
+  'Czech Republic':               'Czechia',
+  'USA':                          'United States',
+  'U.S.A.':                       'United States',
+};
+function normalizeWCTeamName(name) {
+  if (!name) return name;
+  return ESPN_WC_NAME_MAP[name] || name;
+}
+
 const TEAM_TO_GROUP = {};
 WC_TEAMS.forEach(function(t) { TEAM_TO_GROUP[t.name] = t.group; });
 
@@ -1054,11 +1087,23 @@ function parseESPNEvents(events) {
     });
     const detailLower = statusDetail.toLowerCase();
     const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
-    const homeTeamName = home.team && home.team.displayName;
-    const awayTeamName = away.team && away.team.displayName;
+    const displayClock = (comp.status && comp.status.displayClock) || null;
+    const clockLabel = statusName === 'STATUS_HALFTIME' ? 'HT'
+      : statusName === 'STATUS_END_PERIOD' ? 'ET'
+      : (isLive && displayClock) ? displayClock
+      : null;
+    // Normalize ESPN display names to our internal WC team names
+    const homeTeamName = normalizeWCTeamName(home.team && home.team.displayName);
+    const awayTeamName = normalizeWCTeamName(away.team && away.team.displayName);
     // ESPN notes are empty for scheduled games — derive group from our team list
     if (!group && stage === 'group') {
       group = TEAM_TO_GROUP[homeTeamName] || TEAM_TO_GROUP[awayTeamName] || null;
+    }
+    // Also detect group from name if still missing
+    if (!group) {
+      const evtNameLower = (event.name || '').toLowerCase();
+      const gm2 = evtNameLower.match(/group ([a-l])/);
+      if (gm2) { group = gm2[1].toUpperCase(); stage = 'group'; }
     }
     matches[event.id] = {
       id: event.id,
@@ -1071,6 +1116,7 @@ function parseESPNEvents(events) {
       homeScore: (isFinal || isLive) ? parseInt(home.score || '0', 10) : null,
       awayScore: (isFinal || isLive) ? parseInt(away.score || '0', 10) : null,
       status: isFinal ? 'final' : isLive ? 'live' : 'scheduled',
+      clock: clockLabel,
       isPenaltyShootout: espnPK && stage !== 'group'
     };
   });
@@ -1114,9 +1160,25 @@ async function pushWCMatchesToFirebase() {
     const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
     // Start from existing (preserves full schedule), overlay today's fresh results
     const merged = Object.assign({}, existing, result.matches);
-    // Preserve manual isPenaltyShootout overrides set by commissioner
+    // Protect against status downgrades from stale ESPN data
     Object.keys(existing).forEach(function(id) {
-      if (merged[id] && existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
+      if (!merged[id]) return;
+      const existStatus = existing[id].status;
+      const mergedStatus = merged[id].status;
+      // Never downgrade a final match — keep existing data entirely
+      if (existStatus === 'final' && mergedStatus !== 'final') {
+        merged[id] = existing[id];
+        return;
+      }
+      // Never downgrade live → scheduled (ESPN can transiently return stale status)
+      if (existStatus === 'live' && mergedStatus === 'scheduled') {
+        merged[id].status = 'live';
+        merged[id].homeScore = existing[id].homeScore;
+        merged[id].awayScore = existing[id].awayScore;
+        if (existing[id].clock) merged[id].clock = existing[id].clock;
+      }
+      // Preserve manual isPenaltyShootout override
+      if (existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
         merged[id].isPenaltyShootout = true;
       }
     });
