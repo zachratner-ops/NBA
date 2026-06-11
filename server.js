@@ -1164,8 +1164,14 @@ async function pushWCMatchesToFirebase() {
   if (result.error) return result;
   try {
     const db = admin.database();
-    const existingSnap = await db.ref('wc26_live/matches').get();
-    const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
+    const fullSnap = await db.ref('wc26_live').get();
+    const fullData = fullSnap.exists() ? (fullSnap.val() || {}) : {};
+    const existing = fullData.matches || {};
+    const teamOwners = fullData.teamOwners || {};
+    const config = fullData.config || {};
+    const participants = config.participants || ALL_WC_OWNERS;
+    const notified = fullData.notifiedTies || {};
+
     // Start from existing (preserves full schedule), overlay today's fresh results
     const merged = Object.assign({}, existing, result.matches);
     // Protect against status downgrades from stale ESPN data
@@ -1190,10 +1196,35 @@ async function pushWCMatchesToFirebase() {
         merged[id].isPenaltyShootout = true;
       }
     });
+
     await db.ref('wc26_live/matches').set(merged);
     await db.ref('wc26_live/updated').set(result.updated);
     console.log('WC matches push: ' + Object.keys(merged).length + ' matches');
-    return { ok: true, matchCount: Object.keys(merged).length, updated: result.updated };
+
+    // Detect newly completed ties and fire GroupMe notifications
+    const newTies = Object.values(merged).filter(function(m) {
+      if (!m || !m.id) return false;
+      const before = existing[m.id];
+      if (!before || before.status === 'final') return false; // didn't just become final
+      if (m.status !== 'final') return false;
+      if (notified[m.id]) return false; // already notified (prevents duplicate fires)
+      const hs = m.homeScore, as_ = m.awayScore;
+      return (m.stage === 'group' && hs === as_) || (m.stage !== 'group' && m.isPenaltyShootout);
+    });
+
+    if (newTies.length > 0) {
+      // Write notified flags first to prevent double-posting if cron and manual refresh overlap
+      const notifyUpdates = {};
+      newTies.forEach(function(m) { notifyUpdates[m.id] = true; });
+      await db.ref('wc26_live/notifiedTies').update(notifyUpdates);
+
+      const fin = computeWCFinancials(merged, teamOwners, participants);
+      for (const tie of newTies) {
+        await postWCTieGroupMe(tie, teamOwners, fin.tiePotTotal);
+      }
+    }
+
+    return { ok: true, matchCount: Object.keys(merged).length, updated: result.updated, newTies: newTies.length };
   } catch(e) {
     return { error: e.message };
   }
@@ -1374,6 +1405,58 @@ async function postWCDailyGroupMe() {
   } catch(e) {
     console.error('WC daily GroupMe failed:', e.message);
     return { error: e.message };
+  }
+}
+
+async function postWCTieGroupMe(match, teamOwners, tiePotTotal) {
+  const WC_FLAG_MAP = {};
+  WC_TEAMS.forEach(function(t) { WC_FLAG_MAP[t.name] = t.flag || ''; });
+  function tl(team) { return flagEmojiWC(WC_FLAG_MAP[team] || '') + ' ' + team; }
+
+  const ho = teamOwners[match.homeTeam];
+  const ao = teamOwners[match.awayTeam];
+  const hs = match.homeScore, as_ = match.awayScore;
+  const isPK = match.isPenaltyShootout && match.stage !== 'group';
+  const stageStr = match.group ? 'Group ' + match.group.toUpperCase() : (match.stage || 'Knockout');
+
+  const contextStr = isPK ? 'Penalty Shootout' : stageStr;
+
+  const lines = ['🚨 THERE\'S BEEN A TIE! 🚨'];
+  lines.push(contextStr + ' · ' + tl(match.homeTeam) + ' ' + hs + '–' + as_ + ' ' + tl(match.awayTeam));
+  lines.push('');
+
+  const affected = [];
+  if (ho) affected.push(ho);
+  if (ao && ao !== ho) affected.push(ao);
+  if (affected.length > 0) {
+    lines.push('💸 ' + affected.join(' & ') + ' each -$10 → Pot: $' + tiePotTotal);
+  } else {
+    lines.push('Tie pot: $' + tiePotTotal);
+  }
+
+  const text = lines.join('\n');
+  console.log('WC tie GroupMe:\n' + text);
+
+  if (GROUPME_DRY_RUN || !WC_GROUPME_BOT_ID) {
+    console.log('[DRY RUN] Would post tie notification');
+    return;
+  }
+  const body = JSON.stringify({ bot_id: WC_GROUPME_BOT_ID, text: text });
+  try {
+    await new Promise(function(resolve, reject) {
+      const req = https.request({
+        hostname: 'api.groupme.com',
+        path: '/v3/bots/post',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      }, function(r) { r.resume(); r.on('end', resolve); });
+      req.on('error', reject);
+      req.write(body);
+      req.end();
+    });
+    console.log('WC tie GroupMe posted: ' + match.homeTeam + ' vs ' + match.awayTeam);
+  } catch(e) {
+    console.error('WC tie GroupMe failed:', e.message);
   }
 }
 
