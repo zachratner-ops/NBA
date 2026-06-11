@@ -1160,9 +1160,25 @@ async function pushWCMatchesToFirebase() {
     const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
     // Start from existing (preserves full schedule), overlay today's fresh results
     const merged = Object.assign({}, existing, result.matches);
-    // Preserve manual isPenaltyShootout overrides set by commissioner
+    // Protect against status downgrades from stale ESPN data
     Object.keys(existing).forEach(function(id) {
-      if (merged[id] && existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
+      if (!merged[id]) return;
+      const existStatus = existing[id].status;
+      const mergedStatus = merged[id].status;
+      // Never downgrade a final match — keep existing data entirely
+      if (existStatus === 'final' && mergedStatus !== 'final') {
+        merged[id] = existing[id];
+        return;
+      }
+      // Never downgrade live → scheduled (ESPN can transiently return stale status)
+      if (existStatus === 'live' && mergedStatus === 'scheduled') {
+        merged[id].status = 'live';
+        merged[id].homeScore = existing[id].homeScore;
+        merged[id].awayScore = existing[id].awayScore;
+        if (existing[id].clock) merged[id].clock = existing[id].clock;
+      }
+      // Preserve manual isPenaltyShootout override
+      if (existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
         merged[id].isPenaltyShootout = true;
       }
     });

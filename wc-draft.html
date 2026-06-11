@@ -839,39 +839,50 @@ function computeFinancials(matches, teamOwners, participants) {
   const n = participants.length;
   const net = {}, netGoals = {}, netMatch = {}, tiePotPaid = {};
   const goalsByOwner = {}, goalsByTeam = {}, tieCount = {}, gamesPlayed = {};
+  const liveGoalsByOwner = {};
   const wins = {}, losses = {};
   let tiePotTotal = 0;
   participants.forEach(p => {
     net[p]=0; netGoals[p]=0; netMatch[p]=0; tiePotPaid[p]=0;
-    goalsByOwner[p]=0; tieCount[p]=0; gamesPlayed[p]=0;
+    goalsByOwner[p]=0; liveGoalsByOwner[p]=0; tieCount[p]=0; gamesPlayed[p]=0;
     wins[p]=0; losses[p]=0;
   });
-  Object.values(matches||{}).filter(m=>m.status==='final').forEach(m => {
+  Object.values(matches||{}).filter(m=>m.status==='final'||m.status==='live').forEach(m => {
     const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
     const hs = m.homeScore||0, as = m.awayScore||0;
-    if (ho!==undefined) gamesPlayed[ho]++;
-    if (ao!==undefined) gamesPlayed[ao]++;
+    const isLive = m.status === 'live';
+    // gamesPlayed and W/L/T only for settled (final) matches
+    if (!isLive) {
+      if (ho!==undefined) gamesPlayed[ho]++;
+      if (ao!==undefined) gamesPlayed[ao]++;
+    }
+    // Goals count for both final and in-progress matches
     if (ho!==undefined && hs>0) {
       goalsByTeam[m.homeTeam]=(goalsByTeam[m.homeTeam]||0)+hs;
       const e=hs*(n-1); net[ho]+=e; netGoals[ho]+=e; goalsByOwner[ho]+=hs;
+      if (isLive) liveGoalsByOwner[ho]=(liveGoalsByOwner[ho]||0)+hs;
       participants.forEach(p=>{if(p!==ho){net[p]-=hs;netGoals[p]-=hs;}});
     }
     if (ao!==undefined && as>0) {
       goalsByTeam[m.awayTeam]=(goalsByTeam[m.awayTeam]||0)+as;
       const e=as*(n-1); net[ao]+=e; netGoals[ao]+=e; goalsByOwner[ao]+=as;
+      if (isLive) liveGoalsByOwner[ao]=(liveGoalsByOwner[ao]||0)+as;
       participants.forEach(p=>{if(p!==ao){net[p]-=as;netGoals[p]-=as;}});
     }
-    const isTie=(m.stage==='group'&&hs===as)||(m.stage!=='group'&&m.isPenaltyShootout);
-    if (isTie) {
-      if (ho!==undefined){net[ho]-=10;netMatch[ho]-=10;tiePotPaid[ho]+=10;tieCount[ho]++;tiePotTotal+=10;}
-      if (ao!==undefined&&ao!==ho){net[ao]-=10;netMatch[ao]-=10;tiePotPaid[ao]+=10;tieCount[ao]++;tiePotTotal+=10;}
-      else if (ao!==undefined&&ao===ho){net[ho]-=20;netMatch[ho]-=20;tiePotPaid[ho]+=20;tieCount[ho]+=2;tiePotTotal+=20;}
-    } else if (ho!==undefined&&ao!==undefined) {
-      const wo=hs>as?ho:ao, lo=hs>as?ao:ho;
-      if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;wins[wo]++;losses[lo]++;}
+    // W/L/T and tie pot only for final matches
+    if (!isLive) {
+      const isTie=(m.stage==='group'&&hs===as)||(m.stage!=='group'&&m.isPenaltyShootout);
+      if (isTie) {
+        if (ho!==undefined){net[ho]-=10;netMatch[ho]-=10;tiePotPaid[ho]+=10;tieCount[ho]++;tiePotTotal+=10;}
+        if (ao!==undefined&&ao!==ho){net[ao]-=10;netMatch[ao]-=10;tiePotPaid[ao]+=10;tieCount[ao]++;tiePotTotal+=10;}
+        else if (ao!==undefined&&ao===ho){net[ho]-=20;netMatch[ho]-=20;tiePotPaid[ho]+=20;tieCount[ho]+=2;tiePotTotal+=20;}
+      } else if (ho!==undefined&&ao!==undefined) {
+        const wo=hs>as?ho:ao, lo=hs>as?ao:ho;
+        if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;wins[wo]++;losses[lo]++;}
+      }
     }
   });
-  return {net,netGoals,netMatch,tiePotPaid,goalsByOwner,goalsByTeam,tieCount,tiePotTotal,gamesPlayed,wins,losses};
+  return {net,netGoals,netMatch,tiePotPaid,goalsByOwner,liveGoalsByOwner,goalsByTeam,tieCount,tiePotTotal,gamesPlayed,wins,losses};
 }
 function fmtMoney(n){return n===0?'$0':(n>0?'+$':'-$')+Math.abs(n).toLocaleString();}
 
@@ -962,7 +973,7 @@ function renderTracker() {
         <div class="lb-stats">
           <div class="lb-stat">
             <span class="lb-stat-icon">⚽</span>
-            <span class="lb-stat-label">Goals<span class="lb-stat-sub">${fin.goalsByOwner[p]||0}g</span></span>
+            <span class="lb-stat-label">Goals<span class="lb-stat-sub">${fin.goalsByOwner[p]||0}g${(fin.liveGoalsByOwner[p]||0)>0?` <span style="color:#e65100;font-size:9px;font-weight:800;animation:livePulse 1.2s ease-in-out infinite;">●</span>`:''}</span></span>
             <span class="lb-stat-val ${cls(goalVal)}">${fmtStat(goalVal)}</span>
           </div>
           <div class="lb-stat">
