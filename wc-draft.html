@@ -1125,8 +1125,8 @@ function renderTracker() {
       <div class="match-cards">${list.map(mkCard).join('')}</div>
     </div>`;
   }
-  const todayList=Object.values(matches).filter(m=>isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const completedList=Object.values(matches).filter(m=>m.status==='final'&&!isToday(m.date)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const todayList=Object.values(matches).filter(m=>isToday(m.date)&&m.status!=='final').sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const completedList=Object.values(matches).filter(m=>m.status==='final').sort((a,b)=>new Date(b.date)-new Date(a.date));
   const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const matchesHtml=mkSection("Today's Games",todayList,null)
     +mkSection('Completed',completedList,'completed')
