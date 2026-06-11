@@ -1004,7 +1004,7 @@ function renderTracker() {
           <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
         </div>
         <div class="lb-teams" style="flex-wrap:wrap;gap:3px;align-items:center;line-height:1.8;">
-          ${myTeams.map(t=>{const e=eliminatedTeams.has(t);return `<span style="font-size:10px;font-weight:${e?400:600};color:${e?'#ccc':color(p)};${e?'text-decoration:line-through;':''}">${t}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
+          ${myTeams.map(t=>{const e=eliminatedTeams.has(t);const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;return `<span style="font-size:10px;font-weight:${e?400:600};color:${e?'#ccc':color(p)};${e?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
         </div>
       </div>
     </div>`;
@@ -1249,8 +1249,8 @@ function renderTracker() {
   const liveTabBadge = liveMatches.length ? ` <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#e65100;color:#fff;font-size:9px;font-weight:800;vertical-align:middle;">${liveMatches.length}</span>` : '';
   const tabsHtml=`<div class="tracker-tabs">
     <div class="tracker-tab ${trackerTab==='leaderboard'?'active':''}" onclick="switchTrackerTab('leaderboard')">Leaderboard</div>
-    <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches${liveTabBadge}</div>
     <div class="tracker-tab ${trackerTab==='teams'?'active':''}" onclick="switchTrackerTab('teams')">Teams</div>
+    <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches${liveTabBadge}</div>
     <div class="tracker-tab ${trackerTab==='groups'?'active':''}" onclick="switchTrackerTab('groups')">Groups</div>
     <div class="tracker-tab ${trackerTab==='rules'?'active':''}" onclick="switchTrackerTab('rules')">Rules</div>
     <div class="tracker-tabs-refresh" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:2px;">
