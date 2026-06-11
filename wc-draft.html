@@ -226,6 +226,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .updated-txt{font-size:11px;color:#aaa;}
 /* Mobile match cards */
 .match-cards{display:none;}
+.match-mobile-sections{display:none;}
 .match-card{background:#fff;border-radius:10px;border:0.5px solid #e0e0e0;padding:11px 13px;margin-bottom:8px;}
 .match-card.tie-card{background:#fffdf0;border-color:#ffe082;}
 .match-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#aaa;}
@@ -242,6 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 @media(max-width:600px){
   .match-table-wrap{display:none;}
   .match-cards{display:block;}
+  .match-mobile-sections{display:block;}
   .lb-grid{grid-template-columns:1fr;}
   .tracker-wrap{padding:12px;}
   .tracker-tabs{flex-wrap:wrap;}
@@ -1103,37 +1105,64 @@ function renderTracker() {
       ${footer?`<div class="match-card-footer">${footer}</div>`:''}
     </div>`;
   }
-  function mkSection(title, list, key, emptyMsg){
-    const open = key===null ? true : !!matchSections[key];
-    const count = list.length;
-    const hdrStyle=`display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border:0.5px solid #e0e0e0;`;
-    const hdr = key
-      ? `<div onclick="window.toggleMatchSection('${key}')" style="${hdrStyle}border-radius:${open&&count?'12px 12px 0 0':'12px'};cursor:pointer;user-select:none;">
+  function mkDesktopTable(sections){
+    const cols=isComm?8:7;
+    let tbody='';
+    sections.forEach(function({title,list,key},i){
+      const open=key===null?true:!!matchSections[key];
+      const count=list.length;
+      const bt=i>0?'border-top:1.5px solid #e8e8e8;':'';
+      const hdrRow=key
+        ?`<tr onclick="window.toggleMatchSection('${key}')" style="cursor:pointer;user-select:none;background:#fafafa;">
+            <td colspan="${cols}" style="padding:8px 14px;${bt}">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">${title} <span style="color:#bbb;font-weight:400;">(${count})</span></span>
+                <span style="color:#bbb;font-size:12px;">${open?'▴':'▾'}</span>
+              </div>
+            </td>
+          </tr>`
+        :`<tr style="background:#fafafa;">
+            <td colspan="${cols}" style="padding:8px 14px;${bt}">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;">${title} <span style="color:#bbb;font-weight:400;">(${count})</span></span>
+            </td>
+          </tr>`;
+      tbody+=hdrRow;
+      if(open&&count)tbody+=list.map(mkRow).join('');
+    });
+    return `<div class="match-table-wrap" style="margin-bottom:12px;">
+      <table class="match-table">
+        <thead><tr><th>Date</th><th>Home</th><th class="c">Score</th><th>Away</th><th>Stage</th><th>Match $</th><th>Goals</th>${isComm?'<th></th>':''}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
+  }
+  function mkCardSection(title,list,key){
+    const open=key===null?true:!!matchSections[key];
+    const count=list.length;
+    const hs=`display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#fff;border:0.5px solid #e0e0e0;`;
+    const hdr=key
+      ?`<div onclick="window.toggleMatchSection('${key}')" style="${hs}border-radius:${open&&count?'12px 12px 0 0':'12px'};cursor:pointer;user-select:none;">
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">${title} <span style="color:#bbb;font-weight:400;">(${count})</span></span>
           <span style="color:#bbb;font-size:12px;">${open?'▴':'▾'}</span>
         </div>`
-      : `<div style="${hdrStyle}border-radius:${count?'12px 12px 0 0':'12px'};${count?'border-bottom:none;':''}">
+      :`<div style="${hs}border-radius:${count?'12px 12px 0 0':'12px'};${count?'border-bottom:none;':''}">
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;">${title} <span style="color:#bbb;font-weight:400;">(${count})</span></span>
         </div>`;
-    if(!count) return `<div style="margin-bottom:12px;">${hdr}</div>`;
-    if(!open) return `<div style="margin-bottom:12px;">${hdr}</div>`;
-    return `<div style="margin-bottom:12px;">
-      ${hdr}
-      <div class="match-table-wrap" style="margin-bottom:0;border-top:none;border-radius:0 0 12px 12px;">
-        <table class="match-table"><thead><tr><th>Date</th><th>Home</th><th class="c">Score</th><th>Away</th><th>Stage</th><th>Match $</th><th>Goals</th>${isComm?'<th></th>':''}</tr></thead>
-        <tbody>${list.map(mkRow).join('')}</tbody></table>
-      </div>
-      <div class="match-cards">${list.map(mkCard).join('')}</div>
-    </div>`;
+    if(!count||!open)return `<div style="margin-bottom:12px;">${hdr}</div>`;
+    return `<div style="margin-bottom:12px;">${hdr}<div class="match-cards">${list.map(mkCard).join('')}</div></div>`;
   }
   const todayList=Object.values(matches).filter(m=>isToday(m.date)&&m.status!=='final').sort((a,b)=>new Date(a.date)-new Date(b.date));
   const completedList=Object.values(matches).filter(m=>m.status==='final').sort((a,b)=>new Date(b.date)-new Date(a.date));
   const tomorrowList=Object.values(matches).filter(m=>m.status==='scheduled'&&isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)&&!isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const matchesHtml=mkSection("Today's Games",todayList,null)
-    +mkSection('Completed',completedList,'completed')
-    +(tomorrowList.length?mkSection("Tomorrow's Games",tomorrowList,'tomorrow'):'')
-    +(upcomingList.length?mkSection('Upcoming',upcomingList,'upcoming'):'');
+  const matchSectionDefs=[
+    {title:"Today's Games",list:todayList,key:null},
+    {title:'Completed',list:completedList,key:'completed'},
+    ...(tomorrowList.length?[{title:"Tomorrow's Games",list:tomorrowList,key:'tomorrow'}]:[]),
+    ...(upcomingList.length?[{title:'Upcoming',list:upcomingList,key:'upcoming'}]:[]),
+  ];
+  const matchesHtml=mkDesktopTable(matchSectionDefs)
+    +`<div class="match-mobile-sections">${matchSectionDefs.map(s=>mkCardSection(s.title,s.list,s.key)).join('')}</div>`;
 
   // Per-team W/L/T records
   const teamRecord={};
