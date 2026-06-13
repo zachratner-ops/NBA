@@ -1176,9 +1176,17 @@ function renderTracker() {
     }
   });
 
-  // Teams
-  const teamsHtml=`<div class="teams-grid">${participants.map(p=>{
-    const myTeams=Object.entries(teamOwners).filter(([,o])=>o===p).map(([n])=>n);
+  // Teams — ordered by draft pick position
+  const draftSeq=draft&&draft.pickSequence?draft.pickSequence:[];
+  const teamsSorted=[...participants].sort((a,b)=>{
+    const ai=draftSeq.findIndex(s=>s.owner===a),bi=draftSeq.findIndex(s=>s.owner===b);
+    return (ai<0?9999:ai)-(bi<0?9999:bi);
+  });
+  const teamsHtml=`<div class="teams-grid">${teamsSorted.map(p=>{
+    const draftPicks=(draft&&draft.picks&&draft.picks[p])||[];
+    const myTeams=draftPicks.length>0
+      ?draftPicks.map(t=>t.name).filter(Boolean)
+      :Object.entries(teamOwners).filter(([,o])=>o===p).map(([n])=>n);
     const mn=fin.net[p]||0,cls=mn>0?'pos':mn<0?'neg':'';
     return `<div class="teams-card"><div class="teams-card-header" style="border-bottom:3px solid ${color(p)}">
       <div class="teams-card-name" style="color:${color(p)}">${p}</div>
