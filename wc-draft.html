@@ -922,10 +922,8 @@ function renderTracker() {
   // Tie pot tiebreakers
   const tieVals = participants.map(p=>fin.tieCount[p]||0);
   const maxTies = Math.max(...tieVals,0), minTies = Math.min(...tieVals);
-  let mostTied = participants.filter(p=>fin.tieCount[p]===maxTies&&maxTies>0);
-  if (mostTied.length>1){const mg=Math.min(...mostTied.map(p=>fin.gamesPlayed[p]||0));const tb=mostTied.filter(p=>(fin.gamesPlayed[p]||0)===mg);if(tb.length<mostTied.length)mostTied=tb;}
-  let leastTied = fin.tiePotTotal>0?participants.filter(p=>fin.tieCount[p]===minTies):[];
-  if (leastTied.length>1){const mg=Math.max(...leastTied.map(p=>fin.gamesPlayed[p]||0));const tb=leastTied.filter(p=>(fin.gamesPlayed[p]||0)===mg);if(tb.length<leastTied.length)leastTied=tb;}
+  const mostTied = participants.filter(p=>fin.tieCount[p]===maxTies&&maxTies>0);
+  const leastTied = fin.tiePotTotal>0?participants.filter(p=>fin.tieCount[p]===minTies):[];
 
   // Commissioner panel
   const commHtml = isComm ? `<div class="comm-panel"><div class="comm-label">Commissioner Controls</div><div class="comm-actions">
