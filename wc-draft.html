@@ -982,8 +982,8 @@ function renderTracker() {
             ${(()=>{const pk=draft?.pickOrder?draft.pickOrder.indexOf(p)+1:0;return pk?`<div style="font-size:10px;color:#bbb;margin-top:2px;font-weight:500;">Pick #${pk}</div>`:''})()}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-            ${isOwnerLive?`<span style="font-size:9px;font-weight:800;color:#e65100;letter-spacing:.05em;animation:livePulse 1.2s ease-in-out infinite;">● LIVE</span>`:''}
             <div class="lb-net ${cls(n)}">${fmtMoney(n)}</div>
+            ${isOwnerLive?`<span style="font-size:9px;font-weight:800;color:#e65100;letter-spacing:.05em;animation:livePulse 1.2s ease-in-out infinite;">● LIVE</span>`:''}
           </div>
         </div>
         <div class="lb-stats">
