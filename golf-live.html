@@ -938,7 +938,7 @@ function renderDraft() {
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
       <div class="odds-row">
-        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button><button onclick="event.stopPropagation();window.openOddsEdit('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:13px;line-height:1;padding:2px 4px;border-radius:4px;flex-shrink:0;" title="Edit odds">✎</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
     </div>`).join('');
 
   const apHtml = (draft.autopickList || []).map(p =>
@@ -1146,7 +1146,7 @@ window.setPoolSort = function(mode) {
       .filter(p => !q || p.name.toLowerCase().includes(q))
       .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
         <div class="player-name">${p.name}</div>
-        <div class="odds-row">${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
+        <div class="odds-row">${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button><button onclick="event.stopPropagation();window.openOddsEdit('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:13px;line-height:1;padding:2px 4px;border-radius:4px;flex-shrink:0;" title="Edit odds">✎</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
       </div>`).join('');
   }
   // Update toggle button styles
@@ -1172,7 +1172,7 @@ window.onSearch = function(val) {
     .map(p => `<div class="player-card ${selectedPlayer?.name===p.name?'selected':''}" onclick="window.selectPlayer(this.dataset.p)" data-p='${JSON.stringify(p).replace(/'/g,"&apos;")}'>
       <div class="player-name">${p.name}</div>
       <div class="odds-row">
-        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
+        ${isComm ? `<button onclick="event.stopPropagation();window.removeFromField('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:12px;line-height:1;padding:2px 4px;border-radius:4px;margin-left:2px;flex-shrink:0;" title="Remove from field">✕</button><button onclick="event.stopPropagation();window.openOddsEdit('${p.name.replace(/'/g,"\'").replace(/"/g,'&quot;')}')" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:13px;line-height:1;padding:2px 4px;border-radius:4px;flex-shrink:0;" title="Edit odds">✎</button>` : ''}${p.odds_fd?`<span class="odds-pill fd"><span class="odds-label">FD Win</span>${p.odds_fd}</span>`:''}${p.odds_dk?`<span class="odds-pill dk"><span class="odds-label">Win</span>${p.odds_dk}</span>`:''}${p.odds_top5?`<span class="odds-pill odds-top5"><span class="odds-label">Top 5</span>${p.odds_top5}</span>`:''}${p.odds_top10?`<span class="odds-pill odds-top10"><span class="odds-label">Top 10</span>${p.odds_top10}</span>`:''}</div>
     </div>`).join('');
   poolEl.innerHTML = poolHtml;
 };
@@ -2626,6 +2626,7 @@ function showOddsResult(data) {
 
 
 window.importOdds = async function() {
+  document.getElementById('odds-modal').querySelector('h3').textContent = 'Odds Import';
   document.getElementById('odds-content').innerHTML = '<p style="color:#888;">Fetching live odds…</p>';
   document.getElementById('odds-modal').style.display = 'flex';
   try {
@@ -2640,6 +2641,44 @@ window.importOdds = async function() {
   } catch(e) {
     document.getElementById('odds-content').innerHTML = `<p style="color:#c62828;">Error: ${e.message}</p><button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="document.getElementById('odds-modal').style.display='none'">Close</button>`;
   }
+};
+
+let _oddsEditPlayer = null;
+window.openOddsEdit = function(playerName) {
+  _oddsEditPlayer = playerName;
+  const p = (draft.field || []).find(f => f.name === playerName) || {};
+  document.getElementById('odds-modal').querySelector('h3').textContent = 'Edit Odds';
+  document.getElementById('odds-content').innerHTML = `
+    <p style="font-weight:700;margin-bottom:12px;">${playerName}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+      <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Win (DK)</label>
+        <input id="oe-dk" value="${p.odds_dk||''}" placeholder="+450" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Win (FD)</label>
+        <input id="oe-fd" value="${p.odds_fd||''}" placeholder="+500" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Top 5</label>
+        <input id="oe-top5" value="${p.odds_top5||''}" placeholder="-130" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px;box-sizing:border-box;"></div>
+      <div><label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Top 10</label>
+        <input id="oe-top10" value="${p.odds_top10||''}" placeholder="-265" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px;box-sizing:border-box;"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-green" style="flex:1;" onclick="window.saveOddsEdit()">Save</button>
+      <button class="btn btn-outline" style="flex:1;" onclick="document.getElementById('odds-modal').style.display='none'">Cancel</button>
+    </div>`;
+  document.getElementById('odds-modal').style.display = 'flex';
+};
+
+window.saveOddsEdit = async function() {
+  if (!_oddsEditPlayer) return;
+  const fmt = v => { v = (v||'').trim(); if (!v) return ''; return /^[+-]/.test(v) ? v : '+'+v; };
+  await proxyApi('/field/odds', 'POST', {
+    name:       _oddsEditPlayer,
+    odds_dk:    fmt(document.getElementById('oe-dk')?.value),
+    odds_fd:    fmt(document.getElementById('oe-fd')?.value),
+    odds_top5:  fmt(document.getElementById('oe-top5')?.value),
+    odds_top10: fmt(document.getElementById('oe-top10')?.value),
+  });
+  _oddsEditPlayer = null;
+  document.getElementById('odds-modal').style.display = 'none';
 };
 
 window.applyOdds = async function(fieldName, selId) {
