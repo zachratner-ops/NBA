@@ -795,11 +795,17 @@ function renderLobby() {
           </div>
           ${![120,300,600,14400].includes(lobbyTimer||14400) ? `<div style="font-size:11px;color:#2e7d32;margin-top:5px;">Custom: ${Math.floor(lobbyTimer/60)}m ${lobbyTimer%60>0?lobbyTimer%60+'s':''}</div>` : ''}
         </div>
-        <button class="btn btn-outline" style="width:100%;margin-bottom:6px;" onclick="window.genMain()">${previewOrder?'Re-randomize':'Randomize'} Main Order</button>
-        ${mainPrev ? `<div class="order-preview">${mainPrev}</div>` : ''}
-        ${snakePreview ? `<div style="font-size:11px;color:#888;margin-top:4px;margin-bottom:4px;">Snake: ${snakePreview} →...</div>` : ''}
-        <button class="btn btn-outline" style="width:100%;margin-top:12px;margin-bottom:6px;" onclick="window.genAlt()">${previewAltOrder?'Re-randomize':'Randomize'} Alternate Order</button>
-        ${altPrev ? `<div class="order-preview">${altPrev}</div>` : ''}
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <button class="btn btn-outline" style="flex:1;" onclick="window.genMain()">${previewOrder?'Re-randomize':'Randomize'} Main</button>
+          ${!previewOrder ? `<button class="btn btn-outline" style="flex:1;" onclick="window.setManualMain()">Set Manually</button>` : ''}
+        </div>
+        ${previewOrder ? renderDragList(previewOrder, 'main') : ''}
+        ${snakePreview ? `<div style="font-size:11px;color:#888;margin-top:4px;margin-bottom:12px;">Snake: ${snakePreview} →...</div>` : ''}
+        <div style="display:flex;gap:6px;margin-bottom:6px;margin-top:${previewOrder?'0':'12px'};">
+          <button class="btn btn-outline" style="flex:1;" onclick="window.genAlt()">${previewAltOrder?'Re-randomize':'Randomize'} Alt</button>
+          ${!previewAltOrder ? `<button class="btn btn-outline" style="flex:1;" onclick="window.setManualAlt()">Set Manually</button>` : ''}
+        </div>
+        ${previewAltOrder ? renderDragList(previewAltOrder, 'alt') : ''}
         <button class="btn btn-green" style="width:100%;padding:12px;margin-top:16px;" onclick="window.startDraft()" ${canStart?'':'disabled'}>${canStart?'Start Draft →':'Randomize both orders first'}</button>
         <button class="btn btn-outline btn-sm" style="margin-top:16px;color:#c62828;border-color:#eee;" onclick="document.getElementById('reset-modal').style.display='flex'">Reset to Setup</button>
       </div>
@@ -817,6 +823,36 @@ window.setCustomTimer = function() {
 };
 window.genMain = function() { previewOrder = shuffleArr(owners()); renderLobby(); };
 window.genAlt  = function() { previewAltOrder = shuffleArr(owners()); renderLobby(); };
+window.setManualMain = function() { if (!previewOrder) previewOrder = [...owners()]; renderLobby(); };
+window.setManualAlt  = function() { if (!previewAltOrder) previewAltOrder = [...owners()]; renderLobby(); };
+
+function renderDragList(arr, listName) {
+  return arr.map((o, i) =>
+    `<div draggable="true"
+      style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid #e8e8e8;border-radius:7px;margin-bottom:4px;cursor:grab;user-select:none;"
+      ondragstart="window.orderDragStart(event,${i},'${listName}')"
+      ondragover="window.orderDragOver(event)"
+      ondrop="window.orderDrop(event,${i},'${listName}')"
+      ondragend="window.orderDragEnd()">
+      <span style="color:#bbb;font-size:13px;letter-spacing:-1px;">⠿⠿</span>
+      <span style="color:#aaa;font-size:12px;min-width:16px;">${i + 1}.</span>
+      <span style="color:${color(o)};font-weight:700;">${o}</span>
+    </div>`
+  ).join('');
+}
+
+let _dragIdx = null, _dragList = null;
+window.orderDragStart = function(e, idx, listName) { _dragIdx = idx; _dragList = listName; e.dataTransfer.effectAllowed = 'move'; };
+window.orderDragOver  = function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+window.orderDrop = function(e, targetIdx, listName) {
+  e.preventDefault();
+  if (_dragIdx === null || _dragList !== listName || _dragIdx === targetIdx) return;
+  const arr = listName === 'main' ? previewOrder : previewAltOrder;
+  const [moved] = arr.splice(_dragIdx, 1);
+  arr.splice(targetIdx, 0, moved);
+  renderLobby();
+};
+window.orderDragEnd = function() { _dragIdx = null; _dragList = null; };
 window.startDraft = async function() {
   if (!previewOrder || !previewAltOrder) return;
   connectWS();
@@ -959,7 +995,7 @@ function renderDraft() {
           <div style="font-size:17px;font-weight:700;color:${cur?color(cur.owner):'#2e7d32'}">${cur?`${cur.owner} is on the clock`:'Draft complete!'}</div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:11px;color:#888;">Time remaining</div>
+          <div style="font-size:11px;color:#888;" id="timer-label">${(draft.frozenSecsRemaining != null || isNightHours()) ? 'Paused &middot; Resumes 8am ET' : 'Time remaining'}</div>
           <div class="timer-val" id="timer-display">4:00:00</div>
         </div>
       </div>
@@ -1036,24 +1072,34 @@ function startTimer() {
     if (draft?.status !== 'drafting') { clearInterval(timerInterval); timerInterval = null; return; }
     const el = document.getElementById('timer-display');
     if (!el) { clearInterval(timerInterval); timerInterval = null; return; }
-    if (isNightHours()) {
+    const labelEl = document.getElementById('timer-label');
+    if (isNightHours() || draft.frozenSecsRemaining != null) {
       // Timer paused overnight — show remaining time but don't count down or trigger autopick
       el.textContent = formatTime(getTimerSecs());
       el.className = 'timer-val';
+      if (labelEl) labelEl.innerHTML = 'Paused &middot; Resumes 8am ET';
       return;
     }
     const secs = getTimerSecs();
     el.textContent = formatTime(secs);
     el.className = 'timer-val' + (secs<300?' danger':secs<900?' warn':'');
+    if (labelEl) labelEl.textContent = 'Time remaining';
     if (secs === 0) { clearInterval(timerInterval); timerInterval = null; showAutopick(); }
   }, 1000);
 }
 
 function getTimerSecs() {
   if (!draft?.timerStart) return draft?.timerDuration || 14400;
-  // Only use frozen snapshot at night — during the day always use live timerDuration/timerStart
-  if (isNightHours() && draft.frozenSecsRemaining != null) {
+  // Server sets frozenSecsRemaining when pausing overnight and clears it at 8am ET.
+  // Check this BEFORE the night-hours check so the timer stays frozen during the
+  // brief window between 8am (client clock) and when the server clears the field in Firebase.
+  if (draft.frozenSecsRemaining != null) {
     return Math.floor(draft.frozenSecsRemaining);
+  }
+  // Secondary guard: if client clock says it's night but server hasn't frozen yet
+  // (first ~10s after 10pm), just show current elapsed — don't trigger autopick.
+  if (isNightHours()) {
+    return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - draft.timerStart) / 1000));
   }
   return Math.max(0, (draft.timerDuration || 14400) - Math.floor((Date.now() - draft.timerStart) / 1000));
 }
