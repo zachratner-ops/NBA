@@ -884,7 +884,8 @@ function computeFinancials(matches, teamOwners, participants) {
         else if (ao!==undefined&&ao===ho){net[ho]-=20;netMatch[ho]-=20;tiePotPaid[ho]+=20;tieCount[ho]+=2;tiePotTotal+=20;}
       } else if (ho!==undefined&&ao!==undefined) {
         const wo=hs>as?ho:ao, lo=hs>as?ao:ho;
-        if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;wins[wo]++;losses[lo]++;}
+        if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;}
+        wins[wo]++;losses[lo]++;
       }
     }
   });
@@ -924,6 +925,11 @@ function renderTracker() {
   const maxTies = Math.max(...tieVals,0), minTies = Math.min(...tieVals);
   const mostTied = participants.filter(p=>fin.tieCount[p]===maxTies&&maxTies>0);
   const leastTied = fin.tiePotTotal>0?participants.filter(p=>fin.tieCount[p]===minTies):[];
+  // Tiebreaker leaders (for display only — not used to prune the tied set)
+  const mostTbMin = mostTied.length>1?Math.min(...mostTied.map(p=>fin.gamesPlayed[p]||0)):null;
+  const mostTbLeaders = mostTied.length>1?mostTied.filter(p=>(fin.gamesPlayed[p]||0)===mostTbMin):[];
+  const leastTbMax = leastTied.length>1?Math.max(...leastTied.map(p=>fin.gamesPlayed[p]||0)):null;
+  const leastTbLeaders = leastTied.length>1?leastTied.filter(p=>(fin.gamesPlayed[p]||0)===leastTbMax):[];
 
   // Commissioner panel
   const commHtml = isComm ? `<div class="comm-panel"><div class="comm-label">Commissioner Controls</div><div class="comm-actions">
@@ -1023,13 +1029,13 @@ function renderTracker() {
     <div class="tiepot-winners">
       ${mostTied.length?`<div class="tiepot-winner">
         <span class="tiepot-badge tiepot-most">MOST</span>
-        <span class="tiepot-winner-name">${mostTied.join(', ')}</span>
+        <span class="tiepot-winner-name">${mostTied.join(', ')}${mostTied.length>1?'*':''}</span>
         <span class="tiepot-winner-count">${maxTies} tie${maxTies!==1?'s':''}</span>
         <span class="tiepot-payout">+$${halfPot}</span>
       </div>`:''}
       ${leastTied.length?`<div class="tiepot-winner">
         <span class="tiepot-badge tiepot-least">FEWEST</span>
-        <span class="tiepot-winner-name">${leastTied.join(', ')}</span>
+        <span class="tiepot-winner-name">${leastTied.join(', ')}${leastTied.length>1?'*':''}</span>
         <span class="tiepot-winner-count">${minTies} tie${minTies!==1?'s':''}</span>
         <span class="tiepot-payout">+$${halfPot}</span>
       </div>`:''}
@@ -1041,10 +1047,15 @@ function renderTracker() {
           <span class="tiepot-name" style="color:${color(p)}">${p}</span>
           <div class="tiepot-bar-wrap"><div class="tiepot-bar" style="width:${pct}%;background:${color(p)}"></div></div>
           <span class="tiepot-count">${tc}</span>
-          ${mostTied.includes(p)&&maxTies>0?'<span class="tiepot-badge tiepot-most">M</span>':leastTied.includes(p)&&fin.tiePotTotal>0?'<span class="tiepot-badge tiepot-least">L</span>':'<span style="width:24px;display:inline-block;"></span>'}
+          ${mostTied.includes(p)&&maxTies>0?'<span class="tiepot-badge tiepot-most">M</span>':leastTied.includes(p)&&fin.tiePotTotal>0?'<span class="tiepot-badge tiepot-least">F</span>':'<span style="width:24px;display:inline-block;"></span>'}
         </div>`;
       }).join('')}
     </div>
+    ${(mostTied.length>1||leastTied.length>1)?`<div style="padding:8px 16px 4px;font-size:10px;color:#aaa;line-height:1.8;">
+      ${mostTied.length>1?`* Tiebreaker (Most): Fewest games played wins — ${mostTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} currently leading`:''}
+      ${mostTied.length>1&&leastTied.length>1?'<br>':''}
+      ${leastTied.length>1?`* Tiebreaker (Fewest): Most games played wins — ${leastTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} currently leading`:''}
+    </div>`:''}
   </div>`;
 
   // Match tab — three sections: Today / Completed / Upcoming
@@ -1198,7 +1209,7 @@ function renderTracker() {
           <span class="team-flag">${flagImg(WC_FLAGS[nm])}</span>
           <span class="team-name-txt">${nm}</span>
           <span class="team-emoji">⚽</span>
-          <span class="team-goals">${fin.goalsByTeam[nm]?`${fin.goalsByTeam[nm]}g`:''}</span>
+          <span class="team-goals">${(rec&&(rec.w+rec.l+rec.t>0))||fin.goalsByTeam[nm]?`${fin.goalsByTeam[nm]||0}g`:''}</span>
           <span class="team-emoji">🏆</span>
           <span class="team-record">${rec&&(rec.w+rec.l+rec.t>0)?`${rec.w}-${rec.l}-${rec.t}`:'—'}</span>
           <span class="team-group">Grp ${WC_GROUPS_MAP[nm]||'?'}</span>
