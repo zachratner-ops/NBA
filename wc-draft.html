@@ -995,7 +995,7 @@ function renderTracker() {
         <div class="lb-stats">
           <div class="lb-stat">
             <span class="lb-stat-icon">⚽</span>
-            <span class="lb-stat-label">Goals<span class="lb-stat-sub">${fin.goalsByOwner[p]||0}g${(fin.liveGoalsByOwner[p]||0)>0?` <span style="color:#e65100;font-size:9px;font-weight:800;animation:livePulse 1.2s ease-in-out infinite;">●</span>`:''}</span></span>
+            <span class="lb-stat-label">Goals<span class="lb-stat-sub">${fin.goalsByOwner[p]||0}g${(()=>{const gp=fin.gamesPlayed[p]||0;if(!gp)return'';const finalGoals=(fin.goalsByOwner[p]||0)-(fin.liveGoalsByOwner[p]||0);const gpm=(finalGoals/gp).toFixed(1);return` / ${gpm}g/m`;})()}${(fin.liveGoalsByOwner[p]||0)>0?` <span style="color:#e65100;font-size:9px;font-weight:800;animation:livePulse 1.2s ease-in-out infinite;">●</span>`:''}</span></span>
             <span class="lb-stat-val ${cls(goalVal)}">${fmtStat(goalVal)}</span>
           </div>
           <div class="lb-stat">
