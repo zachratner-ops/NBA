@@ -1167,8 +1167,8 @@ function renderTracker() {
   const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)&&!isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const matchSectionDefs=[
     {title:"Today's Games",list:todayList,key:null},
-    {title:'Completed',list:completedList,key:'completed'},
     ...(tomorrowList.length?[{title:"Tomorrow's Games",list:tomorrowList,key:'tomorrow'}]:[]),
+    {title:'Completed',list:completedList,key:'completed'},
     ...(upcomingList.length?[{title:'Upcoming',list:upcomingList,key:'upcoming'}]:[]),
   ];
   const matchesHtml=mkDesktopTable(matchSectionDefs)
