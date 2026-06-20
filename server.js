@@ -1655,6 +1655,40 @@ app.post('/wc/matches/refresh', async function(req, res) {
   res.json(result);
 });
 
+// Force-refresh a specific date from ESPN — bypasses the live→scheduled guard so hung games can be resolved
+app.post('/wc/matches/refresh-date', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  const { date } = req.body; // YYYYMMDD
+  if (!date || !/^\d{8}$/.test(date)) return res.status(400).json({ error: 'date required in YYYYMMDD format' });
+  try {
+    const fetched = await fetchWCMatchesForDate(date);
+    if (!Object.keys(fetched).length) return res.json({ ok: true, fetched: 0, note: 'ESPN returned no matches for ' + date });
+    const db = admin.database();
+    const snap = await db.ref('wc26_live/matches').get();
+    const existing = snap.exists() ? (snap.val() || {}) : {};
+    const merged = Object.assign({}, existing, fetched);
+    Object.keys(existing).forEach(function(id) {
+      if (!merged[id]) return;
+      // Still protect confirmed finals from regressing to scheduled (ESPN transient stale data)
+      if (existing[id].status === 'final' && merged[id].status === 'scheduled') {
+        merged[id] = existing[id];
+        return;
+      }
+      // Preserve manual PK override
+      if (existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
+        merged[id].isPenaltyShootout = true;
+      }
+    });
+    await db.ref('wc26_live/matches').set(merged);
+    await db.ref('wc26_live/updated').set(new Date().toISOString());
+    console.log('WC refresh-date ' + date + ': ' + Object.keys(fetched).length + ' matches fetched from ESPN');
+    res.json({ ok: true, fetched: Object.keys(fetched).length, date: date, updated: new Date().toISOString() });
+  } catch(e) {
+    console.error('WC refresh-date error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/wc/groupme', async function(req, res) {
   const result = await postWCDailyGroupMe();
   if (result.error) return res.status(502).json(result);

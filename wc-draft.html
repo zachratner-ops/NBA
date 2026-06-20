@@ -937,6 +937,7 @@ function renderTracker() {
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Refresh Scores
     </button>
     <button class="btn btn-sm btn-amber" onclick="openMatchModal()">+ Add / Edit Match</button>
+    <button class="btn btn-sm btn-outline" onclick="refreshDateFromESPN()" style="color:#1565c0;border-color:#1565c0;">📡 Refresh Date from ESPN</button>
     <button class="btn btn-sm btn-outline" onclick="loadSchedule()" style="color:#1565c0;border-color:#1565c0;">📅 Load Schedule</button>
     <button class="btn btn-sm btn-outline" onclick="clearMatches()" style="color:#c62828;border-color:#c62828;">🗑 Clear Matches</button>
     <button class="btn btn-sm btn-outline" onclick="seedMatches()" style="color:#e65100;border-color:#e65100;">⚡ Seed Group Stage</button>
@@ -1487,6 +1488,19 @@ window.refreshScores = async function() {
   document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.add('spinning'));
   try{await fetch(`${PROXY}/wc/matches/refresh`,{method:'POST'});}catch(e){console.error(e);}
   finally{trackerRefreshing=false;document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.remove('spinning'));}
+};
+window.refreshDateFromESPN = async function() {
+  const todayET = new Date(Date.now() - 4*3600000).toISOString().slice(0,10).replace(/-/g,'');
+  const input = prompt('Fetch ESPN data for date (YYYYMMDD):', todayET);
+  if (!input) return;
+  if (!/^\d{8}$/.test(input)) { showToast('Invalid date — use YYYYMMDD'); return; }
+  showToast('Fetching ESPN data for ' + input + '…', 15000);
+  try {
+    const r = await fetch(`${PROXY}/wc/matches/refresh-date`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({date: input}) });
+    const data = await r.json();
+    if (data.ok) showToast(`✓ ${data.fetched} match${data.fetched!==1?'es':''} pulled from ESPN for ${input}` + (data.note ? ' — ' + data.note : ''));
+    else showToast('Error: ' + (data.error || 'unknown'));
+  } catch(e) { showToast('Error refreshing date'); console.error(e); }
 };
 window.clearMatches = async function() {
   if(!confirm('Clear all match data from Firebase? You\'ll need to reload the schedule after.'))return;
