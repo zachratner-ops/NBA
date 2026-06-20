@@ -1383,7 +1383,7 @@ function renderLive(isFinal) {
         <button class="btn btn-sm ${subOpen&&subRound===2?'btn-red':subOpen&&subRound===1?'btn-outline':'btn-amber'}" style="${subOpen&&subRound===1?'color:#555;border-color:#555;cursor:not-allowed;opacity:0.45;':''}" onclick="window.toggleSubR2()" ${subOpen&&subRound===1?'disabled':''}>R2 Sub Window ($15) ${subOpen&&subRound===2?'— Close':subOpen&&subRound===1?'— Locked':'— Open'}</button>
         ${subs.length > 0 ? `<button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.undoSub()">↩ Undo Last Sub</button>` : ''}
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.markRoundEnd()">📍 Mark Round End</button>
-        <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.refreshScores()">↻ Refresh Scores</button>
+        <button class="btn btn-sm btn-outline" id="force-poll-btn" style="color:#fff;border-color:#444;" onclick="window.forcePoll()">↻ Refresh Scores</button>
         <span style="font-size:10px;color:#555;">Round auto-detected from ESPN</span>
         <button class="btn btn-sm btn-outline" style="color:#fff;border-color:#444;" onclick="window.importOdds()">↻ Refresh Odds</button>
         <button class="btn btn-sm btn-outline" style="color:${showRenamePanel?'#e65100':'#aaa'};border-color:${showRenamePanel?'#e65100':'#444'};" onclick="window.toggleRenamePanel()">✎ Rename Player</button>
@@ -2107,6 +2107,20 @@ function buildSparklines(lbData) {
 }
 
 // ── Score refresh ──────────────────────────────────────────────────
+window.forcePoll = async function() {
+  const btn = document.getElementById('force-poll-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching…'; }
+  try {
+    const data = await proxyApi('/poll', 'POST');
+    if (data.error) { showToast('Poll error: ' + data.error); }
+    else { showToast(`✓ Updated ${data.players} players · Round ${data.round}`); }
+  } catch(e) {
+    showToast('Poll failed: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Scores'; }
+  }
+};
+
 window.refreshScores = async function(explicitId, writeSnapshot) {
   const eventId = explicitId || live?.espnEventId;
   if (!eventId) return;
