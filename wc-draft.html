@@ -879,9 +879,12 @@ function computeFinancials(matches, teamOwners, participants) {
     if (!isLive) {
       const isTie=(m.stage==='group'&&hs===as)||(m.stage!=='group'&&m.isPenaltyShootout);
       if (isTie) {
-        if (ho!==undefined){net[ho]-=10;netMatch[ho]-=10;tiePotPaid[ho]+=10;tieCount[ho]++;tiePotTotal+=10;}
-        if (ao!==undefined&&ao!==ho){net[ao]-=10;netMatch[ao]-=10;tiePotPaid[ao]+=10;tieCount[ao]++;tiePotTotal+=10;}
-        else if (ao!==undefined&&ao===ho){net[ho]-=20;netMatch[ho]-=20;tiePotPaid[ho]+=20;tieCount[ho]+=2;tiePotTotal+=20;}
+        if (ho!==undefined&&ao!==undefined&&ho===ao) {
+          net[ho]-=20;netMatch[ho]-=20;tiePotPaid[ho]+=20;tieCount[ho]+=2;tiePotTotal+=20;
+        } else {
+          if (ho!==undefined){net[ho]-=10;netMatch[ho]-=10;tiePotPaid[ho]+=10;tieCount[ho]++;tiePotTotal+=10;}
+          if (ao!==undefined){net[ao]-=10;netMatch[ao]-=10;tiePotPaid[ao]+=10;tieCount[ao]++;tiePotTotal+=10;}
+        }
       } else if (ho!==undefined&&ao!==undefined) {
         const wo=hs>as?ho:ao, lo=hs>as?ao:ho;
         if (wo!==lo){net[wo]+=10;netMatch[wo]+=10;net[lo]-=10;netMatch[lo]-=10;}

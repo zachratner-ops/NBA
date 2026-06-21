@@ -1250,9 +1250,12 @@ function computeWCFinancials(matches, teamOwners, participants) {
     }
     const isTie = (m.stage === 'group' && hs === as_) || (m.stage !== 'group' && m.isPenaltyShootout);
     if (isTie) {
-      if (ho !== undefined) { net[ho] -= 10; tieCount[ho]++; tiePotTotal += 10; }
-      if (ao !== undefined && ao !== ho) { net[ao] -= 10; tieCount[ao]++; tiePotTotal += 10; }
-      else if (ao !== undefined && ao === ho) { net[ho] -= 20; tieCount[ho] += 2; tiePotTotal += 20; }
+      if (ho !== undefined && ao !== undefined && ho === ao) {
+        net[ho] -= 20; tieCount[ho] += 2; tiePotTotal += 20;
+      } else {
+        if (ho !== undefined) { net[ho] -= 10; tieCount[ho]++; tiePotTotal += 10; }
+        if (ao !== undefined) { net[ao] -= 10; tieCount[ao]++; tiePotTotal += 10; }
+      }
     } else if (ho !== undefined && ao !== undefined && ho !== ao) {
       const wo = hs > as_ ? ho : ao, lo = hs > as_ ? ao : ho;
       net[wo] += 10; net[lo] -= 10;
