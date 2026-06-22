@@ -65,8 +65,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── Commissioner panel ───────────────────────────────────────── */
 .comm-bar{background:#1a1a1a;border-radius:12px;padding:16px;margin-bottom:20px;}
 .comm-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:12px;display:block;}
-.comm-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;}
-.comm-card-row{background:#2a2a2a;border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:space-between;}
+.comm-actions{display:flex;flex-direction:column;gap:8px;}
+.comm-group-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-top:8px;}
+.comm-group-label:first-child{margin-top:0;}
+.comm-card-row{background:#2a2a2a;border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;}
+.comm-reorder{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+.comm-arrow{width:24px;height:18px;line-height:1;font-size:9px;border:1px solid #444;background:#1a1a1a;color:#bbb;border-radius:4px;cursor:pointer;padding:0;transition:background .12s,color .12s;}
+.comm-arrow:hover:not(:disabled){background:#3a3a3a;color:#fff;}
+.comm-arrow:disabled{opacity:.3;cursor:default;}
 .comm-card-info{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
 .comm-card-name{font-size:13px;font-weight:600;color:#fff;}
 .comm-card-status{font-size:11px;color:#aaa;}
@@ -6754,6 +6760,20 @@ const COMM_PW = 'golf';
 const FIREBASE_BASE = 'https://giesener-bets-default-rtdb.firebaseio.com';
 let isComm = false;
 let cardStates = {};
+let cardOrder = [];
+
+// Return CARDS sorted by the saved order; any card not in the saved
+// order (e.g. newly added in code) is appended in its array position.
+function orderedCards() {
+  const byId = {};
+  CARDS.forEach(c => { byId[c.id] = c; });
+  const result = [], seen = new Set();
+  cardOrder.forEach(id => {
+    if (byId[id] && !seen.has(id)) { result.push(byId[id]); seen.add(id); }
+  });
+  CARDS.forEach(c => { if (!seen.has(c.id)) result.push(c); });
+  return result;
+}
 
 function setWcCardVisibility(visible) {
   const card = document.getElementById('wc-card');
@@ -6796,22 +6816,64 @@ function checkCommPw() {
 
 function renderCommPanel() {
   const actions = document.getElementById('comm-actions');
-  actions.innerHTML = CARDS.map(card => {
-    const active = cardStates[card.id] === true;
-    return `<div class="comm-card-row">
-      <div class="comm-card-info">
-        <div class="comm-card-name">${card.name}</div>
-        <div class="comm-card-status">${active ? '✅ Active' : '🔒 Coming Soon'}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''};" onclick="setCardActive('${card.id}',true)">Activate</button>
-        <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'};" onclick="setCardActive('${card.id}',false)">Deactivate</button>
-      </div>
-    </div>`;
+  const ordered = orderedCards();
+  const groups = [
+    { label: 'Active Bets', cards: ordered.filter(c => cardStates[c.id] === true) },
+    { label: 'Coming Soon', cards: ordered.filter(c => cardStates[c.id] !== true) },
+  ];
+
+  actions.innerHTML = groups.map(g => {
+    if (!g.cards.length) return '';
+    const rows = g.cards.map((card, i) => {
+      const active = cardStates[card.id] === true;
+      const upDis = i === 0 ? 'disabled' : '';
+      const downDis = i === g.cards.length - 1 ? 'disabled' : '';
+      return `<div class="comm-card-row">
+        <div class="comm-reorder">
+          <button class="comm-arrow" ${upDis} onclick="moveCard('${card.id}','up')" title="Move up">▲</button>
+          <button class="comm-arrow" ${downDis} onclick="moveCard('${card.id}','down')" title="Move down">▼</button>
+        </div>
+        <div class="comm-card-info">
+          <div class="comm-card-name">${card.name}</div>
+          <div class="comm-card-status">${active ? '✅ Active' : '🔒 Coming Soon'}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''};" onclick="setCardActive('${card.id}',true)">Activate</button>
+          <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'};" onclick="setCardActive('${card.id}',false)">Deactivate</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="comm-group-label">${g.label}</div>${rows}`;
   }).join('');
 }
 
+// Move a card up/down within its own section (Active or Coming Soon).
+async function moveCard(cardId, dir) {
+  const ordered = orderedCards();
+  const isActive = cardStates[cardId] === true;
+  const group = ordered.filter(c => (cardStates[c.id] === true) === isActive);
+  const gi = group.findIndex(c => c.id === cardId);
+  const target = dir === 'up' ? gi - 1 : gi + 1;
+  if (target < 0 || target >= group.length) return;
+
+  const order = ordered.map(c => c.id);
+  const ia = order.indexOf(group[gi].id);
+  const ib = order.indexOf(group[target].id);
+  [order[ia], order[ib]] = [order[ib], order[ia]];
+  cardOrder = order;
+
+  renderAllCards();
+  renderCommPanel();
+  await fetch(`${FIREBASE_BASE}/site_config/cardOrder.json`, {
+    method: 'PUT',
+    body: JSON.stringify(order),
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
 async function setCardActive(cardId, active) {
+  // Ensure the card has a slot in the saved order so it lands predictably.
+  if (!cardOrder.includes(cardId)) cardOrder = orderedCards().map(c => c.id);
   await fetch(`${FIREBASE_BASE}/site_config/cards/${cardId}.json`, {
     method: 'PUT',
     body: JSON.stringify(active),
@@ -6829,7 +6891,7 @@ function renderAllCards() {
   activeGrid.querySelectorAll('[data-card-id]').forEach(el => el.remove());
   comingSoonGrid.innerHTML = '';
 
-  CARDS.forEach(card => {
+  orderedCards().forEach(card => {
     const active = cardStates[card.id] === true;
     const wrapper = document.createElement('div');
     wrapper.setAttribute('data-card-id', card.id);
@@ -6896,11 +6958,13 @@ function loadGolfLeader(elemId, slug) {
     .catch(() => {});
 }
 
-// Load card states from Firebase on page load
-fetch(`${FIREBASE_BASE}/site_config/cards.json`)
+// Load card states + saved order from Firebase on page load
+fetch(`${FIREBASE_BASE}/site_config.json`)
   .then(r => r.json())
-  .then(val => {
-    cardStates = val || {};
+  .then(cfg => {
+    cfg = cfg || {};
+    cardStates = cfg.cards || {};
+    cardOrder = Array.isArray(cfg.cardOrder) ? cfg.cardOrder : [];
     // Set defaults for active bets if not already set
     const defaultActive = ['bernie-bet', 'oneoff-bets', 'wc2026'];
     defaultActive.forEach(id => {
@@ -6915,6 +6979,7 @@ fetch(`${FIREBASE_BASE}/site_config/cards.json`)
       'oneoff-bets': true,
       'wc2026': true,
     };
+    cardOrder = [];
     renderAllCards();
   });
 </script>
