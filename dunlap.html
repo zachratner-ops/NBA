@@ -9,10 +9,15 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
 a{color:inherit;}
 
-.topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
 .topbar-title{font-size:16px;font-weight:700;letter-spacing:-.01em;}
-.topbar-back{font-size:12px;color:#bbb;text-decoration:none;}
-.topbar-back:hover{color:#fff;}
+.topbar-actions{display:flex;align-items:center;gap:12px;}
+.topbar-nav a{color:#aaa;font-size:13px;text-decoration:none;}
+.topbar-nav a:hover{color:#fff;}
+.topbar-log{font-family:inherit;font-size:13px;font-weight:700;color:#fff;background:#AD1457;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;white-space:nowrap;}
+.topbar-log:hover{background:#c2185b;}
+.fb-link{font-size:12px;color:#aaa;text-decoration:none;white-space:nowrap;border:0.5px solid #444;border-radius:5px;padding:4px 10px;transition:color .15s,border-color .15s;}
+.fb-link:hover{color:#fff;border-color:#888;}
 
 .hero{padding:44px 20px 28px;max-width:880px;margin:0 auto;}
 .hero-kicker{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#AD1457;margin-bottom:10px;}
@@ -139,13 +144,89 @@ a{color:inherit;}
 .cal-legend .sep{color:#ddd;margin:0 2px;}
 
 .footnote{font-size:11px;color:#aaa;margin-top:30px;line-height:1.6;}
+.footnote a{color:#888;text-decoration:underline;cursor:pointer;}
+
+/* ── Buttons ── */
+.btn-primary{font-family:inherit;font-size:13px;font-weight:700;color:#fff;background:#AD1457;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;white-space:nowrap;}
+.btn-primary:hover{background:#8e0f47;}
+.btn-ghost{font-family:inherit;font-size:13px;font-weight:600;color:#666;background:#f0f0ee;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;}
+.btn-ghost:hover{background:#e6e6e3;}
+
+/* ── Modals ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:80;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:22px;width:100%;max-width:420px;box-shadow:0 16px 50px rgba(0,0,0,.25);}
+.modal-wide{max-width:560px;}
+.modal-title{font-size:18px;font-weight:800;letter-spacing:-.01em;margin-bottom:16px;}
+.fld{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:12px;font-weight:600;color:#666;}
+.fld input{font-family:inherit;font-size:14px;color:#1a1a1a;border:.5px solid #ccc;border-radius:8px;padding:9px 11px;}
+.fld.chk{flex-direction:row;align-items:center;gap:8px;font-size:13px;color:#1a1a1a;}
+.fld.chk input{width:16px;height:16px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+.modal-msg{font-size:12px;color:#888;margin-top:10px;text-align:right;min-height:14px;}
+
+/* ── Feedback (Suggest) modal — matches site ── */
+.fb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+.fb-overlay.open{display:flex;}
+.fb-modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:420px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.fb-modal h2{font-size:18px;font-weight:700;margin-bottom:4px;}
+.fb-modal p{font-size:13px;color:#888;margin-bottom:20px;line-height:1.4;}
+.fb-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;}
+.fb-close:hover{color:#1a1a1a;}
+.fb-field{margin-bottom:14px;}
+.fb-field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:5px;}
+.fb-field input,.fb-field textarea,.fb-field select{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;color:#1a1a1a;background:#fff;}
+.fb-field input:focus,.fb-field textarea:focus,.fb-field select:focus{outline:none;border-color:#1a1a1a;}
+.fb-field textarea{height:100px;resize:vertical;}
+.fb-submit{width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;}
+.fb-submit:hover{background:#333;}
+.fb-submit:disabled{opacity:.5;cursor:not-allowed;}
+.fb-success{display:none;text-align:center;padding:12px 0;}
+.fb-success-icon{font-size:36px;margin-bottom:8px;}
+.fb-success p{font-size:14px;color:#2e7d32;font-weight:600;}
+
+/* ── Multi-day catch-up list ── */
+.day-intro{font-size:12px;color:#777;margin-bottom:14px;line-height:1.5;}
+.day-intro b{color:#1a1a1a;}
+.day-list{max-height:54vh;overflow-y:auto;margin:0 -4px;padding:0 4px;}
+.day-row{border:.5px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.day-row.missing{border-color:#f3d27a;background:#fffdf5;}
+.day-row.filled{background:#fafafa;}
+.day-row-top{display:flex;align-items:center;gap:10px;}
+.day-row-date{font-size:13px;font-weight:700;min-width:74px;}
+.day-row-date small{display:block;font-size:9px;font-weight:600;color:#c79a1a;letter-spacing:.04em;text-transform:uppercase;}
+.day-row.filled .day-row-date small{color:#bbb;}
+.day-drinks{display:flex;align-items:center;gap:5px;font-size:11px;color:#999;}
+.day-drinks input{width:50px;font-family:inherit;font-size:14px;font-weight:700;text-align:center;border:.5px solid #ccc;border-radius:7px;padding:6px 4px;color:#1a1a1a;}
+.day-church{display:flex;align-items:center;gap:4px;font-size:14px;margin-left:auto;cursor:pointer;}
+.day-church input{width:16px;height:16px;}
+.day-row-bottom{display:flex;gap:6px;margin-top:8px;}
+.day-row-bottom input{flex:1;min-width:0;font-family:inherit;font-size:12.5px;border:.5px solid #ddd;border-radius:7px;padding:6px 9px;color:#1a1a1a;}
+.day-more{width:100%;background:#f0f0ee;border:none;border-radius:8px;padding:9px;font-family:inherit;font-size:12px;font-weight:600;color:#666;cursor:pointer;margin-top:2px;}
+.day-more:hover{background:#e6e6e3;}
+
+/* ── Commissioner editor ── */
+.comm-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;margin:16px 0 8px;}
+.comm-row{border:.5px solid #eee;border-radius:10px;padding:12px;margin-bottom:10px;}
+.comm-row-h{font-size:13px;font-weight:700;margin-bottom:8px;}
+.comm-row label{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:#777;margin-bottom:8px;}
+.comm-row input,.comm-row select,.comm-row textarea{font-family:inherit;font-size:13px;color:#1a1a1a;border:.5px solid #ccc;border-radius:7px;padding:7px 9px;}
+.comm-row textarea{resize:vertical;}
+.comm-marks{display:flex;gap:10px;}
+.comm-marks label{flex:1;}
+.comm-inline{display:flex;gap:10px;}
+.comm-inline label{flex:1;}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <span class="topbar-title">🦌 Dunlap 2026</span>
-  <a class="topbar-back" href="index.html">← All bets</a>
+  <div class="topbar-actions">
+    <button class="topbar-log" id="log-day-btn" style="display:none">＋ Log day</button>
+    <div class="topbar-nav"><a href="index.html">← Home</a></div>
+    <a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a>
+  </div>
 </div>
 
 <div class="hero">
@@ -181,6 +262,16 @@ a{color:inherit;}
     </div>
     <div id="week-chart"></div>
     <div class="chart-legend2">Green = under goal · red = over · <b>dashed line = 18.5 / wk</b> · hover a bar for detail</div>
+  </div>
+
+  <div class="section-label">Quarterly Pace — Cumulative vs. Goal</div>
+  <div class="card">
+    <div class="chart-head">
+      <span class="chart-title">Drinks vs. goal pace</span>
+      <div class="qtoggle" id="cum-qtoggle"></div>
+    </div>
+    <div id="cum-chart"></div>
+    <div class="chart-legend2"><b>Dashed line = goal pace (18.5/wk)</b> · solid line = actual · <b style="color:#e74c3c">red = over pace</b> · <b style="color:#43a047">green = under pace</b> · dot label = drinks above/below target</div>
   </div>
 
   <div class="section-label">Drink Calendar <span class="hint">color = drinks that day · 🟢 wild game · ⛪ church</span></div>
@@ -223,8 +314,71 @@ a{color:inherit;}
 
   <p class="footnote">
     Data Jan 1 – Jun 20, 2026, imported from the group tracking sheet. Drinks, wild-game days, and church (3 per quarter / ≈1×/month) are computed live from the log; the half marathon, bench, and Gothenburg habitat goals are tracked manually (edit <code>MANUAL_GOALS</code> / <code>QUARTERS</code> near the top of the script). Check-ins run quarterly <em>and</em> yearly. Quarterly parlay details are placeholders — drop in the real legs and payouts when known.
-    <br>Built to plug into Firebase later so Matt can enter days from here directly.
+    <br>Matt can log a day from the Results tab; entries sync live via Firebase. <a href="#" id="comm-link">Commissioner</a> edits goals &amp; bets.
   </p>
+</div>
+
+<!-- Log days modal (open, no PIN) — multi-day catch-up list -->
+<div class="modal-overlay" id="day-modal">
+  <div class="modal modal-wide">
+    <div class="modal-title">Log days</div>
+    <div class="day-intro" id="day-intro"></div>
+    <datalist id="game-list"></datalist>
+    <div class="day-list" id="day-list"></div>
+    <button class="day-more" id="day-more">↓ Show 2 more weeks</button>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="d-cancel">Cancel</button>
+      <button class="btn-primary" id="d-save">Save all</button>
+    </div>
+    <div class="modal-msg" id="d-msg"></div>
+  </div>
+</div>
+
+<!-- Feedback (Suggest) modal -->
+<div class="fb-overlay" id="fb-overlay" onclick="fbClose(event)">
+  <div class="fb-modal">
+    <button class="fb-close" onclick="closeFeedback()">×</button>
+    <h2>Suggest a feature</h2>
+    <p>Got an idea for a new stat, bet, or fix? Send it in and we'll take a look.</p>
+    <div id="fb-form-wrap">
+      <form id="fb-form" onsubmit="fbSubmit(event)">
+        <input type="hidden" name="_subject" value="Dunlap 2026 — Suggestion">
+        <input type="hidden" name="_replyto" id="fb-replyto-hidden">
+        <div class="fb-field"><label>Your name</label>
+          <input type="text" name="name" placeholder="First name is fine" required></div>
+        <div class="fb-field"><label>Type</label>
+          <select name="type">
+            <option value="Feature idea">Feature idea</option>
+            <option value="New stat">New stat</option>
+            <option value="New bet / idea">New bet / idea</option>
+            <option value="Bug / something broken">Bug / something broken</option>
+            <option value="Other">Other</option>
+          </select></div>
+        <div class="fb-field"><label>Your request</label>
+          <textarea name="message" placeholder="Describe your idea..." required></textarea></div>
+        <div class="fb-field"><label>Email <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional — if you want a reply)</span></label>
+          <input type="email" name="email" placeholder="you@example.com" oninput="document.getElementById('fb-replyto-hidden').value=this.value"></div>
+        <button class="fb-submit" type="submit" id="fb-submit-btn">Send request →</button>
+      </form>
+    </div>
+    <div class="fb-success" id="fb-success">
+      <div class="fb-success-icon">✅</div>
+      <p>Request sent! Thanks for the idea.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Commissioner modal (PIN) -->
+<div class="modal-overlay" id="comm-modal">
+  <div class="modal modal-wide">
+    <div class="modal-title">Commissioner — goals &amp; bets</div>
+    <div id="comm-body"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="c-cancel">Close</button>
+      <button class="btn-primary" id="c-save">Save changes</button>
+    </div>
+    <div class="modal-msg" id="c-msg"></div>
+  </div>
 </div>
 
 <script>
@@ -238,7 +392,8 @@ const DRINK_GOAL = 18.5;        // per week
 const WILD_GOAL  = 50;          // % of days
 
 // Goals not in the sheet — edit status manually: 'pass' | 'fail' | 'warn' | 'pending'
-const MANUAL_GOALS = {
+// (defaults; overridden by Firebase `dunlap2026/goals` when present)
+let MANUAL_GOALS = {
   half:    { status:'pending', value:'—',     sub:'No timed race logged yet' },
   bench:   { status:'pending', value:'—',     sub:'No 225 lift logged yet' },
   habitat: { status:'pending', value:'Planned',sub:'Gothenburg habitat work TBD' },
@@ -246,7 +401,8 @@ const MANUAL_GOALS = {
 
 // Quarterly check-in + parlay record. Manual-goal marks ('pass'/'fail'/'pending')
 // for half/bench/habitat live here; drinks/wild/church marks are computed.
-const QUARTERS = [
+// (defaults; overridden by Firebase `dunlap2026/quarters` when present)
+let QUARTERS = [
   { key:'Q1', name:'Q1', range:'Jan 1 – Mar 31', color:'#1565C0', status:'final', groupResult:'won',
     marks:{ half:'pending', bench:'pending', habitat:'pending' },
     parlay:{ stake:1000, legs:['Nebraska ML vs. Troy (NCAA Tourney, Mar 17)','Clemson ML vs. Iowa (NCAA Tourney, Mar 17)'], result:'lost', payout:null } },
@@ -269,9 +425,6 @@ function parseRow(r){
   return { iso, d, month:d.getMonth()+1, q:quarterOf(d.getMonth()+1),
            drinks, church:!!church, type, wild:isWild(type), note:(note||'').trim() };
 }
-const DAYS = SEED.map(parseRow);
-
-// ── Aggregate stats ────────────────────────────────────────────────
 function summarize(days){
   const n = days.length;
   const totalDrinks = days.reduce((s,x)=>s+x.drinks,0);
@@ -279,27 +432,61 @@ function summarize(days){
   const dryDays = days.filter(x=>x.drinks===0).length;
   const weeklyAvg = n ? totalDrinks/n*7 : 0;
   const wildPct = n ? wildDays/n*100 : 0;
-  // church: goal is 3 visits per quarter (≈1×/month)
   const months = [...new Set(days.map(x=>x.iso.slice(0,7)))];
   const churchDays = days.filter(x=>x.church).length;
   return { n,totalDrinks,wildDays,dryDays,weeklyAvg,wildPct,
            monthsElapsed:months.length, churchDays, months };
 }
-const ALL = summarize(DAYS);
-
-// Church visits per quarter (goal: 3 per quarter)
-const CHURCH_TARGET = 3;
-const CHURCH_Q = {Q1:0,Q2:0,Q3:0,Q4:0};
-DAYS.forEach(x=>{ if(x.church) CHURCH_Q[x.q]++; });
-const ELAPSED_Q = [...new Set(DAYS.map(x=>x.q))];      // quarters with data, e.g. ['Q1','Q2']
-const LAST_Q = ELAPSED_Q[ELAPSED_Q.length-1];
-// Status for one quarter's church goal. The in-progress quarter is 'pending'
-// until it reaches 3, never marked failed early.
+const CHURCH_TARGET = 3;   // church visits per quarter (≈1×/month)
+// Status for one quarter's church goal. In-progress quarter is 'pending' until it hits 3.
 function churchQStatus(q, inProgress){
-  const v = CHURCH_Q[q];
+  const v = CHURCH_Q[q]||0;
   if(v >= CHURCH_TARGET) return 'pass';
   if(inProgress) return 'pending';
   return v >= CHURCH_TARGET-1 ? 'warn' : 'fail';
+}
+function weekKey(d){
+  const t = new Date(d); const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day); // Monday
+  return t.toISOString().slice(0,10);
+}
+function weekRange(key){
+  const a=new Date(key+'T00:00:00'); const b=new Date(a); b.setDate(b.getDate()+6);
+  const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return f(a)+' – '+f(b);
+}
+
+// ── Mutable state: SEED with Firebase overlay by date ──────────────
+let remoteDays = {};   // iso -> { drinks, church, game, note }
+let DAYS, ALL, CHURCH_Q, ELAPSED_Q, LAST_Q, drinkStatus, wildStatus, churchStatus, weeks, CHART_MAXV;
+let currentChartQ = null;
+let currentCumQ = null;
+
+function compute(){
+  const map = {};
+  SEED.forEach(r=>{ map[r[0]] = parseRow(r); });
+  Object.entries(remoteDays).forEach(([iso,o])=>{
+    if(!o) return;
+    map[iso] = parseRow([iso, Number(o.drinks)||0, o.church?1:0,
+                         (o.game && o.game.trim()) || 'No wild Game', o.note||'']);
+  });
+  DAYS = Object.keys(map).sort().map(k=>map[k]);
+  ALL = summarize(DAYS);
+  CHURCH_Q = {Q1:0,Q2:0,Q3:0,Q4:0};
+  DAYS.forEach(x=>{ if(x.church) CHURCH_Q[x.q]++; });
+  ELAPSED_Q = [...new Set(DAYS.map(x=>x.q))];
+  LAST_Q = ELAPSED_Q[ELAPSED_Q.length-1];
+  drinkStatus = ALL.weeklyAvg<=DRINK_GOAL ? 'pass' : (ALL.weeklyAvg<=DRINK_GOAL*1.1?'warn':'fail');
+  wildStatus  = ALL.wildPct>=WILD_GOAL ? 'pass' : (ALL.wildPct>=WILD_GOAL*0.9?'warn':'fail');
+  churchStatus = 'pass';
+  ELAPSED_Q.forEach(q=>{ const s=churchQStatus(q, q===LAST_Q);
+    if(s==='fail') churchStatus='fail'; else if(s==='warn' && churchStatus!=='fail') churchStatus='warn'; });
+  const wm={}; DAYS.forEach(x=>{ const k=weekKey(x.d); (wm[k]=wm[k]||[]).push(x); });
+  weeks = Object.keys(wm).sort().map(k=>{
+    const days=wm[k]; const total=days.reduce((s,x)=>s+x.drinks,0);
+    const thu=new Date(k+'T00:00:00'); thu.setDate(thu.getDate()+3);
+    return { key:k, total, days:days.length, q:quarterOf(thu.getMonth()+1) };
+  });
+  CHART_MAXV = Math.max(DRINK_GOAL, ...weeks.map(w=>w.total))*1.08;
 }
 
 // ── Goal cards ─────────────────────────────────────────────────────
@@ -320,74 +507,50 @@ function goalCard(g){
     ${bar}
   </div>`;
 }
-
-const drinkStatus = ALL.weeklyAvg<=DRINK_GOAL ? 'pass' : (ALL.weeklyAvg<=DRINK_GOAL*1.1?'warn':'fail');
-const wildStatus  = ALL.wildPct>=WILD_GOAL ? 'pass' : (ALL.wildPct>=WILD_GOAL*0.9?'warn':'fail');
-let churchStatus = 'pass';
-ELAPSED_Q.forEach(q=>{
-  const s = churchQStatus(q, q===LAST_Q);
-  if(s==='fail') churchStatus='fail';
-  else if(s==='warn' && churchStatus!=='fail') churchStatus='warn';
-});
-
-const GOALS = [
-  { icon:'🍺', name:'Drinks ≤ 18.5/wk', target:'Weekly average under 18.5',
-    value:fmt(ALL.weeklyAvg), unit:'/wk', status:drinkStatus,
-    sub:`${fmt(ALL.weeklyAvg-DRINK_GOAL)} over the line`, bar:ALL.weeklyAvg/DRINK_GOAL*100 },
-  { icon:'🦌', name:'50% wild game days', target:'Wild game on ≥ half of days',
-    value:fmt(ALL.wildPct), unit:'%', status:wildStatus,
-    sub:`${ALL.wildDays} of ${ALL.n} days`, bar:ALL.wildPct },
-  { icon:'⛪', name:'Church 3×/quarter', target:'With the kids, ≈1×/month',
-    value:`${ALL.churchDays}`, unit:'visits', status:churchStatus,
-    sub:`Q1 ${CHURCH_Q.Q1}/3 · Q2 ${CHURCH_Q.Q2}/3`,
-    bar:Math.min(100, ALL.churchDays/(CHURCH_TARGET*ELAPSED_Q.length)*100) },
-  { icon:'🏃', name:'8:30 /mi half marathon', target:'Run a half at 8:30 pace this year',
-    value:MANUAL_GOALS.half.value, status:MANUAL_GOALS.half.status, sub:MANUAL_GOALS.half.sub, bar:null },
-  { icon:'🏋️', name:'Bench 225 by EOY', target:'225 lb bench press',
-    value:MANUAL_GOALS.bench.value, status:MANUAL_GOALS.bench.status, sub:MANUAL_GOALS.bench.sub, bar:null },
-  { icon:'🌲', name:'Habitat work', target:'Habitat work in Gothenburg',
-    value:MANUAL_GOALS.habitat.value, status:MANUAL_GOALS.habitat.status, sub:MANUAL_GOALS.habitat.sub, bar:null },
-];
-document.getElementById('goals-grid').innerHTML = GOALS.map(goalCard).join('');
+function renderGoals(){
+  const GOALS = [
+    { icon:'🍺', name:'Drinks ≤ 18.5/wk', target:'Weekly average under 18.5',
+      value:fmt(ALL.weeklyAvg), unit:'/wk', status:drinkStatus,
+      sub:`${fmt(ALL.weeklyAvg-DRINK_GOAL)} over the line`, bar:ALL.weeklyAvg/DRINK_GOAL*100 },
+    { icon:'🦌', name:'50% wild game days', target:'Wild game on ≥ half of days',
+      value:fmt(ALL.wildPct), unit:'%', status:wildStatus,
+      sub:`${ALL.wildDays} of ${ALL.n} days`, bar:ALL.wildPct },
+    { icon:'⛪', name:'Church 3×/quarter', target:'With the kids, ≈1×/month',
+      value:`${ALL.churchDays}`, unit:'visits', status:churchStatus,
+      sub:`Q1 ${CHURCH_Q.Q1}/3 · Q2 ${CHURCH_Q.Q2}/3`,
+      bar:Math.min(100, ALL.churchDays/(CHURCH_TARGET*Math.max(1,ELAPSED_Q.length))*100) },
+    { icon:'🏃', name:'8:30 /mi half marathon', target:'Run a half at 8:30 pace this year',
+      value:MANUAL_GOALS.half.value, status:MANUAL_GOALS.half.status, sub:MANUAL_GOALS.half.sub, bar:null },
+    { icon:'🏋️', name:'Bench 225 by EOY', target:'225 lb bench press',
+      value:MANUAL_GOALS.bench.value, status:MANUAL_GOALS.bench.status, sub:MANUAL_GOALS.bench.sub, bar:null },
+    { icon:'🌲', name:'Habitat work', target:'Habitat work in Gothenburg',
+      value:MANUAL_GOALS.habitat.value, status:MANUAL_GOALS.habitat.status, sub:MANUAL_GOALS.habitat.sub, bar:null },
+  ];
+  document.getElementById('goals-grid').innerHTML = GOALS.map(goalCard).join('');
+}
 
 // ── Stat strip ─────────────────────────────────────────────────────
-const gameCounts = {};
-DAYS.filter(x=>x.wild).forEach(x=>gameCounts[x.type]=(gameCounts[x.type]||0)+1);
-const topGame = Object.entries(gameCounts).sort((a,b)=>b[1]-a[1])[0];
-const maxDay = DAYS.reduce((m,x)=>x.drinks>m.drinks?x:m,DAYS[0]);
-const STATS = [
-  { num:ALL.totalDrinks, lbl:'Total drinks' },
-  { num:fmt(ALL.totalDrinks/ALL.n), lbl:'Avg / day' },
-  { num:ALL.dryDays, lbl:'Dry days' },
-  { num:maxDay.drinks, lbl:`Biggest day` },
-  { num:fmt(ALL.wildPct)+'%', lbl:'Wild game' },
-  { num:topGame[0], lbl:`Top game (${topGame[1]})` },
-];
-document.getElementById('stat-strip').innerHTML = STATS.map(s=>
-  `<div class="stat-box"><div class="stat-num">${s.num}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+function renderStats(){
+  const gameCounts = {};
+  DAYS.filter(x=>x.wild).forEach(x=>gameCounts[x.type]=(gameCounts[x.type]||0)+1);
+  const topGame = Object.entries(gameCounts).sort((a,b)=>b[1]-a[1])[0] || ['—',0];
+  const maxDay = DAYS.reduce((m,x)=>x.drinks>m.drinks?x:m,DAYS[0]);
+  const STATS = [
+    { num:ALL.totalDrinks, lbl:'Total drinks' },
+    { num:fmt(ALL.totalDrinks/ALL.n), lbl:'Avg / day' },
+    { num:ALL.dryDays, lbl:'Dry days' },
+    { num:maxDay.drinks, lbl:`Biggest day` },
+    { num:fmt(ALL.wildPct)+'%', lbl:'Wild game' },
+    { num:topGame[0], lbl:`Top game (${topGame[1]})` },
+  ];
+  document.getElementById('stat-strip').innerHTML = STATS.map(s=>
+    `<div class="stat-box"><div class="stat-num">${s.num}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+}
 
 // ── Weekly chart (Mon–Sun ISO weeks) ───────────────────────────────
-function weekKey(d){
-  const t = new Date(d); const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day); // Monday
-  return t.toISOString().slice(0,10);
-}
-const weeksMap = {};
-DAYS.forEach(x=>{ const k=weekKey(x.d); (weeksMap[k]=weeksMap[k]||[]).push(x); });
-const weeks = Object.keys(weeksMap).sort().map(k=>{
-  const days=weeksMap[k]; const total=days.reduce((s,x)=>s+x.drinks,0);
-  // assign each week to a quarter by its Thursday (ISO representative day)
-  const thu=new Date(k+'T00:00:00'); thu.setDate(thu.getDate()+3);
-  return { key:k, total, days:days.length, q:quarterOf(thu.getMonth()+1) };
-});
-function weekRange(key){
-  const a=new Date(key+'T00:00:00'); const b=new Date(a); b.setDate(b.getDate()+6);
-  const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-  return f(a)+' – '+f(b);
-}
 // Shared by-week tooltip (one element reused for whichever quarter is shown)
 const chartTip=document.createElement('div'); chartTip.className='chart-tip';
 document.body.appendChild(chartTip);
-const CHART_MAXV=Math.max(DRINK_GOAL, ...weeks.map(w=>w.total))*1.08; // global y-scale → quarters comparable
 
 function drawChart(q){
   const host=document.getElementById('week-chart');
@@ -428,16 +591,133 @@ function drawChart(q){
     r.addEventListener('mouseleave',()=>{ chartTip.style.opacity='0'; });
   });
 }
-// Quarter toggle
-(function buildChartToggle(){
+// Quarter toggle (rebuilt each render; preserves selected quarter)
+function renderChartToggle(){
   const tg=document.getElementById('chart-qtoggle');
   const have=new Set(weeks.map(w=>w.q));
-  const start=['Q4','Q3','Q2','Q1'].find(q=>have.has(q)) || 'Q1';
+  if(!currentChartQ || !have.has(currentChartQ))
+    currentChartQ = ['Q4','Q3','Q2','Q1'].find(q=>have.has(q)) || 'Q1';
   tg.innerHTML=['Q1','Q2','Q3','Q4'].map(q=>`<button data-q="${q}"${have.has(q)?'':' disabled'}>${q}</button>`).join('');
-  function set(q){ tg.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.q===q)); drawChart(q); }
-  tg.querySelectorAll('button').forEach(b=>{ if(!b.disabled) b.addEventListener('click',()=>set(b.dataset.q)); });
-  set(start);
-})();
+  tg.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.q===currentChartQ);
+    if(!b.disabled) b.addEventListener('click',()=>{
+      currentChartQ=b.dataset.q;
+      tg.querySelectorAll('button').forEach(x=>x.classList.toggle('active', x===b));
+      drawChart(currentChartQ);
+    });
+  });
+  drawChart(currentChartQ);
+}
+
+// ── Cumulative pace chart ──────────────────────────────────────────
+const Q_CFG = {
+  Q1:{ start:'01-01', endM:3, endD:31, totalDays:90 },
+  Q2:{ start:'04-01', endM:6, endD:30, totalDays:91 },
+  Q3:{ start:'07-01', endM:9, endD:30, totalDays:92 },
+  Q4:{ start:'10-01', endM:12, endD:31, totalDays:92 },
+  Year:{ start:'01-01', endM:12, endD:31, totalDays:365 },
+};
+const Q_MONTHS = { Q1:[1,2,3], Q2:[4,5,6], Q3:[7,8,9], Q4:[10,11,12], Year:[1,2,3,4,5,6,7,8,9,10,11,12] };
+const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function drawCumChart(q){
+  const host = document.getElementById('cum-chart');
+  const cfg = Q_CFG[q];
+  const year = 2026;
+  const startIso = `${year}-${cfg.start}`;
+  const qDays = q==='Year'
+    ? DAYS.filter(x=>x.iso>=startIso)
+    : DAYS.filter(x=>x.iso>=startIso && x.q===q);
+  if(!qDays.length){
+    host.innerHTML=`<div style="padding:48px 0;text-align:center;color:#bbb;font-size:13px;">No data for ${q} yet.</div>`;
+    return;
+  }
+  const startDate = new Date(startIso+'T00:00:00');
+  const dayRate = DRINK_GOAL/7;
+  const lastDate = new Date(qDays[qDays.length-1].iso+'T00:00:00');
+  const daysElapsed = Math.round((lastDate-startDate)/86400000)+1;
+  const dayMap={};
+  qDays.forEach(x=>{ dayMap[x.iso]=x.drinks; });
+
+  // cumulative points starting from (0,0)
+  const actuals=[[0,0]];
+  let cum=0;
+  for(let i=0;i<daysElapsed;i++){
+    const d=new Date(startDate); d.setDate(d.getDate()+i);
+    const iso=d.toISOString().slice(0,10);
+    cum+=(dayMap[iso]||0);
+    actuals.push([i+1, cum]);
+  }
+
+  const trendEnd = cfg.totalDays*dayRate;
+  const maxY = Math.max(trendEnd, cum)*1.1;
+
+  const padL=38, padB=28, padT=16, padR=16;
+  const W=600, H=220;
+  const plotW=W-padL-padR, plotH=H-padB-padT;
+  const px = n => padL + n*(plotW/cfg.totalDays);
+  const py = v => padT + plotH - (v/maxY)*plotH;
+
+  // grid
+  let grid='';
+  const step = maxY>600?100:maxY>300?50:25;
+  for(let g=0; g<=maxY; g+=step){
+    grid+=`<line x1="${padL}" y1="${py(g).toFixed(1)}" x2="${W-padR}" y2="${py(g).toFixed(1)}" stroke="#f0f0f0"/>`;
+    grid+=`<text x="${padL-5}" y="${(py(g)+3).toFixed(1)}" font-size="9" fill="#bbb" text-anchor="end">${Math.round(g)}</text>`;
+  }
+  // x-axis month labels
+  let xTicks='';
+  Q_MONTHS[q].forEach(m=>{
+    const mStart=new Date(year,m-1,1);
+    const dayN=Math.round((mStart-startDate)/86400000);
+    const mid=dayN+new Date(year,m,0).getDate()/2;
+    xTicks+=`<text x="${px(mid).toFixed(1)}" y="${H-padB+14}" font-size="9" fill="#bbb" text-anchor="middle">${MONTH_NAMES[m]}</text>`;
+  });
+
+  const last=actuals[actuals.length-1];
+  const lastTrend=last[0]*dayRate;
+  const overPace=last[1]>lastTrend;
+  const lineClr=overPace?'#e74c3c':'#43a047';
+  const actualStr=actuals.map(p=>`${px(p[0]).toFixed(1)},${py(p[1]).toFixed(1)}`).join(' ');
+  // fill polygon between actual and trendline
+  const fwdPts=actuals.map(p=>[px(p[0]),py(p[1])]);
+  const trendPts=actuals.map(p=>[px(p[0]),py(p[0]*dayRate)]);
+  const poly=[...fwdPts,...[...trendPts].reverse()].map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+
+  const dev=Math.round(Math.abs(last[1]-lastTrend));
+  const devSign=overPace?'+':'-';
+  const lastX=px(last[0]), lastY=py(last[1]);
+  const anchor=lastX>W-90?'end':'start';
+  const dx=lastX>W-90?-10:10;
+
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,sans-serif" style="display:block">
+    ${grid}
+    <line x1="${padL}" y1="${(H-padB).toFixed(1)}" x2="${W-padR}" y2="${(H-padB).toFixed(1)}" stroke="#e0e0e0"/>
+    ${xTicks}
+    <polygon points="${poly}" fill="${lineClr}" fill-opacity="0.1"/>
+    <line x1="${px(0).toFixed(1)}" y1="${py(0).toFixed(1)}" x2="${px(cfg.totalDays).toFixed(1)}" y2="${py(trendEnd).toFixed(1)}" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <polyline points="${actualStr}" fill="none" stroke="${lineClr}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="4" fill="${lineClr}"/>
+    <text x="${(lastX+dx).toFixed(1)}" y="${(lastY+4).toFixed(1)}" font-size="10.5" font-weight="700" fill="${lineClr}" text-anchor="${anchor}" paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">${devSign}${dev}</text>
+  </svg>`;
+}
+function renderCumChartToggle(){
+  const tg=document.getElementById('cum-qtoggle');
+  const have=new Set(weeks.map(w=>w.q));
+  const validQ = q => q==='Year' ? DAYS.length>0 : have.has(q);
+  if(!currentCumQ || !validQ(currentCumQ))
+    currentCumQ=['Q4','Q3','Q2','Q1'].find(q=>have.has(q))||'Q1';
+  tg.innerHTML=['Q1','Q2','Q3','Q4','Year'].map(q=>`<button data-q="${q}"${validQ(q)?'':' disabled'}>${q}</button>`).join('');
+  tg.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.q===currentCumQ);
+    if(!b.disabled) b.addEventListener('click',()=>{
+      currentCumQ=b.dataset.q;
+      tg.querySelectorAll('button').forEach(x=>x.classList.toggle('active', x===b));
+      drawCumChart(currentCumQ);
+    });
+  });
+  drawCumChart(currentCumQ);
+}
 
 // ── Quarterly check-ins ────────────────────────────────────────────
 const Q_STAT_PILL = {final:'pill-pass',['in-progress']:'pill-warn',upcoming:'pill-pending'};
@@ -494,10 +774,12 @@ function qCard(q){
       ${rowsHtml}${penaltyHtml}${parlayHtml}
     </div></div>`;
 }
-document.getElementById('q-grid').innerHTML = QUARTERS.map(qCard).join('');
+function renderQuarters(){
+  document.getElementById('q-grid').innerHTML = QUARTERS.map(qCard).join('');
+}
 
 // ── Year-End check-in (annual bet) ─────────────────────────────────
-(function renderYear(){
+function renderYear(){
   const rows = [
     ['🍺 Drinks ≤ 18.5/wk average', drinkStatus==='pass'?'pass':drinkStatus, fmt(ALL.weeklyAvg)+'/wk'],
     ['🦌 50% wild game days',       wildStatus,  fmt(ALL.wildPct)+'%'],
@@ -524,7 +806,7 @@ document.getElementById('q-grid').innerHTML = QUARTERS.map(qCard).join('');
       ${rowsHtml}${banner}
     </div></div>`;
   document.getElementById('year-card').innerHTML = html;
-})();
+}
 
 // ── Drink calendar (monthly heatmap) ───────────────────────────────
 function heat(n){
@@ -536,7 +818,7 @@ function heat(n){
   if(n<=10)  return '#f0654a';
   return '#d63a2a';
 }
-(function buildCalendar(){
+function renderCalendar(){
   const byMonth = {};
   DAYS.forEach(x=>{ const k=x.iso.slice(0,7); (byMonth[k]=byMonth[k]||{})[x.d.getDate()]=x; });
   const dow = ['S','M','T','W','T','F','S'];
@@ -568,7 +850,7 @@ function heat(n){
     </div>`;
   }).join('');
   document.getElementById('calendar').innerHTML = `<div class="cal-grid">${html}</div>`;
-})();
+}
 
 // ── Daily log (newest first) ───────────────────────────────────────
 function drinkColor(n){
@@ -577,10 +859,9 @@ function drinkColor(n){
   if(n<=8)  return '#ffe0b2';
   return '#ffcdd2';
 }
-const logRows = [...DAYS].reverse();
 function renderLog(filter){
   const f=(filter||'').toLowerCase();
-  const html = logRows.filter(x=>!f || x.type.toLowerCase().includes(f) || x.note.toLowerCase().includes(f))
+  const html = [...DAYS].reverse().filter(x=>!f || x.type.toLowerCase().includes(f) || x.note.toLowerCase().includes(f))
     .map(x=>{
       const dlbl=x.d.toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
       return `<tr>
@@ -593,7 +874,6 @@ function renderLog(filter){
     }).join('');
   document.getElementById('log-body').innerHTML = html;
 }
-renderLog('');
 document.getElementById('log-search').addEventListener('input', e=>renderLog(e.target.value));
 
 // ── Tabs ───────────────────────────────────────────────────────────
@@ -605,12 +885,253 @@ tabs.forEach(t=>t.addEventListener('click', ()=>{
   if(history.replaceState) history.replaceState(null,'','#'+id);
   window.scrollTo({top:0});
 }));
-// Open tab from URL hash (e.g. #bets)
-(function initTab(){
+function initTab(){
   const h=(location.hash||'').replace('#','');
   const t=[...tabs].find(x=>x.dataset.tab===h);
   if(t) t.click();
-})();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  Master render — recompute everything from current state, repaint
+// ═══════════════════════════════════════════════════════════════════
+function render(){
+  compute();
+  renderGoals();
+  renderStats();
+  renderChartToggle();
+  renderCumChartToggle();
+  renderQuarters();
+  renderYear();
+  renderCalendar();
+  renderLog(document.getElementById('log-search').value);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  Firebase (RTDB via REST — same project/pattern as index.html)
+// ═══════════════════════════════════════════════════════════════════
+const FB = 'https://giesener-bets-default-rtdb.firebaseio.com/dunlap2026';
+const COMMISH_PIN = 'golf';                 // gate for goals + bets edits
+const GAME_TYPES = ['Moose','Fish','Turkey','Goose','Duck','Caribou','Pheasant','Elk'];
+
+async function loadRemote(){
+  try {
+    const res = await fetch(FB + '.json');
+    if(!res.ok) return;
+    const data = await res.json();
+    if(!data) return;
+    if(data.days)  remoteDays = data.days;
+    if(data.goals) MANUAL_GOALS = Object.assign({}, MANUAL_GOALS, data.goals);
+    if(data.quarters){
+      QUARTERS = QUARTERS.map(q => data.quarters[q.key]
+        ? Object.assign({}, q, data.quarters[q.key],
+            { marks: Object.assign({}, q.marks, data.quarters[q.key].marks) })
+        : q);
+    }
+    render();
+  } catch(e){ console.warn('Firebase load failed, showing seed only:', e); }
+}
+function fbPut(path, value){
+  return fetch(`${FB}/${path}.json`, {
+    method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(value)
+  });
+}
+
+// ── Log days modal (open — multi-day catch-up list) ────────────────
+const dayModal = document.getElementById('day-modal');
+let dayWindow = 14;   // how many recent days the list shows
+
+function seedFor(iso){
+  const r = SEED.find(x=>x[0]===iso);
+  return r ? {drinks:r[1], church:!!r[2], game:r[3], note:r[4]} : null;
+}
+function dayData(iso){ return remoteDays[iso] || seedFor(iso); }   // current value or null
+function gameClean(g){ return g && g!=='No wild Game' ? g : ''; }
+
+function buildDayList(){
+  document.getElementById('game-list').innerHTML = GAME_TYPES.map(g=>`<option value="${g}">`).join('');
+  const today = new Date(); today.setHours(0,0,0,0);
+  let missing = 0;
+  const rows = [];
+  for(let i=0;i<dayWindow;i++){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const iso = d.toISOString().slice(0,10);
+    const ex = dayData(iso);
+    if(!ex) missing++;
+    rows.push(`<div class="day-row ${ex?'filled':'missing'}" data-iso="${iso}">
+      <div class="day-row-top">
+        <span class="day-row-date">${d.toLocaleDateString('en-US',{weekday:'short'})} ${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+          <small>${ex?'logged':'needs entry'}</small></span>
+        <label class="day-drinks"><input type="number" min="0" step="1" inputmode="numeric" class="r-drinks" placeholder="–" value="${ex?ex.drinks:''}"> drinks</label>
+        <label class="day-church"><input type="checkbox" class="r-church"${ex&&ex.church?' checked':''}>⛪</label>
+      </div>
+      <div class="day-row-bottom">
+        <input class="r-game" list="game-list" placeholder="wild game" value="${ex?gameClean(ex.game).replace(/"/g,'&quot;'):''}">
+        <input class="r-note" placeholder="what he ate" value="${ex&&ex.note?ex.note.replace(/"/g,'&quot;'):''}">
+      </div>
+    </div>`);
+  }
+  document.getElementById('day-list').innerHTML = rows.join('');
+  document.getElementById('day-intro').innerHTML = missing
+    ? `Fill in any days below — <b>${missing}</b> of the last ${dayWindow} aren't logged yet. Skip a day by leaving it blank.`
+    : `All of the last ${dayWindow} days are logged. Edit any below, or load earlier days.`;
+}
+function openDayModal(){
+  dayWindow = 14;
+  buildDayList();
+  document.getElementById('d-msg').textContent = '';
+  dayModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDayModal(){ dayModal.classList.remove('open'); document.body.style.overflow = ''; }
+
+document.getElementById('log-day-btn').addEventListener('click', openDayModal);
+document.getElementById('day-more').addEventListener('click', ()=>{ dayWindow+=14; buildDayList(); });
+document.getElementById('d-cancel').addEventListener('click', closeDayModal);
+dayModal.addEventListener('click', e=>{ if(e.target===dayModal) closeDayModal(); });
+document.getElementById('d-save').addEventListener('click', async ()=>{
+  const updates = {};
+  document.querySelectorAll('#day-list .day-row').forEach(row=>{
+    const iso = row.dataset.iso;
+    const drinksVal = row.querySelector('.r-drinks').value.trim();
+    const game   = row.querySelector('.r-game').value.trim();
+    const note   = row.querySelector('.r-note').value.trim();
+    const church = row.querySelector('.r-church').checked;
+    if(drinksVal==='' && !game && !note && !church) return;       // untouched empty day → skip
+    const cur = dayData(iso);
+    const next = { drinks:Number(drinksVal)||0, church, game:game||'No wild Game', note };
+    if(cur && Number(cur.drinks)===next.drinks && !!cur.church===church &&
+       gameClean(cur.game)===game && (cur.note||'')===note) return;  // unchanged → skip
+    updates[iso] = Object.assign(next, { ts:Date.now() });
+  });
+  const isos = Object.keys(updates);
+  const msg = document.getElementById('d-msg');
+  if(!isos.length){ msg.textContent = 'No changes to save.'; return; }
+  msg.textContent = `Saving ${isos.length} day${isos.length===1?'':'s'}…`;
+  try {
+    const r = await fetch(`${FB}/days.json`, { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(updates) });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    Object.assign(remoteDays, updates);
+    render();
+    closeDayModal();
+  } catch(e){ msg.textContent = 'Save failed — check connection.'; console.error(e); }
+});
+
+// ── Commissioner editor (PIN — goals + quarters/parlays) ───────────
+const commModal = document.getElementById('comm-modal');
+const STATUS_OPTS = ['pending','pass','fail','warn'];
+const RESULT_OPTS = ['won','lost','pending'];
+function statusSelect(id, val){
+  return `<select id="${id}">${STATUS_OPTS.map(o=>`<option value="${o}"${o===val?' selected':''}>${o}</option>`).join('')}</select>`;
+}
+function buildCommBody(){
+  const goalRows = ['half','bench','habitat'].map(k=>{
+    const g = MANUAL_GOALS[k];
+    return `<div class="comm-row"><div class="comm-row-h">${k}</div>
+      <label>Status ${statusSelect('g-'+k+'-status', g.status)}</label>
+      <label>Value <input id="g-${k}-value" value="${(g.value||'').replace(/"/g,'&quot;')}"></label>
+      <label>Note <input id="g-${k}-sub" value="${(g.sub||'').replace(/"/g,'&quot;')}"></label>
+    </div>`;
+  }).join('');
+  const qRows = QUARTERS.map(q=>{
+    const p = q.parlay || {stake:'',legs:[],result:'pending',payout:''};
+    return `<div class="comm-row"><div class="comm-row-h">${q.key} — ${q.range}</div>
+      <label>Quarter status <select id="q-${q.key}-status">
+        ${['final','in-progress','upcoming'].map(o=>`<option value="${o}"${o===q.status?' selected':''}>${o}</option>`).join('')}</select></label>
+      <div class="comm-marks">
+        <label>🏃 ${statusSelect('q-'+q.key+'-half', q.marks.half)}</label>
+        <label>🏋️ ${statusSelect('q-'+q.key+'-bench', q.marks.bench)}</label>
+        <label>🌲 ${statusSelect('q-'+q.key+'-habitat', q.marks.habitat)}</label>
+      </div>
+      <label>Parlay legs (one per line)<textarea id="q-${q.key}-legs" rows="2">${(p.legs||[]).join('\n')}</textarea></label>
+      <div class="comm-inline">
+        <label>Stake $<input id="q-${q.key}-stake" type="number" value="${p.stake||''}"></label>
+        <label>Result <select id="q-${q.key}-result">${RESULT_OPTS.map(o=>`<option value="${o}"${o===p.result?' selected':''}>${o}</option>`).join('')}</select></label>
+        <label>Payout $<input id="q-${q.key}-payout" type="number" value="${p.payout||''}"></label>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('comm-body').innerHTML =
+    `<div class="comm-sec">Manual goals</div>${goalRows}<div class="comm-sec">Quarters &amp; parlays</div>${qRows}`;
+}
+function openComm(){
+  const pin = prompt('Commissioner PIN:');
+  if(pin === null) return;
+  if(pin !== COMMISH_PIN){ alert('Wrong PIN.'); return; }
+  buildCommBody();
+  document.getElementById('c-msg').textContent = '';
+  commModal.classList.add('open');
+}
+document.getElementById('comm-link').addEventListener('click', e=>{ e.preventDefault(); openComm(); });
+document.getElementById('c-cancel').addEventListener('click', ()=>commModal.classList.remove('open'));
+commModal.addEventListener('click', e=>{ if(e.target===commModal) commModal.classList.remove('open'); });
+document.getElementById('c-save').addEventListener('click', async ()=>{
+  const goals = {};
+  ['half','bench','habitat'].forEach(k=>{
+    goals[k] = {
+      status: document.getElementById('g-'+k+'-status').value,
+      value:  document.getElementById('g-'+k+'-value').value,
+      sub:    document.getElementById('g-'+k+'-sub').value
+    };
+  });
+  const quarters = {};
+  QUARTERS.forEach(q=>{
+    const legs = document.getElementById('q-'+q.key+'-legs').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const stake = Number(document.getElementById('q-'+q.key+'-stake').value)||null;
+    const payout = Number(document.getElementById('q-'+q.key+'-payout').value)||null;
+    quarters[q.key] = {
+      status: document.getElementById('q-'+q.key+'-status').value,
+      marks: {
+        half:    document.getElementById('q-'+q.key+'-half').value,
+        bench:   document.getElementById('q-'+q.key+'-bench').value,
+        habitat: document.getElementById('q-'+q.key+'-habitat').value
+      },
+      parlay: legs.length ? { stake, legs, result: document.getElementById('q-'+q.key+'-result').value, payout } : null
+    };
+  });
+  const msg = document.getElementById('c-msg');
+  msg.textContent = 'Saving…';
+  try {
+    await Promise.all([ fbPut('goals', goals), fbPut('quarters', quarters) ]);
+    MANUAL_GOALS = Object.assign({}, MANUAL_GOALS, goals);
+    QUARTERS = QUARTERS.map(q => Object.assign({}, q, quarters[q.key],
+      { marks: Object.assign({}, q.marks, quarters[q.key].marks) }));
+    render();
+    commModal.classList.remove('open');
+  } catch(e){ msg.textContent = 'Save failed — check connection.'; console.error(e); }
+});
+
+// ── Init ───────────────────────────────────────────────────────────
+render();          // instant paint from baked-in SEED
+initTab();         // honor #goals / #results / #bets
+loadRemote();      // overlay Firebase data, then re-render
+</script>
+
+<!-- Feedback (Suggest) — same Formspree endpoint as the rest of the site -->
+<script>
+const FORMSPREE_ID = "mnjlwlgy";
+function openFeedback(){ document.getElementById("fb-overlay").classList.add("open"); document.body.style.overflow="hidden"; }
+function closeFeedback(){ document.getElementById("fb-overlay").classList.remove("open"); document.body.style.overflow=""; }
+function fbClose(e){ if(e.target===document.getElementById("fb-overlay")) closeFeedback(); }
+async function fbSubmit(e){
+  e.preventDefault();
+  const btn = document.getElementById("fb-submit-btn");
+  btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const res = await fetch("https://formspree.io/f/" + FORMSPREE_ID, {
+      method:"POST", body:new FormData(e.target), headers:{Accept:"application/json"} });
+    if(!res.ok) throw new Error();
+    document.getElementById("fb-form-wrap").style.display = "none";
+    document.getElementById("fb-success").style.display = "block";
+    setTimeout(()=>{ closeFeedback();
+      document.getElementById("fb-form-wrap").style.display = "";
+      document.getElementById("fb-success").style.display = "none";
+      e.target.reset(); btn.disabled = false; btn.textContent = "Send request →"; }, 2500);
+  } catch { btn.disabled = false; btn.textContent = "Send request →"; alert("Something went wrong — try again."); }
+}
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeFeedback();
+  document.getElementById("day-modal").classList.remove("open");
+  document.getElementById("comm-modal").classList.remove("open");
+  document.body.style.overflow=""; } });
 </script>
 </body>
 </html>
