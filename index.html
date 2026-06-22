@@ -22,19 +22,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 .bets-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 @media(max-width:600px){.bets-grid{grid-template-columns:1fr;}}
+/* Dynamically-rendered cards are wrapped in a div; make the wrapper fill
+   its grid cell and let the card fill the wrapper so heights match per row. */
+.bets-grid>[data-card-id]{display:flex;}
+.bets-grid>[data-card-id]>.bet-card{flex:1;}
 
-.bet-card{background:#fff;border-radius:14px;border:0.5px solid #e0e0e0;overflow:hidden;text-decoration:none;color:inherit;display:block;transition:box-shadow .15s,transform .15s;}
+.bet-card{background:#fff;border-radius:14px;border:0.5px solid #e0e0e0;overflow:hidden;text-decoration:none;color:inherit;display:flex;flex-direction:column;transition:box-shadow .15s,transform .15s;}
 .bet-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.08);transform:translateY(-2px);}
 .bet-card.locked{pointer-events:none;opacity:.5;filter:grayscale(.4);}
 .bet-card.upcoming{opacity:.55;cursor:default;pointer-events:none;}
 .bet-card.upcoming:hover,.bet-card.locked:hover{box-shadow:none;transform:none;}
 
 .card-stripe{height:4px;}
-.card-body{padding:18px 18px 16px;}
+.card-body{padding:18px 18px 16px;flex:1;display:flex;flex-direction:column;}
 .card-sport{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#888;margin-bottom:6px;}
 .card-name{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;}
 .card-desc{font-size:12px;color:#888;line-height:1.4;margin-bottom:14px;}
-.card-footer{display:flex;align-items:center;justify-content:space-between;border-top:0.5px solid #f0f0f0;padding-top:12px;margin-top:4px;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;border-top:0.5px solid #f0f0f0;padding-top:12px;margin-top:auto;}
 .card-status{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;}
 .status-active{background:#e8f5e9;color:#2e7d32;}
 .status-complete{background:#f5f5f3;color:#888;}
