@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dunlap 2026 — Goals & Drink Tracking</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
+a{color:inherit;}
+
+.topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-title{font-size:16px;font-weight:700;letter-spacing:-.01em;}
+.topbar-back{font-size:12px;color:#bbb;text-decoration:none;}
+.topbar-back:hover{color:#fff;}
+
+.hero{padding:44px 20px 28px;max-width:880px;margin:0 auto;}
+.hero-kicker{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#AD1457;margin-bottom:10px;}
+.hero-title{font-size:34px;font-weight:800;letter-spacing:-.02em;line-height:1.05;margin-bottom:12px;}
+.hero-quote{font-size:12px;color:#666;max-width:780px;line-height:1.5;border-left:3px solid #e0e0e0;padding-left:14px;font-style:italic;}
+.hero-quote strong{font-style:normal;color:#1a1a1a;}
+
+.main{max-width:880px;margin:0 auto;padding:0 20px 70px;}
+.tabs{display:flex;gap:2px;border-bottom:.5px solid #e0e0e0;position:sticky;top:0;background:#f5f5f3;z-index:20;padding-top:6px;}
+.tab{font-size:13px;font-weight:700;padding:11px 16px;border:none;background:none;color:#999;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-.5px;font-family:inherit;letter-spacing:-.01em;}
+.tab:hover{color:#555;}
+.tab.active{color:#1a1a1a;border-bottom-color:#AD1457;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.tab-panel>.section-label:first-child{margin-top:24px;}
+
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:38px 0 14px;}
+.section-label .hint{font-weight:500;text-transform:none;letter-spacing:0;color:#bbb;margin-left:8px;}
+
+/* ── Goal cards ── */
+.goals-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media(max-width:760px){.goals-grid{grid-template-columns:1fr 1fr;}}
+@media(max-width:520px){.goals-grid{grid-template-columns:1fr;}}
+.goal-card{background:#fff;border-radius:14px;border:.5px solid #e0e0e0;padding:16px 16px 14px;display:flex;flex-direction:column;}
+.goal-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;}
+.goal-icon{font-size:20px;line-height:1;}
+.goal-pill{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.pill-pass{background:#e8f5e9;color:#2e7d32;}
+.pill-fail{background:#fdecea;color:#c0392b;}
+.pill-warn{background:#fff8e1;color:#b8860b;}
+.pill-pending{background:#f0f0f0;color:#888;}
+.goal-name{font-size:14px;font-weight:700;letter-spacing:-.01em;margin-bottom:3px;}
+.goal-target{font-size:11px;color:#999;margin-bottom:12px;}
+.goal-value{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1;}
+.goal-value .unit{font-size:12px;font-weight:600;color:#999;margin-left:3px;}
+.goal-sub{font-size:11px;color:#888;margin-top:4px;}
+.goal-bar{height:6px;border-radius:4px;background:#f0f0f0;overflow:hidden;margin-top:12px;}
+.goal-bar>div{height:100%;border-radius:4px;}
+
+/* ── Stat strip ── */
+.stat-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+@media(max-width:760px){.stat-strip{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:420px){.stat-strip{grid-template-columns:repeat(2,1fr);}}
+.stat-box{background:#fff;border-radius:12px;border:.5px solid #e0e0e0;padding:14px 12px;text-align:center;}
+.stat-num{font-size:22px;font-weight:800;letter-spacing:-.02em;}
+.stat-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#999;margin-top:3px;}
+
+/* ── Chart ── */
+.card{background:#fff;border-radius:14px;border:.5px solid #e0e0e0;padding:18px;}
+.chart-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px;}
+.chart-title{font-size:14px;font-weight:700;}
+.chart-legend{font-size:11px;color:#888;}
+.chart-legend b{color:#c0392b;font-weight:700;}
+.chart-wrap{overflow-x:auto;}
+.qtoggle{display:flex;gap:2px;background:#f5f5f3;border-radius:7px;padding:2px;flex-shrink:0;}
+.qtoggle button{font-size:11px;font-weight:700;padding:4px 11px;border:none;background:transparent;color:#999;border-radius:5px;cursor:pointer;font-family:inherit;}
+.qtoggle button.active{background:#1a1a1a;color:#fff;}
+.qtoggle button:disabled{color:#ccc;cursor:default;}
+.chart-legend2{font-size:11px;color:#999;margin-top:12px;line-height:1.4;}
+.chart-legend2 b{color:#c0392b;font-weight:700;}
+.wk-bar{transition:opacity .1s;cursor:pointer;}
+.wk-bar:hover{opacity:.75;}
+.chart-tip{position:fixed;z-index:60;background:#1a1a1a;color:#fff;font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .1s;white-space:nowrap;transform:translate(-50%,-135%);box-shadow:0 4px 14px rgba(0,0,0,.18);}
+.chart-tip .t-sub{display:block;font-weight:400;color:#bbb;font-size:10px;margin-top:2px;}
+
+/* ── Quarter check-ins ── */
+.q-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:680px){.q-grid{grid-template-columns:1fr;}}
+.q-card{background:#fff;border-radius:14px;border:.5px solid #e0e0e0;overflow:hidden;display:flex;flex-direction:column;}
+.q-stripe{height:4px;}
+.q-body{padding:16px 18px 18px;}
+.q-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.q-name{font-size:16px;font-weight:800;letter-spacing:-.01em;}
+.q-status{font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;}
+.q-range{font-size:11px;color:#999;margin-bottom:14px;}
+.q-goalrow{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:.5px solid #f5f5f3;font-size:13px;}
+.q-goalrow:last-of-type{border-bottom:none;}
+.q-goalrow .gl{color:#444;}
+.q-mark{font-size:12px;font-weight:700;}
+.mk-pass{color:#2e7d32;}.mk-fail{color:#c0392b;}.mk-warn{color:#b8860b;}.mk-pending{color:#bbb;}
+.q-val{font-size:11px;color:#999;margin-right:10px;}
+.year-card .q-body{padding:18px 20px 20px;}
+.year-banner{margin-top:14px;padding:12px 14px;border-radius:10px;background:#fff8e1;color:#7a5c00;font-size:12px;line-height:1.5;}
+.year-banner b{color:#1a1a1a;}
+.q-penalty{margin-top:14px;padding:12px 14px;border-radius:10px;background:#f9f9f7;font-size:12px;line-height:1.5;}
+.q-penalty .amt{font-size:18px;font-weight:800;color:#c0392b;}
+.q-parlay{margin-top:10px;font-size:12px;color:#555;line-height:1.55;}
+.q-parlay .lbl{font-weight:700;color:#1a1a1a;}
+.q-leg{display:flex;align-items:center;gap:7px;padding:3px 0;}
+.q-leg .dot{width:6px;height:6px;border-radius:50%;background:#bbb;flex-shrink:0;}
+.q-outcome{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+
+/* ── Daily log ── */
+.log-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.log-search{flex:1;min-width:160px;border:.5px solid #ddd;border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;}
+.log-table{width:100%;border-collapse:collapse;font-size:13px;}
+.log-table th{text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#999;padding:8px 10px;border-bottom:.5px solid #eee;position:sticky;top:0;background:#fff;}
+.log-table td{padding:8px 10px;border-bottom:.5px solid #f5f5f3;}
+.log-table tr:hover td{background:#fafafa;}
+.log-scroll{max-height:460px;overflow-y:auto;border-radius:12px;border:.5px solid #e0e0e0;}
+.drink-chip{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 7px;border-radius:11px;font-weight:700;font-size:12px;}
+.wild-tag{font-size:11px;font-weight:600;color:#2e7d32;background:#e8f5e9;padding:2px 8px;border-radius:20px;}
+.nowild{font-size:11px;color:#ccc;}
+.commentary{color:#777;font-size:12px;}
+
+/* ── Calendar heatmap ── */
+.cal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+@media(max-width:760px){.cal-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:480px){.cal-grid{grid-template-columns:1fr;}}
+.cal-month{background:#fff;border-radius:14px;border:.5px solid #e0e0e0;padding:14px;}
+.cal-title{font-size:13px;font-weight:700;margin-bottom:10px;}
+.cal-sub{font-weight:500;color:#bbb;font-size:11px;margin-left:6px;}
+.cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;}
+.cal-dow span{font-size:9px;font-weight:700;color:#ccc;text-align:center;}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+.cal-cell{aspect-ratio:1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#3a3a3a;position:relative;cursor:default;}
+.cal-cell.empty{background:transparent;}
+.cal-cell.nodata{background:#f7f7f5;color:#d4d4d4;}
+.cal-cell .wild-dot{position:absolute;bottom:2px;right:2px;width:5px;height:5px;border-radius:50%;background:#2e7d32;box-shadow:0 0 0 1px rgba(255,255,255,.7);}
+.cal-cell .church-dot{position:absolute;top:1px;left:2px;font-size:7px;line-height:1;}
+.cal-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:16px;font-size:11px;color:#999;}
+.cal-legend .sw{width:15px;height:15px;border-radius:4px;display:inline-block;}
+.cal-legend .gdot{width:7px;height:7px;border-radius:50%;background:#2e7d32;display:inline-block;}
+.cal-legend .sep{color:#ddd;margin:0 2px;}
+
+.footnote{font-size:11px;color:#aaa;margin-top:30px;line-height:1.6;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-title">🦌 Dunlap 2026</span>
+  <a class="topbar-back" href="index.html">← All bets</a>
+</div>
+
+<div class="hero">
+  <div class="hero-kicker">The Reckoning · 2026 Goals & Punishments</div>
+  <h1 class="hero-title">Matt's 2026 Goals</h1>
+  <p class="hero-quote">"Thanks to Max, in the last year I've gone from <strong>thinking</strong> I am drinking a bit too much to <strong>knowing</strong> I am drinking a bit too much. I thought it would be good to put some goals and punishments out there for the group… We check in quarterly, and anytime I'm not achieving a goal I send <strong>$1,000</strong> to the group to be put on at least a minimum 2-leg parlay."</p>
+</div>
+
+<div class="main">
+
+  <div class="tabs">
+    <button class="tab active" data-tab="goals">🎯 Goals</button>
+    <button class="tab" data-tab="results">📊 Results</button>
+    <button class="tab" data-tab="bets">💸 The Bets</button>
+  </div>
+
+  <!-- ── GOALS TAB ── -->
+  <div class="tab-panel active" id="tab-goals">
+    <div class="section-label">The Six Goals <span class="hint">year-to-date through June 20</span></div>
+    <div class="goals-grid" id="goals-grid"></div>
+  </div>
+
+  <!-- ── RESULTS TAB ── -->
+  <div class="tab-panel" id="tab-results">
+  <div class="section-label">By The Numbers <span class="hint">year-to-date through June 20</span></div>
+  <div class="stat-strip" id="stat-strip"></div>
+
+  <div class="section-label">Weekly Drinks vs. The 18.5 Line</div>
+  <div class="card">
+    <div class="chart-head">
+      <span class="chart-title">Drinks per week</span>
+      <div class="qtoggle" id="chart-qtoggle"></div>
+    </div>
+    <div id="week-chart"></div>
+    <div class="chart-legend2">Green = under goal · red = over · <b>dashed line = 18.5 / wk</b> · hover a bar for detail</div>
+  </div>
+
+  <div class="section-label">Drink Calendar <span class="hint">color = drinks that day · 🟢 wild game · ⛪ church</span></div>
+  <div id="calendar"></div>
+  <div class="cal-legend">
+    <span>Dry</span>
+    <span class="sw" style="background:#e9f5ec"></span>
+    <span class="sw" style="background:#fff3c4"></span>
+    <span class="sw" style="background:#ffe0a3"></span>
+    <span class="sw" style="background:#ffbd82"></span>
+    <span class="sw" style="background:#f57a5c"></span>
+    <span class="sw" style="background:#d63a2a"></span>
+    <span>10+</span>
+    <span class="sep">|</span>
+    <span class="gdot"></span> wild game
+    <span class="sep">·</span>
+    ⛪ church
+  </div>
+
+  <div class="section-label">Daily Log</div>
+  <div class="log-controls">
+    <input class="log-search" id="log-search" placeholder="Search wild game, commentary…">
+  </div>
+  <div class="log-scroll">
+    <table class="log-table">
+      <thead><tr><th>Date</th><th>Drinks</th><th>Wild game</th><th>What he ate</th><th>⛪</th></tr></thead>
+      <tbody id="log-body"></tbody>
+    </table>
+  </div>
+  </div><!-- /results tab -->
+
+  <!-- ── BETS TAB ── -->
+  <div class="tab-panel" id="tab-bets">
+    <div class="section-label">Quarterly Check-Ins <span class="hint">$1,000 per missed goal → group parlay</span></div>
+    <div class="q-grid" id="q-grid"></div>
+
+    <div class="section-label">Year-End Check-In <span class="hint">the annual bet · settles Dec 31</span></div>
+    <div id="year-card"></div>
+  </div><!-- /bets tab -->
+
+  <p class="footnote">
+    Data Jan 1 – Jun 20, 2026, imported from the group tracking sheet. Drinks, wild-game days, and church (3 per quarter / ≈1×/month) are computed live from the log; the half marathon, bench, and Gothenburg habitat goals are tracked manually (edit <code>MANUAL_GOALS</code> / <code>QUARTERS</code> near the top of the script). Check-ins run quarterly <em>and</em> yearly. Quarterly parlay details are placeholders — drop in the real legs and payouts when known.
+    <br>Built to plug into Firebase later so Matt can enter days from here directly.
+  </p>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  SEED DATA — daily log. Each row: [date, drinks, churchFlag, gameType, commentary]
+//  When live entry is added later, Firebase entries overlay this seed by date.
+// ═══════════════════════════════════════════════════════════════════
+const SEED = [["2026-01-01",5,0,"Moose","Moose Brat"],["2026-01-02",4,0,"Fish","Swordfish"],["2026-01-03",4,0,"Goose","Cured goose and goose fat potatoes "],["2026-01-04",2,0,"Moose","Mushroom and moose ziti"],["2026-01-05",0,0,"Moose","Mushroom and moose ziti"],["2026-01-06",6,0,"No wild Game",""],["2026-01-07",1,0,"No wild Game",""],["2026-01-08",0,0,"Caribou","Caribou fried rice"],["2026-01-09",4,0,"Caribou","Caribou nachos"],["2026-01-10",5,0,"No wild Game",""],["2026-01-11",3,0,"Goose","Biscuits and onion and goose gravy"],["2026-01-12",0,0,"Turkey","Turkey schnitzel"],["2026-01-13",0,0,"Goose","Rigatoni Goose Amatriciana"],["2026-01-14",0,0,"No wild Game",""],["2026-01-15",0,0,"Turkey","Turkey leg tacos"],["2026-01-16",7,0,"Fish","Swordfish "],["2026-01-17",10,0,"Moose","Chukar, Mallard, Pheasant, Moose"],["2026-01-18",3,0,"Turkey","Wild turkey breakfast tacos"],["2026-01-19",3,0,"Turkey","Wild Turkey Caesar salad "],["2026-01-20",2,0,"No wild Game",""],["2026-01-21",4,0,"Duck","Bbq teal mac and cheese "],["2026-01-22",0,0,"Turkey","Wild Turkey and broccoli "],["2026-01-23",4,0,"No wild Game",""],["2026-01-24",6,0,"Moose","Wild game dinner event"],["2026-01-25",2,0,"Turkey","Wild Turkey teriyaki"],["2026-01-26",0,0,"Elk","Elk fried rice "],["2026-01-27",4,0,"No wild Game",""],["2026-01-28",4,0,"No wild Game",""],["2026-01-29",2,0,"Fish","Red snapper and angel hair"],["2026-01-30",4,0,"No wild Game",""],["2026-01-31",4,1,"No wild Game",""],["2026-02-01",4,0,"Moose","Moose breakfast tacos"],["2026-02-02",0,0,"Moose","Greek moose plate"],["2026-02-03",0,0,"Moose","Moose and potatoes "],["2026-02-04",4,0,"No wild Game",""],["2026-02-05",8,0,"No wild Game",""],["2026-02-06",7,0,"No wild Game",""],["2026-02-07",2,0,"Goose","Cured goose and sourdough "],["2026-02-08",3,0,"Goose","Goose breakfast burrito "],["2026-02-09",3,0,"No wild Game",""],["2026-02-10",2,0,"No wild Game",""],["2026-02-11",1,0,"No wild Game",""],["2026-02-12",2,0,"Fish","Swordfish and white wine pasta"],["2026-02-13",4,0,"No wild Game",""],["2026-02-14",6,0,"Turkey","Turkey leg tacos"],["2026-02-15",1,0,"Turkey","Turkey breakfast tacos "],["2026-02-16",5,0,"Turkey","Turkey mac and cheese"],["2026-02-17",3,0,"Goose","Chili steak rub snow goose"],["2026-02-18",2,0,"No wild Game",""],["2026-02-19",2,0,"No wild Game",""],["2026-02-20",2,0,"Goose","Spickgans cured goose "],["2026-02-21",7,0,"Goose","Snow goose steaks and rice"],["2026-02-22",4,0,"No wild Game",""],["2026-02-23",6,0,"No wild Game",""],["2026-02-24",0,0,"No wild Game",""],["2026-02-25",0,0,"No wild Game",""],["2026-02-26",7,0,"No wild Game",""],["2026-02-27",11,0,"No wild Game",""],["2026-02-28",14,0,"No wild Game",""],["2026-03-01",3,0,"No wild Game",""],["2026-03-02",1,0,"Pheasant","Sautéed pheasant "],["2026-03-03",0,0,"Fish","Swordfish tacos"],["2026-03-04",0,0,"No wild Game",""],["2026-03-05",4,0,"No wild Game",""],["2026-03-06",5,0,"No wild Game",""],["2026-03-07",3,1,"Moose","Moose breakfast tacos"],["2026-03-08",6,0,"Fish","Sea trout ceviche "],["2026-03-09",0,0,"Moose","Moose burger"],["2026-03-10",0,0,"Pheasant","Penne vodka and pheasant cutlets "],["2026-03-11",2,0,"Moose","Moose Brat"],["2026-03-12",3,0,"Moose","Moose meatballs and fennel spaghetti "],["2026-03-13",4,0,"No wild Game",""],["2026-03-14",7,0,"Moose","Moose meatballs and fennel spaghetti "],["2026-03-15",4,0,"Moose","Latin moose roast"],["2026-03-16",3,0,"Moose","Latin moose roast"],["2026-03-17",1,0,"Moose","Moose roast, potatoes, arugula salad. "],["2026-03-18",6,0,"Moose","Moose breakfast tacos"],["2026-03-19",11,0,"No wild Game",""],["2026-03-20",3,0,"No wild Game",""],["2026-03-21",15,0,"No wild Game",""],["2026-03-22",3,0,"No wild Game",""],["2026-03-23",2,0,"Turkey","Turkey schnitzel "],["2026-03-24",3,0,"No wild Game",""],["2026-03-25",6,0,"No wild Game",""],["2026-03-26",9,0,"No wild Game",""],["2026-03-27",6,0,"No wild Game",""],["2026-03-28",3,0,"No wild Game",""],["2026-03-29",4,1,"Turkey","Turkey tikka masala"],["2026-03-30",2,0,"Fish","Snapper and broccoli "],["2026-03-31",3,0,"Turkey","Turkey tikka masala"],["2026-04-01",2,0,"No wild Game",""],["2026-04-02",2,0,"Fish","Sea trout tacos"],["2026-04-03",3,0,"Moose","White wine mushroom moose pasta"],["2026-04-04",4,0,"Caribou","Caribou steak"],["2026-04-05",2,1,"Moose","White wine mushroom moose pasta"],["2026-04-06",0,0,"Goose","Snow goose nachos"],["2026-04-07",2,0,"No wild Game",""],["2026-04-08",2,0,"No wild Game",""],["2026-04-09",4,0,"Goose","Mexican snow goose and rice "],["2026-04-10",4,0,"Moose","Moose burger"],["2026-04-11",5,0,"Moose","Moose burger"],["2026-04-12",3,1,"Goose","Cured goose and duck "],["2026-04-13",3,0,"No wild Game",""],["2026-04-14",5,0,"Fish","Teriyaki swordfish "],["2026-04-15",0,0,"Fish","Swordfish tacos"],["2026-04-16",0,0,"Moose","Moose Ziti"],["2026-04-17",3,0,"No wild Game",""],["2026-04-18",4,0,"Moose","Moose breakfast tacos "],["2026-04-19",4,0,"Fish","Mackerel ceviche"],["2026-04-20",0,0,"Duck","Teal Hoagie"],["2026-04-21",3,0,"No wild Game",""],["2026-04-22",1,0,"No wild Game",""],["2026-04-23",10,0,"Moose","Grilled moose sausage "],["2026-04-24",12,0,"No wild Game",""],["2026-04-25",11,0,"No wild Game",""],["2026-04-26",3,0,"No wild Game",""],["2026-04-27",0,0,"Duck","Peruvian teal plate"],["2026-04-28",0,0,"Duck","Peruvian teal plate"],["2026-04-29",2,0,"No wild Game",""],["2026-04-30",2,0,"No wild Game",""],["2026-05-01",8,0,"Goose","Smoked goose sandwhich"],["2026-05-02",11,0,"Turkey","Turkey tacos"],["2026-05-03",4,0,"Goose","Goose tacos"],["2026-05-04",0,0,"Turkey","Turkey cutlets and spaghetti "],["2026-05-05",2,0,"No wild Game",""],["2026-05-06",2,0,"Duck","Duck ramen"],["2026-05-07",2,0,"Moose","Moose burger"],["2026-05-08",5,0,"No wild Game",""],["2026-05-09",4,0,"Goose","Bbq goose sandwich "],["2026-05-10",4,0,"No wild Game",""],["2026-05-11",2,0,"No wild Game",""],["2026-05-12",0,0,"Fish","Swordfish"],["2026-05-13",3,0,"No wild Game",""],["2026-05-14",2,0,"Moose","Rice and moose "],["2026-05-15",8,0,"No wild Game",""],["2026-05-16",10,0,"Moose","Moose burger"],["2026-05-17",4,1,"Moose","Cured moose and Bloody Mary sticks "],["2026-05-18",2,0,"Duck","Duck ramen"],["2026-05-19",3,0,"No wild Game",""],["2026-05-20",3,0,"No wild Game",""],["2026-05-21",2,0,"Duck","Duck fried rice"],["2026-05-22",3,0,"Duck","Duck ramen"],["2026-05-23",12,0,"Duck","Duck burrito "],["2026-05-24",11,0,"No wild Game",""],["2026-05-25",3,0,"No wild Game",""],["2026-05-26",1,0,"No wild Game",""],["2026-05-27",0,0,"Fish","Sea trout tacos"],["2026-05-28",2,0,"Moose","Moose burger"],["2026-05-29",5,0,"Turkey",""],["2026-05-30",5,0,"Turkey",""],["2026-05-31",4,0,"No wild Game",""],["2026-06-01",0,0,"Fish",""],["2026-06-02",4,0,"No wild Game",""],["2026-06-03",3,0,"No wild Game",""],["2026-06-04",4,0,"No wild Game",""],["2026-06-05",4,0,"No wild Game",""],["2026-06-06",7,0,"Moose","Moose Biscuits and gravy"],["2026-06-07",4,0,"Moose","White wine moose mushroom pasta"],["2026-06-08",1,0,"Pheasant","Pheasant sandwich "],["2026-06-09",3,0,"Pheasant","Pheasant ramen "],["2026-06-10",2,0,"Pheasant","Pheastant pasta"],["2026-06-11",2,0,"Caribou","Caribou steaks and risotto"],["2026-06-12",8,0,"Caribou","Caribou breakfast tacos"],["2026-06-13",8,0,"No wild Game",""],["2026-06-14",4,0,"Moose","Moose breakfast tacos"],["2026-06-15",3,0,"Moose",""],["2026-06-16",3,0,"No wild Game",""],["2026-06-17",6,0,"No wild Game",""],["2026-06-18",9,0,"Fish","Walleye shore lunch"],["2026-06-19",9,0,"Fish","Walleye shore lunch"],["2026-06-20",9,0,"Fish","Walleye shore lunch"]];
+
+const DRINK_GOAL = 18.5;        // per week
+const WILD_GOAL  = 50;          // % of days
+
+// Goals not in the sheet — edit status manually: 'pass' | 'fail' | 'warn' | 'pending'
+const MANUAL_GOALS = {
+  half:    { status:'pending', value:'—',     sub:'No timed race logged yet' },
+  bench:   { status:'pending', value:'—',     sub:'No 225 lift logged yet' },
+  habitat: { status:'pending', value:'Planned',sub:'Gothenburg habitat work TBD' },
+};
+
+// Quarterly check-in + parlay record. Manual-goal marks ('pass'/'fail'/'pending')
+// for half/bench/habitat live here; drinks/wild/church marks are computed.
+const QUARTERS = [
+  { key:'Q1', name:'Q1', range:'Jan 1 – Mar 31', color:'#1565C0', status:'final', groupResult:'won',
+    marks:{ half:'pending', bench:'pending', habitat:'pending' },
+    parlay:{ stake:1000, legs:['Nebraska ML vs. Troy (NCAA Tourney, Mar 17)','Clemson ML vs. Iowa (NCAA Tourney, Mar 17)'], result:'lost', payout:null } },
+  { key:'Q2', name:'Q2', range:'Apr 1 – Jun 30', color:'#2E7D32', status:'in-progress', groupResult:'won',
+    marks:{ half:'pending', bench:'pending', habitat:'pending' },
+    parlay:{ stake:1000, legs:['San Antonio Spurs ML vs. OKC (May 24)','Victor Wembanyama 30+ points'], result:'won', payout:3940 } },
+  { key:'Q3', name:'Q3', range:'Jul 1 – Sep 30', color:'#888', status:'upcoming', groupResult:null,
+    marks:{ half:'pending', bench:'pending', habitat:'pending' }, parlay:null },
+  { key:'Q4', name:'Q4', range:'Oct 1 – Dec 31', color:'#888', status:'upcoming', groupResult:null,
+    marks:{ half:'pending', bench:'pending', habitat:'pending' }, parlay:null },
+];
+
+// ── Helpers ────────────────────────────────────────────────────────
+const isWild = t => t && t !== 'No wild Game';
+const fmt = n => (Math.round(n*10)/10).toLocaleString();
+function quarterOf(m){ return m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4'; }
+function parseRow(r){
+  const [iso,drinks,church,type,note] = r;
+  const d = new Date(iso+'T00:00:00');
+  return { iso, d, month:d.getMonth()+1, q:quarterOf(d.getMonth()+1),
+           drinks, church:!!church, type, wild:isWild(type), note:(note||'').trim() };
+}
+const DAYS = SEED.map(parseRow);
+
+// ── Aggregate stats ────────────────────────────────────────────────
+function summarize(days){
+  const n = days.length;
+  const totalDrinks = days.reduce((s,x)=>s+x.drinks,0);
+  const wildDays = days.filter(x=>x.wild).length;
+  const dryDays = days.filter(x=>x.drinks===0).length;
+  const weeklyAvg = n ? totalDrinks/n*7 : 0;
+  const wildPct = n ? wildDays/n*100 : 0;
+  // church: goal is 3 visits per quarter (≈1×/month)
+  const months = [...new Set(days.map(x=>x.iso.slice(0,7)))];
+  const churchDays = days.filter(x=>x.church).length;
+  return { n,totalDrinks,wildDays,dryDays,weeklyAvg,wildPct,
+           monthsElapsed:months.length, churchDays, months };
+}
+const ALL = summarize(DAYS);
+
+// Church visits per quarter (goal: 3 per quarter)
+const CHURCH_TARGET = 3;
+const CHURCH_Q = {Q1:0,Q2:0,Q3:0,Q4:0};
+DAYS.forEach(x=>{ if(x.church) CHURCH_Q[x.q]++; });
+const ELAPSED_Q = [...new Set(DAYS.map(x=>x.q))];      // quarters with data, e.g. ['Q1','Q2']
+const LAST_Q = ELAPSED_Q[ELAPSED_Q.length-1];
+// Status for one quarter's church goal. The in-progress quarter is 'pending'
+// until it reaches 3, never marked failed early.
+function churchQStatus(q, inProgress){
+  const v = CHURCH_Q[q];
+  if(v >= CHURCH_TARGET) return 'pass';
+  if(inProgress) return 'pending';
+  return v >= CHURCH_TARGET-1 ? 'warn' : 'fail';
+}
+
+// ── Goal cards ─────────────────────────────────────────────────────
+const PILL = {pass:'pill-pass',fail:'pill-fail',warn:'pill-warn',pending:'pill-pending'};
+const PILL_TXT = {pass:'On track',fail:'Behind',warn:'Watch',pending:'TBD'};
+const STATUS_COLOR = {pass:'#2e7d32',fail:'#c0392b',warn:'#b8860b',pending:'#bbb'};
+
+function goalCard(g){
+  const bar = g.bar==null ? '' :
+    `<div class="goal-bar"><div style="width:${Math.min(100,g.bar)}%;background:${STATUS_COLOR[g.status]}"></div></div>`;
+  return `<div class="goal-card">
+    <div class="goal-top"><span class="goal-icon">${g.icon}</span>
+      <span class="goal-pill ${PILL[g.status]}">${PILL_TXT[g.status]}</span></div>
+    <div class="goal-name">${g.name}</div>
+    <div class="goal-target">${g.target}</div>
+    <div class="goal-value">${g.value}${g.unit?`<span class="unit">${g.unit}</span>`:''}</div>
+    ${g.sub?`<div class="goal-sub">${g.sub}</div>`:''}
+    ${bar}
+  </div>`;
+}
+
+const drinkStatus = ALL.weeklyAvg<=DRINK_GOAL ? 'pass' : (ALL.weeklyAvg<=DRINK_GOAL*1.1?'warn':'fail');
+const wildStatus  = ALL.wildPct>=WILD_GOAL ? 'pass' : (ALL.wildPct>=WILD_GOAL*0.9?'warn':'fail');
+let churchStatus = 'pass';
+ELAPSED_Q.forEach(q=>{
+  const s = churchQStatus(q, q===LAST_Q);
+  if(s==='fail') churchStatus='fail';
+  else if(s==='warn' && churchStatus!=='fail') churchStatus='warn';
+});
+
+const GOALS = [
+  { icon:'🍺', name:'Drinks ≤ 18.5/wk', target:'Weekly average under 18.5',
+    value:fmt(ALL.weeklyAvg), unit:'/wk', status:drinkStatus,
+    sub:`${fmt(ALL.weeklyAvg-DRINK_GOAL)} over the line`, bar:ALL.weeklyAvg/DRINK_GOAL*100 },
+  { icon:'🦌', name:'50% wild game days', target:'Wild game on ≥ half of days',
+    value:fmt(ALL.wildPct), unit:'%', status:wildStatus,
+    sub:`${ALL.wildDays} of ${ALL.n} days`, bar:ALL.wildPct },
+  { icon:'⛪', name:'Church 3×/quarter', target:'With the kids, ≈1×/month',
+    value:`${ALL.churchDays}`, unit:'visits', status:churchStatus,
+    sub:`Q1 ${CHURCH_Q.Q1}/3 · Q2 ${CHURCH_Q.Q2}/3`,
+    bar:Math.min(100, ALL.churchDays/(CHURCH_TARGET*ELAPSED_Q.length)*100) },
+  { icon:'🏃', name:'8:30 /mi half marathon', target:'Run a half at 8:30 pace this year',
+    value:MANUAL_GOALS.half.value, status:MANUAL_GOALS.half.status, sub:MANUAL_GOALS.half.sub, bar:null },
+  { icon:'🏋️', name:'Bench 225 by EOY', target:'225 lb bench press',
+    value:MANUAL_GOALS.bench.value, status:MANUAL_GOALS.bench.status, sub:MANUAL_GOALS.bench.sub, bar:null },
+  { icon:'🌲', name:'Habitat work', target:'Habitat work in Gothenburg',
+    value:MANUAL_GOALS.habitat.value, status:MANUAL_GOALS.habitat.status, sub:MANUAL_GOALS.habitat.sub, bar:null },
+];
+document.getElementById('goals-grid').innerHTML = GOALS.map(goalCard).join('');
+
+// ── Stat strip ─────────────────────────────────────────────────────
+const gameCounts = {};
+DAYS.filter(x=>x.wild).forEach(x=>gameCounts[x.type]=(gameCounts[x.type]||0)+1);
+const topGame = Object.entries(gameCounts).sort((a,b)=>b[1]-a[1])[0];
+const maxDay = DAYS.reduce((m,x)=>x.drinks>m.drinks?x:m,DAYS[0]);
+const STATS = [
+  { num:ALL.totalDrinks, lbl:'Total drinks' },
+  { num:fmt(ALL.totalDrinks/ALL.n), lbl:'Avg / day' },
+  { num:ALL.dryDays, lbl:'Dry days' },
+  { num:maxDay.drinks, lbl:`Biggest day` },
+  { num:fmt(ALL.wildPct)+'%', lbl:'Wild game' },
+  { num:topGame[0], lbl:`Top game (${topGame[1]})` },
+];
+document.getElementById('stat-strip').innerHTML = STATS.map(s=>
+  `<div class="stat-box"><div class="stat-num">${s.num}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+
+// ── Weekly chart (Mon–Sun ISO weeks) ───────────────────────────────
+function weekKey(d){
+  const t = new Date(d); const day=(t.getDay()+6)%7; t.setDate(t.getDate()-day); // Monday
+  return t.toISOString().slice(0,10);
+}
+const weeksMap = {};
+DAYS.forEach(x=>{ const k=weekKey(x.d); (weeksMap[k]=weeksMap[k]||[]).push(x); });
+const weeks = Object.keys(weeksMap).sort().map(k=>{
+  const days=weeksMap[k]; const total=days.reduce((s,x)=>s+x.drinks,0);
+  // assign each week to a quarter by its Thursday (ISO representative day)
+  const thu=new Date(k+'T00:00:00'); thu.setDate(thu.getDate()+3);
+  return { key:k, total, days:days.length, q:quarterOf(thu.getMonth()+1) };
+});
+function weekRange(key){
+  const a=new Date(key+'T00:00:00'); const b=new Date(a); b.setDate(b.getDate()+6);
+  const f=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return f(a)+' – '+f(b);
+}
+// Shared by-week tooltip (one element reused for whichever quarter is shown)
+const chartTip=document.createElement('div'); chartTip.className='chart-tip';
+document.body.appendChild(chartTip);
+const CHART_MAXV=Math.max(DRINK_GOAL, ...weeks.map(w=>w.total))*1.08; // global y-scale → quarters comparable
+
+function drawChart(q){
+  const host=document.getElementById('week-chart');
+  const wk=weeks.filter(w=>w.q===q);
+  if(!wk.length){ host.innerHTML='<div style="padding:48px 0;text-align:center;color:#bbb;font-size:13px;">No drinks logged yet for '+q+'.</div>'; return; }
+  const bwUnit=46, padL=28, padB=34, padT=16, padR=10;
+  const plotW=wk.length*bwUnit, W=padL+plotW+padR, H=230, plotH=H-padB-padT;
+  const bw=plotW/wk.length;
+  const y=v=>padT+plotH-(v/CHART_MAXV*plotH);
+  const goalY=y(DRINK_GOAL);
+  let bars='';
+  wk.forEach((w,i)=>{
+    const x=padL+i*bw+bw*0.18, ww=bw*0.64, h=w.total/CHART_MAXV*plotH;
+    const over=w.total>DRINK_GOAL;
+    bars+=`<rect class="wk-bar" data-key="${w.key}" x="${x.toFixed(1)}" y="${(padT+plotH-h).toFixed(1)}" width="${ww.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${over?'#e74c3c':'#43a047'}"></rect>`;
+    bars+=`<text x="${(padL+i*bw+bw/2).toFixed(1)}" y="${H-padB+15}" font-size="9" fill="#aaa" text-anchor="middle">${new Date(w.key+'T00:00:00').toLocaleDateString('en-US',{month:'numeric',day:'numeric'})}</text>`;
+  });
+  let grid='';
+  for(let g=0; g<=CHART_MAXV; g+=10){
+    grid+=`<line x1="${padL}" y1="${y(g)}" x2="${W-padR}" y2="${y(g)}" stroke="#f0f0f0"/>`+
+          `<text x="${padL-5}" y="${y(g)+3}" font-size="9" fill="#bbb" text-anchor="end">${g}</text>`;
+  }
+  const goal=`
+    <line x1="${padL}" y1="${goalY}" x2="${W-padR}" y2="${goalY}" stroke="#fff" stroke-width="4" stroke-opacity=".85"/>
+    <line x1="${padL}" y1="${goalY}" x2="${W-padR}" y2="${goalY}" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="${padL+3}" y="${goalY-6}" font-size="10.5" fill="#c0392b" font-weight="700" paint-order="stroke" stroke="#fff" stroke-width="3" stroke-linejoin="round">18.5 / wk goal</text>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,sans-serif" style="display:block">${grid}${bars}${goal}</svg>`;
+  host.querySelectorAll('.wk-bar').forEach(r=>{
+    const w=weeks.find(x=>x.key===r.dataset.key);
+    const diff=w.total-DRINK_GOAL;
+    const delta=diff>0?`+${fmt(diff)} over goal`:`${fmt(-diff)} under goal`;
+    r.addEventListener('mousemove',e=>{
+      chartTip.style.opacity='1';
+      chartTip.style.left=e.clientX+'px';
+      chartTip.style.top=e.clientY+'px';
+      chartTip.innerHTML=`${w.total} drinks<span class="t-sub">${weekRange(w.key)} · ${delta}</span>`;
+    });
+    r.addEventListener('mouseleave',()=>{ chartTip.style.opacity='0'; });
+  });
+}
+// Quarter toggle
+(function buildChartToggle(){
+  const tg=document.getElementById('chart-qtoggle');
+  const have=new Set(weeks.map(w=>w.q));
+  const start=['Q4','Q3','Q2','Q1'].find(q=>have.has(q)) || 'Q1';
+  tg.innerHTML=['Q1','Q2','Q3','Q4'].map(q=>`<button data-q="${q}"${have.has(q)?'':' disabled'}>${q}</button>`).join('');
+  function set(q){ tg.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.q===q)); drawChart(q); }
+  tg.querySelectorAll('button').forEach(b=>{ if(!b.disabled) b.addEventListener('click',()=>set(b.dataset.q)); });
+  set(start);
+})();
+
+// ── Quarterly check-ins ────────────────────────────────────────────
+const Q_STAT_PILL = {final:'pill-pass',['in-progress']:'pill-warn',upcoming:'pill-pending'};
+const Q_STAT_TXT  = {final:'Final',['in-progress']:'In progress',upcoming:'Upcoming'};
+const MARK = {pass:['✓','mk-pass'],fail:['✗','mk-fail'],warn:['◐','mk-warn'],pending:['·','mk-pending']};
+
+function quarterMarks(q){
+  // compute data-driven marks from this quarter's days
+  const qd = DAYS.filter(x=>x.q===q.key);
+  let drink='pending', wild='pending', church='pending';
+  if(qd.length){
+    const s=summarize(qd);
+    drink = s.weeklyAvg<=DRINK_GOAL?'pass':'fail';
+    wild  = s.wildPct>=WILD_GOAL?'pass':'fail';
+    church= churchQStatus(q.key, q.status==='in-progress');
+  }
+  return [
+    ['🍺 Drinks ≤ 18.5/wk', drink],
+    ['🦌 50% wild game', wild],
+    [`⛪ Church 3×/qtr (${CHURCH_Q[q.key]||0})`, church],
+    ['🏃 Half @ 8:30', q.marks.half],
+    ['🏋️ Bench 225', q.marks.bench],
+    ['🌲 Gothenburg habitat', q.marks.habitat],
+  ];
+}
+function qCard(q){
+  const rows = quarterMarks(q);
+  const missed = rows.filter(r=>r[1]==='fail').length;
+  const penalty = missed*1000;
+  const rowsHtml = rows.map(([gl,m])=>{
+    const [sym,cls]=MARK[m];
+    return `<div class="q-goalrow"><span class="gl">${gl}</span><span class="q-mark ${cls}">${sym}</span></div>`;
+  }).join('');
+  let penaltyHtml='';
+  if(q.status!=='upcoming'){
+    penaltyHtml = `<div class="q-penalty">
+      ${missed} missed goal${missed===1?'':'s'} →
+      <span class="amt">$${penalty.toLocaleString()}</span> to the group${missed?'':' — clean quarter'}.</div>`;
+  }
+  let parlayHtml='';
+  if(q.parlay){
+    const oc = q.parlay.result;
+    const ocCls = oc==='won'?'pill-pass':oc==='lost'?'pill-fail':'pill-pending';
+    parlayHtml = `<div class="q-parlay"><span class="lbl">The parlay${q.parlay.stake?` · $${q.parlay.stake.toLocaleString()}`:''}</span>
+      ${q.parlay.legs.map(l=>`<div class="q-leg"><span class="dot"></span>${l}</div>`).join('')}
+      <span class="q-outcome ${ocCls}">Group ${oc}${q.parlay.payout?` · $${q.parlay.payout.toLocaleString()}`:''}</span>
+    </div>`;
+  }
+  return `<div class="q-card"><div class="q-stripe" style="background:${q.color}"></div>
+    <div class="q-body">
+      <div class="q-head"><span class="q-name">${q.name}</span>
+        <span class="q-status ${Q_STAT_PILL[q.status]}">${Q_STAT_TXT[q.status]}</span></div>
+      <div class="q-range">${q.range}</div>
+      ${rowsHtml}${penaltyHtml}${parlayHtml}
+    </div></div>`;
+}
+document.getElementById('q-grid').innerHTML = QUARTERS.map(qCard).join('');
+
+// ── Year-End check-in (annual bet) ─────────────────────────────────
+(function renderYear(){
+  const rows = [
+    ['🍺 Drinks ≤ 18.5/wk average', drinkStatus==='pass'?'pass':drinkStatus, fmt(ALL.weeklyAvg)+'/wk'],
+    ['🦌 50% wild game days',       wildStatus,  fmt(ALL.wildPct)+'%'],
+    ['⛪ Church 12× (3 per quarter)',churchStatus,ALL.churchDays+'/12'],
+    ['🏃 Half marathon @ 8:30 pace',MANUAL_GOALS.half.status,    ''],
+    ['🏋️ Bench 225',                MANUAL_GOALS.bench.status,   ''],
+    ['🌲 Gothenburg habitat work',  MANUAL_GOALS.habitat.status, ''],
+  ];
+  const offPace = rows.filter(r=>r[1]==='fail').length;
+  const pending = rows.filter(r=>r[1]==='pending').length;
+  const rowsHtml = rows.map(([gl,m,val])=>{
+    const [sym,cls]=MARK[m];
+    return `<div class="q-goalrow"><span class="gl">${gl}</span>
+      <span>${val?`<span class="q-val">${val}</span>`:''}<span class="q-mark ${cls}">${sym}</span></span></div>`;
+  }).join('');
+  const banner = `<div class="year-banner">On current pace, <b>${offPace} goal${offPace===1?'':'s'}</b> would miss at year-end`+
+    `${offPace?` → ~<b>$${(offPace*1000).toLocaleString()}</b> on the annual bet`:''}.`+
+    `${pending?` ${pending} goal${pending===1?'':'s'} (half, bench, habitat) still to be settled.`:''}</div>`;
+  const html = `<div class="q-card year-card"><div class="q-stripe" style="background:#AD1457"></div>
+    <div class="q-body">
+      <div class="q-head"><span class="q-name">2026 — Full Year</span>
+        <span class="q-status pill-warn">In progress</span></div>
+      <div class="q-range">Jan 1 – Dec 31 · settles at year-end · current pace shown</div>
+      ${rowsHtml}${banner}
+    </div></div>`;
+  document.getElementById('year-card').innerHTML = html;
+})();
+
+// ── Drink calendar (monthly heatmap) ───────────────────────────────
+function heat(n){
+  if(n===0)  return '#e9f5ec';   // dry day — green
+  if(n<=2)   return '#fff3c4';
+  if(n<=4)   return '#ffe0a3';
+  if(n<=6)   return '#ffbd82';
+  if(n<=8)   return '#f99268';
+  if(n<=10)  return '#f0654a';
+  return '#d63a2a';
+}
+(function buildCalendar(){
+  const byMonth = {};
+  DAYS.forEach(x=>{ const k=x.iso.slice(0,7); (byMonth[k]=byMonth[k]||{})[x.d.getDate()]=x; });
+  const dow = ['S','M','T','W','T','F','S'];
+  const months = Object.keys(byMonth).sort();
+  const html = months.map(mk=>{
+    const [y,m] = mk.split('-').map(Number);
+    const first = new Date(y, m-1, 1);
+    const startDow = first.getDay();
+    const dim = new Date(y, m, 0).getDate();
+    const title = first.toLocaleDateString('en-US',{month:'long'});
+    const mdays = byMonth[mk];
+    const tot = Object.values(mdays).reduce((s,x)=>s+x.drinks,0);
+    let cells = '';
+    for(let i=0;i<startDow;i++) cells += '<div class="cal-cell empty"></div>';
+    for(let d=1; d<=dim; d++){
+      const day = mdays[d];
+      if(!day){ cells += `<div class="cal-cell nodata">${d}</div>`; continue; }
+      const wild = day.wild ? '<span class="wild-dot"></span>' : '';
+      const church = day.church ? '<span class="church-dot">⛪</span>' : '';
+      const tip = `${day.d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} · `+
+        `${day.drinks} drink${day.drinks===1?'':'s'}`+
+        `${day.wild?' · '+day.type:''}${day.note?' — '+day.note:''}${day.church?' · ⛪ church':''}`;
+      cells += `<div class="cal-cell" style="background:${heat(day.drinks)}" title="${tip.replace(/"/g,'&quot;')}">${day.drinks}${wild}${church}</div>`;
+    }
+    return `<div class="cal-month">
+      <div class="cal-title">${title}<span class="cal-sub">${tot} drinks</span></div>
+      <div class="cal-dow">${dow.map(d=>`<span>${d}</span>`).join('')}</div>
+      <div class="cal-days">${cells}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('calendar').innerHTML = `<div class="cal-grid">${html}</div>`;
+})();
+
+// ── Daily log (newest first) ───────────────────────────────────────
+function drinkColor(n){
+  if(n===0) return '#e8f5e9';
+  if(n<=4)  return '#fff8e1';
+  if(n<=8)  return '#ffe0b2';
+  return '#ffcdd2';
+}
+const logRows = [...DAYS].reverse();
+function renderLog(filter){
+  const f=(filter||'').toLowerCase();
+  const html = logRows.filter(x=>!f || x.type.toLowerCase().includes(f) || x.note.toLowerCase().includes(f))
+    .map(x=>{
+      const dlbl=x.d.toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
+      return `<tr>
+        <td>${dlbl}</td>
+        <td><span class="drink-chip" style="background:${drinkColor(x.drinks)}">${x.drinks}</span></td>
+        <td>${x.wild?`<span class="wild-tag">${x.type}</span>`:'<span class="nowild">—</span>'}</td>
+        <td class="commentary">${x.note||''}</td>
+        <td>${x.church?'⛪':''}</td>
+      </tr>`;
+    }).join('');
+  document.getElementById('log-body').innerHTML = html;
+}
+renderLog('');
+document.getElementById('log-search').addEventListener('input', e=>renderLog(e.target.value));
+
+// ── Tabs ───────────────────────────────────────────────────────────
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(t=>t.addEventListener('click', ()=>{
+  const id = t.dataset.tab;
+  tabs.forEach(x=>x.classList.toggle('active', x===t));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+id));
+  if(history.replaceState) history.replaceState(null,'','#'+id);
+  window.scrollTo({top:0});
+}));
+// Open tab from URL hash (e.g. #bets)
+(function initTab(){
+  const h=(location.hash||'').replace('#','');
+  const t=[...tabs].find(x=>x.dataset.tab===h);
+  if(t) t.click();
+})();
+</script>
+</body>
+</html>
