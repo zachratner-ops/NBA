@@ -63,9 +63,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .alltime-net{font-size:11px;font-weight:700;width:52px;text-align:right;}
 
 /* ── Commissioner panel ───────────────────────────────────────── */
-.comm-bar{background:#1a1a1a;border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-.comm-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;}
-.comm-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.comm-bar{background:#1a1a1a;border-radius:12px;padding:16px;margin-bottom:20px;}
+.comm-bar-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:12px;display:block;}
+.comm-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;}
+.comm-card-row{background:#2a2a2a;border-radius:8px;padding:12px;display:flex;align-items:center;justify-content:space-between;}
+.comm-card-info{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;}
+.comm-card-name{font-size:13px;font-weight:600;color:#fff;}
+.comm-card-status{font-size:11px;color:#aaa;}
 .btn{background:#1a1a1a;color:#fff;border:none;font-size:12px;font-weight:700;padding:7px 14px;border-radius:7px;cursor:pointer;transition:background .15s;}
 .btn:hover{background:#333;}
 .btn-green{background:#2e7d32;}.btn-green:hover{background:#1b5e20;}
@@ -143,61 +147,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="main">
 
   <div class="section-label">Active Bets</div>
-  <div class="bets-grid" id="active-bets-grid">
-
-    <a class="bet-card" href="nba.html">
-      <div class="card-stripe" style="background:#1565C0;"></div>
-      <div class="card-body">
-        <div class="card-sport">🏀 NBA</div>
-        <div class="card-name">2026 Playoff Points</div>
-        <div class="card-desc">Pick 8 players. Your score is their total playoff points. Last team standing wins.</div>
-        <div class="card-footer">
-          <span class="card-status status-active">🟢 Active</span>
-          <div><div class="card-leader" id="nba-leader"><span>Loading…</span></div></div>
-        </div>
-      </div>
-    </a>
-
-
-    <a class="bet-card" href="bernie.html">
-      <div class="card-stripe" style="background:#c0392b;"></div>
-      <div class="card-body">
-        <div class="card-sport">☠️ Dark Bet</div>
-        <div class="card-name">The Bernie Bet</div>
-        <div class="card-desc">Will Bernie Sanders still be alive by Oct 22, 2026? A $100 wager made exactly 10 years prior.</div>
-        <div class="card-footer">
-          <span class="card-status status-active">🟢 Active</span>
-          <div><div class="card-leader"><span>Deadline:</span> Oct 22, 2026</div></div>
-        </div>
-      </div>
-    </a>
-
-    <a class="bet-card" href="bets.html">
-      <div class="card-stripe" style="background:#7B1FA2;"></div>
-      <div class="card-body">
-        <div class="card-sport">🤝 One-Offs</div>
-        <div class="card-name">Ongoing Bet Tracker</div>
-        <div class="card-desc">Open-ended bets between group members. Add any proposition, settle it when it's done, track the money.</div>
-        <div class="card-footer">
-          <span class="card-status status-active">🟢 Active</span>
-          <div><div class="card-leader" id="oneoff-leader"><span>Open to all</span></div></div>
-        </div>
-      </div>
-    </a>
-
-    <a class="bet-card" href="wc-draft.html?slug=wc2026">
-      <div class="card-stripe" style="background:#006847;"></div>
-      <div class="card-body">
-        <div class="card-sport">⚽ World Cup</div>
-        <div class="card-name">FIFA WC 2026</div>
-        <div class="card-desc">Snake draft of all 48 teams. $1/goal from each other participant, $10/match, tie side-pot. Starts June 11.</div>
-        <div class="card-footer">
-          <span class="card-status status-active">🟢 Active</span>
-          <div class="card-leader">Live Draft + Tracker →</div>
-        </div>
-      </div>
-    </a>
-
+  <div class="bets-grid" id="active-bets-grid"></div>
   </div>
 
   <div class="section-label">History</div>
@@ -6726,6 +6676,48 @@ function pwCheck() {
 // ── Card definitions ─────────────────────────────────────────────
 const CARDS = [
   {
+    id: 'nba-playoff',
+    sport: '🏀 NBA',
+    color: '#1565C0',
+    name: '2026 Playoff Points',
+    desc: 'Pick 8 players. Your score is their total playoff points. Last team standing wins.',
+    href: 'nba.html',
+    activeLabel: '🟢 Active',
+    loadLeader: true,
+    leaderElemId: 'nba-leader',
+  },
+  {
+    id: 'bernie-bet',
+    sport: '☠️ Dark Bet',
+    color: '#c0392b',
+    name: 'The Bernie Bet',
+    desc: 'Will Bernie Sanders still be alive by Oct 22, 2026? A $100 wager made exactly 10 years prior.',
+    href: 'bernie.html',
+    activeLabel: '🟢 Active',
+    staticFooter: '<span>Deadline:</span> Oct 22, 2026',
+  },
+  {
+    id: 'oneoff-bets',
+    sport: '🤝 One-Offs',
+    color: '#7B1FA2',
+    name: 'Ongoing Bet Tracker',
+    desc: 'Open-ended bets between group members. Add any proposition, settle it when it\'s done, track the money.',
+    href: 'bets.html',
+    activeLabel: '🟢 Active',
+    loadLeader: true,
+    leaderElemId: 'oneoff-leader',
+  },
+  {
+    id: 'wc2026',
+    sport: '⚽ World Cup',
+    color: '#006847',
+    name: 'FIFA WC 2026',
+    desc: 'Snake draft of all 48 teams. $1/goal from each other participant, $10/match, tie side-pot. Starts June 11.',
+    href: 'wc-draft.html?slug=wc2026',
+    activeLabel: '🟢 Active',
+    staticFooter: 'Live Draft + Tracker →',
+  },
+  {
     id: 'us-open-26',
     sport: '⛳ Golf',
     color: '#2E7D32',
@@ -6735,6 +6727,7 @@ const CARDS = [
     comingSoonLabel: '🔜 Coming Soon',
     activeLabel: '🟢 Live',
     loadLeader: true,
+    leaderElemId: 'leader-us-open-26',
   },
   {
     id: 'nba-ous',
@@ -6807,13 +6800,17 @@ function renderCommPanel() {
   const actions = document.getElementById('comm-actions');
   actions.innerHTML = CARDS.map(card => {
     const active = cardStates[card.id] === true;
-    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span style="font-size:11px;color:#aaa;">${card.name}:</span>
-      <span style="font-size:11px;color:#555;">${active ? '✅ Active' : '🔒 Coming Soon'}</span>
-      <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''}" onclick="setCardActive('${card.id}',true)">🔓 Activate</button>
-      <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'}" onclick="setCardActive('${card.id}',false)">🔒 Deactivate</button>
+    return `<div class="comm-card-row">
+      <div class="comm-card-info">
+        <div class="comm-card-name">${card.name}</div>
+        <div class="comm-card-status">${active ? '✅ Active' : '🔒 Coming Soon'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''};" onclick="setCardActive('${card.id}',true)">Activate</button>
+        <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'};" onclick="setCardActive('${card.id}',false)">Deactivate</button>
+      </div>
     </div>`;
-  }).join('<div style="width:1px;height:24px;background:#333;margin:0 4px;"></div>');
+  }).join('');
 }
 
 async function setCardActive(cardId, active) {
@@ -6842,6 +6839,13 @@ function renderAllCards() {
     if (active) {
       const tag = card.href ? 'a' : 'div';
       const hrefAttr = card.href ? `href="${card.href}"` : '';
+      let footerContent = '';
+      if (card.staticFooter) {
+        footerContent = `<div>${card.staticFooter}</div>`;
+      } else if (card.loadLeader) {
+        const elemId = card.leaderElemId || `leader-${card.id}`;
+        footerContent = `<div><div class="card-leader" id="${elemId}"><span>Leader:</span> TBD</div></div>`;
+      }
       wrapper.innerHTML = `<${tag} class="bet-card" ${hrefAttr}>
         <div class="card-stripe" style="background:${card.color};"></div>
         <div class="card-body">
@@ -6850,12 +6854,16 @@ function renderAllCards() {
           <div class="card-desc">${card.desc}</div>
           <div class="card-footer">
             <span class="card-status status-active">${card.activeLabel}</span>
-            ${card.loadLeader ? `<div><div class="card-leader" id="leader-${card.id}"><span>Leader:</span> TBD</div></div>` : ''}
+            ${footerContent}
           </div>
         </div>
       </${tag}>`;
       activeGrid.appendChild(wrapper);
-      if (card.loadLeader) loadGolfLeader(card.id, card.href.split('slug=')[1]);
+      if (card.loadLeader && card.href && card.href.includes('slug=')) {
+        const slug = card.href.split('slug=')[1];
+        const elemId = card.leaderElemId || `leader-${card.id}`;
+        loadGolfLeader(elemId, slug);
+      }
     } else {
       wrapper.innerHTML = `<div class="bet-card upcoming">
         <div class="card-stripe" style="background:#888;"></div>
@@ -6864,7 +6872,7 @@ function renderAllCards() {
           <div class="card-name">${card.name}</div>
           <div class="card-desc">${card.desc}</div>
           <div class="card-footer">
-            <span class="card-status" style="background:#f5f5f3;color:#888;">${card.comingSoonLabel}</span>
+            <span class="card-status" style="background:#f5f5f3;color:#888;">${card.comingSoonLabel || '🔜 Coming Soon'}</span>
           </div>
         </div>
       </div>`;
@@ -6873,11 +6881,11 @@ function renderAllCards() {
   });
 }
 
-function loadGolfLeader(cardId, slug) {
+function loadGolfLeader(elemId, slug) {
   fetch(`${FIREBASE_BASE}/golf/${slug}/live.json`)
     .then(r => r.json())
     .then(live => {
-      const el = document.getElementById(`leader-${cardId}`);
+      const el = document.getElementById(elemId);
       if (!el || !live) return;
       const entries = Object.values(live.scores || {}).filter(s => !s.cut && s.score !== undefined);
       if (!entries.length) return;
@@ -6893,8 +6901,25 @@ function loadGolfLeader(cardId, slug) {
 // Load card states from Firebase on page load
 fetch(`${FIREBASE_BASE}/site_config/cards.json`)
   .then(r => r.json())
-  .then(val => { cardStates = val || {}; renderAllCards(); })
-  .catch(() => { renderAllCards(); });
+  .then(val => {
+    cardStates = val || {};
+    // Set defaults for active bets if not already set
+    const defaultActive = ['nba-playoff', 'bernie-bet', 'oneoff-bets', 'wc2026'];
+    defaultActive.forEach(id => {
+      if (!(id in cardStates)) cardStates[id] = true;
+    });
+    renderAllCards();
+  })
+  .catch(() => {
+    // Default all active bets to visible if Firebase fails
+    cardStates = {
+      'nba-playoff': true,
+      'bernie-bet': true,
+      'oneoff-bets': true,
+      'wc2026': true,
+    };
+    renderAllCards();
+  });
 </script>
 </body>
 </html>
