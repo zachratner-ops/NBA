@@ -6675,15 +6675,14 @@ function pwCheck() {
 // ── Card definitions ─────────────────────────────────────────────
 const CARDS = [
   {
-    id: 'nba-playoff',
+    id: 'nba-playoff-2027',
     sport: '🏀 NBA',
     color: '#1565C0',
-    name: '2026 Playoff Points',
+    name: '2027 Playoff Points',
     desc: 'Pick 8 players. Your score is their total playoff points. Last team standing wins.',
-    href: 'nba.html',
+    href: null,
+    comingSoonLabel: '🔜 Spring 2027',
     activeLabel: '🟢 Active',
-    loadLeader: true,
-    leaderElemId: 'nba-leader',
   },
   {
     id: 'bernie-bet',
@@ -6903,7 +6902,7 @@ fetch(`${FIREBASE_BASE}/site_config/cards.json`)
   .then(val => {
     cardStates = val || {};
     // Set defaults for active bets if not already set
-    const defaultActive = ['nba-playoff', 'bernie-bet', 'oneoff-bets', 'wc2026'];
+    const defaultActive = ['bernie-bet', 'oneoff-bets', 'wc2026'];
     defaultActive.forEach(id => {
       if (!(id in cardStates)) cardStates[id] = true;
     });
@@ -6912,7 +6911,6 @@ fetch(`${FIREBASE_BASE}/site_config/cards.json`)
   .catch(() => {
     // Default all active bets to visible if Firebase fails
     cardStates = {
-      'nba-playoff': true,
       'bernie-bet': true,
       'oneoff-bets': true,
       'wc2026': true,

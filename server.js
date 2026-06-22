@@ -321,7 +321,7 @@ async function postGroupMe(totals, botId) {
     '',
     '💰 $250 pot · Winner takes all',
     '',
-    '🔗 📊 gyou.in/nba.html',
+    '🔗 📊 gyou.in/nba-playoffs-2026.html',
   ].join('\n');
 
   if (GROUPME_DRY_RUN || !GROUPME_BOT_ID) {
