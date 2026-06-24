@@ -1306,6 +1306,7 @@ function renderTracker() {
     <div class="tracker-tab ${trackerTab==='teams'?'active':''}" onclick="switchTrackerTab('teams')">Teams</div>
     <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches${liveTabBadge}</div>
     <div class="tracker-tab ${trackerTab==='groups'?'active':''}" onclick="switchTrackerTab('groups')">Groups</div>
+    <div class="tracker-tab ${trackerTab==='bracket'?'active':''}" onclick="switchTrackerTab('bracket')">Bracket</div>
     <div class="tracker-tab ${trackerTab==='rules'?'active':''}" onclick="switchTrackerTab('rules')">Rules</div>
     <div class="tracker-tabs-refresh" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:2px;">
       ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
@@ -1319,6 +1320,7 @@ function renderTracker() {
   else if(trackerTab==='matches')content=matchesHtml;
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='groups')content=groupsTabHtml;
+  else if(trackerTab==='bracket')content=renderBracketTab();
   else if(trackerTab==='rules')content=rulesHtml();
 
   // Live banner — shown when at least one game is in progress
@@ -1613,6 +1615,139 @@ window.finalizeDraft = async function() {
     alert('Firebase error: ' + e.message);
   }
 };
+
+// ── Bracket tab ───────────────────────────────────────────────────
+function renderBracketTab() {
+  const allMatches = wcLiveData ? (wcLiveData.matches || {}) : {};
+  const teamOwners = wcLiveData ? (wcLiveData.teamOwners || {}) : {};
+
+  const KO_STAGES = ['r32','r16','qf','sf','final'];
+  const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Quarterfinals', sf:'Semifinals', final:'Final' };
+  const STAGE_N = { r32:16, r16:8, qf:4, sf:2, final:1 };
+
+  const byStage = {};
+  KO_STAGES.forEach(s => { byStage[s] = []; });
+  Object.values(allMatches).forEach(m => {
+    if (m.stage && byStage[m.stage]) byStage[m.stage].push(m);
+  });
+  KO_STAGES.forEach(s => byStage[s].sort((a,b) => new Date(a.date)-new Date(b.date)));
+  // SF: first 2 are actual semis; a 3rd entry is the 3rd-place match
+  const thirdPlace = byStage['sf'].length > 2 ? byStage['sf'][2] : null;
+  byStage['sf'] = byStage['sf'].slice(0,2);
+
+  const hasAny = KO_STAGES.some(s => byStage[s].length > 0);
+  if (!hasAny) {
+    return `<div style="text-align:center;padding:60px;color:#888;">
+      <div style="font-size:32px;margin-bottom:12px;">🏆</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Knockout stage not yet started</div>
+      <div style="font-size:13px;color:#aaa;">Bracket will appear once Round of 32 fixtures are confirmed.</div>
+    </div>`;
+  }
+
+  const CW=162, CH=50, CON=16, RH=56, HDR=28;
+  const TH = 16*RH, TW = KO_STAGES.length*CW + (KO_STAGES.length-1)*CON;
+
+  function sx(si) { return si*(CW+CON); }
+  function cy(si,mi) { const sh=TH/STAGE_N[KO_STAGES[si]]; return mi*sh+sh/2; }
+
+  // SVG connector lines
+  let lines='';
+  KO_STAGES.forEach((s,si) => {
+    if(si>=KO_STAGES.length-1) return;
+    const nP=STAGE_N[KO_STAGES[si+1]];
+    const x0=sx(si)+CW, x1=sx(si+1), xm=x0+CON/2;
+    for(let j=0;j<nP;j++){
+      const yA=cy(si,j*2), yB=cy(si,j*2+1), yP=cy(si+1,j);
+      lines+=`<line x1="${x0}" y1="${yA}" x2="${xm}" y2="${yA}" stroke="#e4e4e4" stroke-width="1.5"/>
+<line x1="${x0}" y1="${yB}" x2="${xm}" y2="${yB}" stroke="#e4e4e4" stroke-width="1.5"/>
+<line x1="${xm}" y1="${Math.min(yA,yB)}" x2="${xm}" y2="${Math.max(yA,yB)}" stroke="#e4e4e4" stroke-width="1.5"/>
+<line x1="${xm}" y1="${yP}" x2="${x1}" y2="${yP}" stroke="#e4e4e4" stroke-width="1.5"/>`;
+    }
+  });
+
+  // Short team names for narrow cards
+  const SH={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'NZ','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo DR','Ivory Coast':'I. Coast','Cape Verde':'C. Verde'};
+  function sn(t){ return SH[t]||t; }
+
+  // Match cards
+  let cards='';
+  KO_STAGES.forEach((s,si) => {
+    const n=STAGE_N[s], sh=TH/n, stx=sx(si);
+    for(let j=0;j<n;j++){
+      const top=Math.round(j*sh+sh/2-CH/2);
+      const m=byStage[s][j];
+      if(!m){
+        cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${CH}px;background:#fafafa;border:0.5px solid #eee;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#ccc;font-style:italic;box-sizing:border-box;">TBD</div>`;
+        continue;
+      }
+      const ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
+      const hs=m.homeScore, as_=m.awayScore;
+      const live=m.status==='live', fin=m.status==='final';
+      const hw=fin&&!m.isPenaltyShootout&&(hs||0)>(as_||0);
+      const aw=fin&&!m.isPenaltyShootout&&(as_||0)>(hs||0);
+      const isPK=m.isPenaltyShootout&&m.stage!=='group';
+      function tr(nm,own,sc,won){
+        const fc=WC_FLAGS[nm];
+        const fi=fc?`<img src="https://flagcdn.com/20x15/${fc}.png" width="15" height="11" style="border-radius:1px;flex-shrink:0;">`:`<span style="width:15px;display:inline-block;flex-shrink:0;"></span>`;
+        const ow=own?`<span style="font-size:9px;font-weight:700;color:${color(own)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34px;flex-shrink:0;">${own.split(/[\s+]/)[0]}</span>`:'';
+        const sc_=(fin||live)?`<span style="font-size:11px;font-weight:${won?700:400};color:${live?'#e65100':won?'#1a1a1a':'#aaa'};width:13px;text-align:right;flex-shrink:0;">${sc??'?'}</span>`:'';
+        return `<div style="display:flex;align-items:center;gap:3px;padding:2px 5px;${won?'background:#f0f9f0;border-radius:3px;':''}">
+          ${fi}<span style="font-size:10px;font-weight:${won?700:400};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${nm?'#1a1a1a':'#ccc'};">${nm?sn(nm):'TBD'}</span>${ow}${sc_}</div>`;
+      }
+      const bd=live?'1px solid #e65100':isPK?'0.5px solid #f9a825':'0.5px solid #e8e8e8';
+      const bg=live?'#fff8f5':'#fff';
+      cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${CH}px;background:${bg};border:${bd};border-radius:7px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1px;box-sizing:border-box;">
+        ${tr(m.homeTeam,ho,hs,hw)}
+        <div style="height:0.5px;background:#f0f0f0;margin:0 5px;flex-shrink:0;"></div>
+        ${tr(m.awayTeam,ao,as_,aw)}
+        ${isPK?`<div style="position:absolute;bottom:2px;right:4px;font-size:8px;font-weight:700;color:#f9a825;line-height:1;">PK</div>`:''}
+        ${live?`<div style="position:absolute;top:2px;right:4px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
+      </div>`;
+    }
+  });
+
+  // Stage header labels
+  let hdrs='';
+  KO_STAGES.forEach((s,si) => {
+    const cnt=byStage[s].length, n=STAGE_N[s];
+    hdrs+=`<div style="position:absolute;left:${sx(si)}px;top:0;width:${CW}px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;line-height:1.4;">${STAGE_LABELS[s]}<br><span style="color:#ccc;font-weight:400;">${cnt}/${n}</span></div>`;
+  });
+
+  // 3rd place match
+  let tpHtml='';
+  if(thirdPlace){
+    const m=thirdPlace;
+    const ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
+    const hs=m.homeScore, as_=m.awayScore;
+    const fin=m.status==='final';
+    const hw=fin&&(hs||0)>(as_||0), aw=fin&&(as_||0)>(hs||0);
+    function tpTeam(nm,own,sc,won){
+      const fc=WC_FLAGS[nm];
+      const fi=fc?`<img src="https://flagcdn.com/20x15/${fc}.png" width="15" height="11" style="border-radius:1px;vertical-align:middle;">`:'';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:${won?700:400};">${fi}${nm||'TBD'}${own?`<span style="font-size:10px;font-weight:700;color:${color(own)};">${own.split(' ')[0]}</span>`:''}</span>`;
+    }
+    tpHtml=`<div style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;white-space:nowrap;">3rd Place</span>
+      <div style="background:#fff;border:0.5px solid #e8e8e8;border-radius:8px;padding:7px 12px;display:flex;align-items:center;gap:8px;">
+        ${tpTeam(m.homeTeam,ho,hs,hw)}
+        <span style="font-size:12px;font-weight:700;color:#888;">${fin?`${hs}–${as_}`:'vs'}</span>
+        ${tpTeam(m.awayTeam,ao,as_,aw)}
+      </div>
+    </div>`;
+  }
+
+  return `<div style="overflow-x:auto;">
+    <div style="position:relative;width:${TW}px;min-width:${TW}px;padding-top:${HDR}px;margin-bottom:4px;">
+      ${hdrs}
+      <div style="position:relative;width:${TW}px;height:${TH}px;">
+        <svg width="${TW}" height="${TH}" style="position:absolute;top:0;left:0;pointer-events:none;overflow:visible;">${lines}</svg>
+        ${cards}
+      </div>
+    </div>
+    ${tpHtml}
+    <div style="font-size:10px;color:#ccc;margin-top:8px;font-style:italic;">Bracket connections follow match schedule order.</div>
+  </div>`;
+}
 
 // ── Feedback ───────────────────────────────────────────────────────
 window.openFeedback = function() { document.getElementById('fb-overlay').classList.add('open'); };

@@ -468,6 +468,15 @@ cron.schedule('*/5 14-23,0-4 * * *', async function() {
   else if (result.error) console.error('WC live cron error:', result.error);
 });
 
+// ── 8am ET daily WC full schedule load (12:00 UTC) — runs Jun 11 – Jul 19 only ──
+cron.schedule('0 12 * * *', async function() {
+  const todayET = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
+  if (todayET < '2026-06-11' || todayET > '2026-07-19') return;
+  console.log('Cron: WC morning schedule load starting...');
+  const result = await runWCScheduleLoad();
+  console.log('Cron: WC schedule load:', result.ok ? (result.total + ' matches') : result.error);
+});
+
 // ── WebSocket ─────────────────────────────────────────────────────
 const clients = {};
 function broadcast(slug, msg) {
@@ -1004,6 +1013,8 @@ const WC_TEAMS = [
 
 const wcDrafts = {};
 const ALL_WC_OWNERS = ['Ben + Mark','Marc','Jared','Andrew','Zach','Adam + Max','Matt','Mike'];
+let lastWCScheduleLoadTime = 0;
+const WC_SCHEDULE_LOAD_THROTTLE_MS = 30 * 60 * 1000; // 30 minutes
 
 function getOrCreateWCDraft(slug) {
   if (!wcDrafts[slug]) {
@@ -1082,16 +1093,29 @@ function parseESPNEvents(events) {
       || statusName === 'STATUS_OVERTIME'
       || statusName === 'STATUS_PENALTY';
     let group = null, stage = 'group';
+    let stageFromNotes = false;
     (comp.notes || []).forEach(function(n) {
       const txt = (n.headline || n.text || '').toLowerCase();
       const gm = txt.match(/group ([a-l])/);
-      if (gm) { group = gm[1].toUpperCase(); stage = 'group'; }
-      else if (txt.includes('round of 32')) stage = 'r32';
-      else if (txt.includes('round of 16')) stage = 'r16';
-      else if (txt.includes('quarter')) stage = 'qf';
-      else if (txt.includes('semi')) stage = 'sf';
-      else if (txt.includes('final')) stage = 'final';
+      if (gm) { group = gm[1].toUpperCase(); stage = 'group'; stageFromNotes = true; }
+      else if (txt.includes('round of 32')) { stage = 'r32'; stageFromNotes = true; }
+      else if (txt.includes('round of 16')) { stage = 'r16'; stageFromNotes = true; }
+      else if (txt.includes('quarter')) { stage = 'qf'; stageFromNotes = true; }
+      else if (txt.includes('semi')) { stage = 'sf'; stageFromNotes = true; }
+      else if (txt.includes('final')) { stage = 'final'; stageFromNotes = true; }
     });
+    // ESPN returns empty notes for knockout rounds — fall back to season.type.slug
+    if (!stageFromNotes) {
+      const slug = (
+        (event.season && event.season.type && event.season.type.slug) ||
+        (event.seasonType && event.seasonType.slug) || ''
+      ).toLowerCase();
+      if (slug.includes('round-of-32')) stage = 'r32';
+      else if (slug.includes('round-of-16')) stage = 'r16';
+      else if (slug.includes('quarter')) stage = 'qf';
+      else if (slug.includes('semi')) stage = 'sf';
+      else if (slug === 'final') stage = 'final';
+    }
     const detailLower = statusDetail.toLowerCase();
     const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
     const displayClock = (comp.status && comp.status.displayClock) || null;
@@ -1222,6 +1246,20 @@ async function pushWCMatchesToFirebase() {
       for (const tie of newTies) {
         await postWCTieGroupMe(tie, teamOwners, fin.tiePotTotal);
       }
+    }
+
+    // Trigger a full schedule load when matches complete — picks up new knockout fixtures
+    const justFinished = Object.values(merged).filter(function(m) {
+      if (!m || !m.id) return false;
+      const before = existing[m.id];
+      return before && before.status !== 'final' && m.status === 'final';
+    });
+    if (justFinished.length > 0 && Date.now() - lastWCScheduleLoadTime >= WC_SCHEDULE_LOAD_THROTTLE_MS) {
+      lastWCScheduleLoadTime = Date.now(); // set early to prevent concurrent triggers
+      console.log('WC: ' + justFinished.length + ' match(es) completed — triggering schedule load');
+      runWCScheduleLoad().then(function(r) {
+        console.log('WC post-match schedule load:', r.ok ? (r.total + ' matches') : r.error);
+      }).catch(function(e) { console.error('WC post-match schedule load error:', e.message); });
     }
 
     return { ok: true, matchCount: Object.keys(merged).length, updated: result.updated, newTies: newTies.length };
@@ -1460,6 +1498,63 @@ async function postWCTieGroupMe(match, teamOwners, tiePotTotal) {
     console.log('WC tie GroupMe posted: ' + match.homeTeam + ' vs ' + match.awayTeam);
   } catch(e) {
     console.error('WC tie GroupMe failed:', e.message);
+  }
+}
+
+// ── WC full schedule load: fetch all tournament dates from ESPN into Firebase ──
+async function runWCScheduleLoad() {
+  if (!firebaseReady) return { error: 'Firebase not ready' };
+
+  const startDate = new Date('2026-06-11');
+  const endDate   = new Date('2026-07-19');
+  const dates = [];
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const dy = String(d.getDate()).padStart(2, '0');
+    dates.push('' + y + mo + dy);
+  }
+
+  console.log('WC schedule load: fetching ' + dates.length + ' dates from ESPN...');
+  const allFetched = {};
+  const BATCH = 5;
+  for (let i = 0; i < dates.length; i += BATCH) {
+    const batch = dates.slice(i, i + BATCH);
+    const results = await Promise.all(batch.map(function(d) { return fetchWCMatchesForDate(d); }));
+    results.forEach(function(r) { Object.assign(allFetched, r); });
+    if (i + BATCH < dates.length) await new Promise(function(r) { setTimeout(r, 300); });
+  }
+
+  console.log('WC schedule load: ESPN returned ' + Object.keys(allFetched).length + ' matches across all dates');
+  try {
+    const db = admin.database();
+    const existingSnap = await db.ref('wc26_live/matches').get();
+    const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
+
+    const merged = Object.assign({}, allFetched);
+    Object.keys(existing).forEach(function(id) {
+      if (merged[id]) {
+        if (existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) merged[id].isPenaltyShootout = true;
+        if (existing[id].status === 'final' && merged[id].status !== 'final') merged[id] = existing[id];
+      } else {
+        merged[id] = existing[id];
+      }
+    });
+
+    await db.ref('wc26_live/matches').set(merged);
+    await db.ref('wc26_live/updated').set(new Date().toISOString());
+
+    const byStatus = { scheduled: 0, live: 0, final: 0, other: 0 };
+    Object.values(merged).forEach(function(m) {
+      byStatus[m.status] !== undefined ? byStatus[m.status]++ : byStatus.other++;
+    });
+
+    lastWCScheduleLoadTime = Date.now();
+    console.log('WC schedule load complete:', Object.keys(merged).length, 'total matches, byStatus:', byStatus);
+    return { ok: true, total: Object.keys(merged).length, byStatus: byStatus, updated: new Date().toISOString() };
+  } catch(e) {
+    console.error('WC schedule load error:', e.message);
+    return { error: e.message };
   }
 }
 
@@ -1751,71 +1846,10 @@ app.get('/wc/matches/raw', async function(req, res) {
 });
 
 // WC: load full tournament schedule from ESPN into Firebase
-// Fetches every date Jun 11 – Jul 19 2026; merges without overwriting final matches
 app.post('/wc/schedule/load', async function(req, res) {
-  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
-
-  const startDate = new Date('2026-06-11');
-  const endDate   = new Date('2026-07-19');
-  const dates = [];
-  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    dates.push('' + y + m + day);
-  }
-
-  console.log('WC schedule load: fetching ' + dates.length + ' dates from ESPN...');
-  const allFetched = {};
-  const BATCH = 5;
-  for (let i = 0; i < dates.length; i += BATCH) {
-    const batch = dates.slice(i, i + BATCH);
-    const results = await Promise.all(batch.map(function(d) { return fetchWCMatchesForDate(d); }));
-    results.forEach(function(m) { Object.assign(allFetched, m); });
-    if (i + BATCH < dates.length) await new Promise(function(r) { setTimeout(r, 300); });
-  }
-
-  console.log('WC schedule load: ESPN returned ' + Object.keys(allFetched).length + ' matches across all dates');
-
-  try {
-    const db = admin.database();
-    const existingSnap = await db.ref('wc26_live/matches').get();
-    const existing = existingSnap.exists() ? (existingSnap.val() || {}) : {};
-
-    // Merge rules:
-    // 1. Start with what ESPN returned for all dates
-    // 2. Never downgrade a final match back to scheduled
-    // 3. Preserve any manual isPenaltyShootout override from commissioner
-    // 4. Keep any manually-added matches (e.g. seed data) not present in ESPN results
-    const merged = Object.assign({}, allFetched);
-    Object.keys(existing).forEach(function(id) {
-      if (merged[id]) {
-        if (existing[id].isPenaltyShootout && !merged[id].isPenaltyShootout) {
-          merged[id].isPenaltyShootout = true;
-        }
-        if (existing[id].status === 'final' && merged[id].status !== 'final') {
-          merged[id] = existing[id];
-        }
-      } else {
-        merged[id] = existing[id];
-      }
-    });
-
-    await db.ref('wc26_live/matches').set(merged);
-    await db.ref('wc26_live/updated').set(new Date().toISOString());
-
-    const byStatus = { scheduled: 0, live: 0, final: 0, other: 0 };
-    Object.values(merged).forEach(function(m) {
-      if (byStatus[m.status] !== undefined) byStatus[m.status]++;
-      else byStatus.other++;
-    });
-
-    console.log('WC schedule load complete:', Object.keys(merged).length, 'total matches, status breakdown:', byStatus);
-    res.json({ ok: true, total: Object.keys(merged).length, byStatus: byStatus, updated: new Date().toISOString() });
-  } catch(e) {
-    console.error('WC schedule load Firebase error:', e.message);
-    res.status(500).json({ error: e.message });
-  }
+  const result = await runWCScheduleLoad();
+  if (result.error) return res.status(result.error === 'Firebase not ready' ? 503 : 500).json(result);
+  res.json(result);
 });
 
 // WC draft routes
