@@ -1128,11 +1128,11 @@ function parseESPNEvents(events) {
     if (!group && stage === 'group') {
       group = TEAM_TO_GROUP[homeTeamName] || TEAM_TO_GROUP[awayTeamName] || null;
     }
-    // Also detect group from name if still missing
-    if (!group) {
+    // Also detect group from name if still missing — only for actual group stage matches
+    if (!group && stage === 'group') {
       const evtNameLower = (event.name || '').toLowerCase();
       const gm2 = evtNameLower.match(/group ([a-l])/);
-      if (gm2) { group = gm2[1].toUpperCase(); stage = 'group'; }
+      if (gm2) { group = gm2[1].toUpperCase(); }
     }
     matches[event.id] = {
       id: event.id,
