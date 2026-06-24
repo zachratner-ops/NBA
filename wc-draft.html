@@ -1631,7 +1631,6 @@ function renderBracketTab() {
     if (m.stage && byStage[m.stage]) byStage[m.stage].push(m);
   });
   KO_STAGES.forEach(s => byStage[s].sort((a,b) => new Date(a.date)-new Date(b.date)));
-  // SF: first 2 are actual semis; a 3rd entry is the 3rd-place match
   const thirdPlace = byStage['sf'].length > 2 ? byStage['sf'][2] : null;
   byStage['sf'] = byStage['sf'].slice(0,2);
 
@@ -1644,40 +1643,84 @@ function renderBracketTab() {
     </div>`;
   }
 
-  const CW=162, CH=50, CON=16, RH=56, HDR=28;
-  const TH = 16*RH, TW = KO_STAGES.length*CW + (KO_STAGES.length-1)*CON;
+  // Layout — card heights grow with each round to signal importance
+  const CW=156, CONN=22, RH=56, HDR=32;
+  const CH={ r32:54, r16:54, qf:60, sf:68, final:82 };
+  const TH=16*RH, TW=KO_STAGES.length*CW+(KO_STAGES.length-1)*CONN;
 
-  function sx(si) { return si*(CW+CON); }
-  function cy(si,mi) { const sh=TH/STAGE_N[KO_STAGES[si]]; return mi*sh+sh/2; }
+  const sx = si => si*(CW+CONN);
+  const cy = (si,mi) => { const sh=TH/STAGE_N[KO_STAGES[si]]; return mi*sh+sh/2; };
 
-  // SVG connector lines
+  // Abbreviate ESPN placeholder names; keep real team names short
+  const SHORT_NAMES={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'NZ','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo DR','Ivory Coast':'I. Coast','Cape Verde':'C. Verde'};
+  const sn = (t, stage) => {
+    if (!t) return null;
+    let m;
+    // R32: show fuller group placeholders so it's readable
+    if (stage === 'r32') {
+      if ((m=t.match(/^Group ([A-L]) Winner$/))) return `Grp ${m[1]} Winner`;
+      if ((m=t.match(/^Group ([A-L]) 2nd Place$/))) return `Grp ${m[1]} 2nd`;
+      if ((m=t.match(/^Third Place Group (.+)$/))) return `3rd Place`;
+    } else {
+      if ((m=t.match(/^Group ([A-L]) Winner$/))) return `${m[1]}1`;
+      if ((m=t.match(/^Group ([A-L]) 2nd Place$/))) return `${m[1]}2`;
+      if (/^Third Place Group/.test(t)) return '3rd';
+    }
+    if ((m=t.match(/^Round of 32 (\d+) Winner$/))) return `W${m[1]}`;
+    if ((m=t.match(/^Round of 16 (\d+) Winner$/))) return `W${m[1]}`;
+    if ((m=t.match(/^Quarterfinal (\d+) Winner$/))) return `W${m[1]}`;
+    if ((m=t.match(/^Semifinal (\d+) Winner$/))) return `W${m[1]}`;
+    return SHORT_NAMES[t]||t;
+  };
+  const isPlaceholder = t => !t || /Winner|2nd Place|Third Place/.test(t);
+  const fmtDate = d => { if (!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/New_York'}); };
+
+  // Connector lines — visible gray
   let lines='';
   KO_STAGES.forEach((s,si) => {
-    if(si>=KO_STAGES.length-1) return;
+    if (si>=KO_STAGES.length-1) return;
     const nP=STAGE_N[KO_STAGES[si+1]];
-    const x0=sx(si)+CW, x1=sx(si+1), xm=x0+CON/2;
-    for(let j=0;j<nP;j++){
+    const x0=sx(si)+CW, x1=sx(si+1), xm=x0+CONN/2;
+    for (let j=0;j<nP;j++) {
       const yA=cy(si,j*2), yB=cy(si,j*2+1), yP=cy(si+1,j);
-      lines+=`<line x1="${x0}" y1="${yA}" x2="${xm}" y2="${yA}" stroke="#e4e4e4" stroke-width="1.5"/>
-<line x1="${x0}" y1="${yB}" x2="${xm}" y2="${yB}" stroke="#e4e4e4" stroke-width="1.5"/>
-<line x1="${xm}" y1="${Math.min(yA,yB)}" x2="${xm}" y2="${Math.max(yA,yB)}" stroke="#e4e4e4" stroke-width="1.5"/>
-<line x1="${xm}" y1="${yP}" x2="${x1}" y2="${yP}" stroke="#e4e4e4" stroke-width="1.5"/>`;
+      lines+=`<line x1="${x0}" y1="${yA}" x2="${xm}" y2="${yA}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="${x0}" y1="${yB}" x2="${xm}" y2="${yB}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="${xm}" y1="${Math.min(yA,yB)}" x2="${xm}" y2="${Math.max(yA,yB)}" stroke="#c8cdd4" stroke-width="1.5"/>
+<line x1="${xm}" y1="${yP}" x2="${x1}" y2="${yP}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>`;
     }
   });
 
-  // Short team names for narrow cards
-  const SH={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'NZ','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo DR','Ivory Coast':'I. Coast','Cape Verde':'C. Verde'};
-  function sn(t){ return SH[t]||t; }
+  // Team row inside a card
+  const teamRow = (nm, own, sc, won, live, fin, isFinalRound, isPH, stage) => {
+    const fc = WC_FLAGS[nm];
+    const fi = (!isPH && fc)
+      ? `<img src="https://flagcdn.com/20x15/${fc}.png" width="16" height="12" style="border-radius:1.5px;flex-shrink:0;">`
+      : `<span style="width:16px;flex-shrink:0;"></span>`;
+    const nameColor = isPH ? '#c0c4cc' : won ? '#111' : '#282828';
+    const nameFw = won ? 700 : isPH ? 400 : 500;
+    const nameFs = isFinalRound ? 11.5 : 10;
+    const scoreStr = (fin||live) ? (sc??'?') : '';
+    const scoreColor = live ? '#e65100' : won ? '#111' : '#aaa';
+    const scoreFw = won ? 700 : 400;
+    const ownerStr = (own && !isPH)
+      ? `<span style="font-size:8.5px;font-weight:700;color:${color(own)};letter-spacing:-.01em;flex-shrink:0;margin-left:1px;">${own.split(' ')[0]}</span>` : '';
+    const winBg = won ? 'background:rgba(22,163,74,.09);border-radius:3px;' : '';
+    return `<div style="display:flex;align-items:center;gap:4px;padding:${isFinalRound?'4px 8px':'2px 6px'};${winBg}">
+      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${sn(nm,stage)||'?'}</span>${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
+    </div>`;
+  };
 
   // Match cards
   let cards='';
   KO_STAGES.forEach((s,si) => {
-    const n=STAGE_N[s], sh=TH/n, stx=sx(si);
-    for(let j=0;j<n;j++){
-      const top=Math.round(j*sh+sh/2-CH/2);
+    const n=STAGE_N[s], stx=sx(si), ch=CH[s], isFR=(s==='final');
+    for (let j=0;j<n;j++) {
+      const top=Math.round(cy(si,j)-ch/2);
       const m=byStage[s][j];
-      if(!m){
-        cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${CH}px;background:#fafafa;border:0.5px solid #eee;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#ccc;font-style:italic;box-sizing:border-box;">TBD</div>`;
+      if (!m) {
+        cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${ch}px;background:#f8f9fb;border:1px dashed #dde0e5;border-radius:8px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
+          <span style="font-size:10px;color:#c8cdd4;letter-spacing:.04em;font-style:italic;">TBD</span>
+        </div>`;
         continue;
       }
       const ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
@@ -1685,58 +1728,55 @@ function renderBracketTab() {
       const live=m.status==='live', fin=m.status==='final';
       const hw=fin&&!m.isPenaltyShootout&&(hs||0)>(as_||0);
       const aw=fin&&!m.isPenaltyShootout&&(as_||0)>(hs||0);
-      const isPK=m.isPenaltyShootout&&m.stage!=='group';
-      function tr(nm,own,sc,won){
-        const fc=WC_FLAGS[nm];
-        const fi=fc?`<img src="https://flagcdn.com/20x15/${fc}.png" width="15" height="11" style="border-radius:1px;flex-shrink:0;">`:`<span style="width:15px;display:inline-block;flex-shrink:0;"></span>`;
-        const ow=own?`<span style="font-size:9px;font-weight:700;color:${color(own)};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34px;flex-shrink:0;">${own.split(/[\s+]/)[0]}</span>`:'';
-        const sc_=(fin||live)?`<span style="font-size:11px;font-weight:${won?700:400};color:${live?'#e65100':won?'#1a1a1a':'#aaa'};width:13px;text-align:right;flex-shrink:0;">${sc??'?'}</span>`:'';
-        return `<div style="display:flex;align-items:center;gap:3px;padding:2px 5px;${won?'background:#f0f9f0;border-radius:3px;':''}">
-          ${fi}<span style="font-size:10px;font-weight:${won?700:400};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${nm?'#1a1a1a':'#ccc'};">${nm?sn(nm):'TBD'}</span>${ow}${sc_}</div>`;
-      }
-      const bd=live?'1px solid #e65100':isPK?'0.5px solid #f9a825':'0.5px solid #e8e8e8';
-      const bg=live?'#fff8f5':'#fff';
-      cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${CH}px;background:${bg};border:${bd};border-radius:7px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1px;box-sizing:border-box;">
-        ${tr(m.homeTeam,ho,hs,hw)}
-        <div style="height:0.5px;background:#f0f0f0;margin:0 5px;flex-shrink:0;"></div>
-        ${tr(m.awayTeam,ao,as_,aw)}
-        ${isPK?`<div style="position:absolute;bottom:2px;right:4px;font-size:8px;font-weight:700;color:#f9a825;line-height:1;">PK</div>`:''}
-        ${live?`<div style="position:absolute;top:2px;right:4px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
+      const isPK=m.isPenaltyShootout;
+      const isPHh=isPlaceholder(m.homeTeam), isPHa=isPlaceholder(m.awayTeam);
+      const border = live ? '2px solid #e65100' : isFR ? '1.5px solid #d4a800' : isPK ? '1px solid #f9a825' : '1px solid #e2e5ea';
+      const bg = live ? '#fff8f5' : isFR ? '#fffef5' : '#fff';
+      const shadow = isFR ? '0 3px 10px rgba(212,168,0,.2)' : '0 1px 4px rgba(0,0,0,.07)';
+      const dateStr = fmtDate(m.date);
+      cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${ch}px;background:${bg};border:${border};border-radius:8px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:0;box-sizing:border-box;box-shadow:${shadow};">
+        ${dateStr?`<div style="font-size:8px;color:#b0b5be;text-align:center;padding:2px 6px 0;line-height:1;flex-shrink:0;">${dateStr}</div>`:''}
+        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s)}
+        <div style="height:1px;background:#f0f2f4;margin:0 6px;flex-shrink:0;"></div>
+        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s)}
+        ${isPK?`<div style="position:absolute;bottom:3px;right:5px;font-size:7.5px;font-weight:800;color:#f9a825;letter-spacing:.04em;">PK</div>`:''}
+        ${live?`<div style="position:absolute;top:3px;right:5px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
       </div>`;
     }
   });
 
-  // Stage header labels
+  // Column headers
   let hdrs='';
   KO_STAGES.forEach((s,si) => {
-    const cnt=byStage[s].length, n=STAGE_N[s];
-    hdrs+=`<div style="position:absolute;left:${sx(si)}px;top:0;width:${CW}px;text-align:center;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;line-height:1.4;">${STAGE_LABELS[s]}<br><span style="color:#ccc;font-weight:400;">${cnt}/${n}</span></div>`;
+    const cnt=byStage[s].length, n=STAGE_N[s], isFR=(s==='final');
+    hdrs+=`<div style="position:absolute;left:${sx(si)}px;top:0;width:${CW}px;text-align:center;line-height:1;">
+      <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${isFR?'#b8860b':'#8a9099'};">${STAGE_LABELS[s]}</span>
+      <span style="font-size:8px;color:#c8cdd4;margin-left:5px;">${cnt}/${n}</span>
+    </div>`;
   });
 
   // 3rd place match
   let tpHtml='';
-  if(thirdPlace){
-    const m=thirdPlace;
-    const ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
-    const hs=m.homeScore, as_=m.awayScore;
-    const fin=m.status==='final';
+  if (thirdPlace) {
+    const m=thirdPlace, ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
+    const hs=m.homeScore, as_=m.awayScore, fin=m.status==='final';
     const hw=fin&&(hs||0)>(as_||0), aw=fin&&(as_||0)>(hs||0);
-    function tpTeam(nm,own,sc,won){
+    const tpTeam = (nm,own,sc,won) => {
       const fc=WC_FLAGS[nm];
-      const fi=fc?`<img src="https://flagcdn.com/20x15/${fc}.png" width="15" height="11" style="border-radius:1px;vertical-align:middle;">`:'';
-      return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:${won?700:400};">${fi}${nm||'TBD'}${own?`<span style="font-size:10px;font-weight:700;color:${color(own)};">${own.split(' ')[0]}</span>`:''}</span>`;
-    }
-    tpHtml=`<div style="margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#999;white-space:nowrap;">3rd Place</span>
-      <div style="background:#fff;border:0.5px solid #e8e8e8;border-radius:8px;padding:7px 12px;display:flex;align-items:center;gap:8px;">
+      const fi=fc?`<img src="https://flagcdn.com/20x15/${fc}.png" width="16" height="12" style="border-radius:1px;vertical-align:middle;">`:'';
+      return `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:${won?700:400};">${fi}<span style="color:${won?'#111':'#444'}">${nm||'TBD'}</span>${own?`<span style="font-size:9px;font-weight:700;color:${color(own)};margin-left:1px;">${own.split(' ')[0]}</span>`:''}</span>`;
+    };
+    tpHtml=`<div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a9099;">3rd Place</span>
+      <div style="background:#fff;border:1px solid #e2e5ea;border-radius:8px;padding:7px 14px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);">
         ${tpTeam(m.homeTeam,ho,hs,hw)}
-        <span style="font-size:12px;font-weight:700;color:#888;">${fin?`${hs}–${as_}`:'vs'}</span>
+        <span style="font-size:12px;font-weight:600;color:#aaa;">${fin?`${hs}–${as_}`:'vs'}</span>
         ${tpTeam(m.awayTeam,ao,as_,aw)}
       </div>
     </div>`;
   }
 
-  return `<div style="overflow-x:auto;">
+  return `<div style="overflow-x:auto;padding-bottom:8px;">
     <div style="position:relative;width:${TW}px;min-width:${TW}px;padding-top:${HDR}px;margin-bottom:4px;">
       ${hdrs}
       <div style="position:relative;width:${TW}px;height:${TH}px;">
@@ -1745,7 +1785,7 @@ function renderBracketTab() {
       </div>
     </div>
     ${tpHtml}
-    <div style="font-size:10px;color:#ccc;margin-top:8px;font-style:italic;">Bracket connections follow match schedule order.</div>
+    <div style="font-size:10px;color:#c8cdd4;margin-top:8px;font-style:italic;">Bracket order follows match schedule dates.</div>
   </div>`;
 }
 
