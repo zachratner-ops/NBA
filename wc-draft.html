@@ -1691,12 +1691,12 @@ function renderBracketTab() {
   });
 
   // Team row inside a card
-  const teamRow = (nm, own, sc, won, live, fin, isFinalRound, isPH, stage) => {
+  const teamRow = (nm, own, sc, won, live, fin, isFinalRound, isPH, stage, advanced) => {
     const fc = WC_FLAGS[nm];
     const fi = (!isPH && fc)
       ? `<img src="https://flagcdn.com/20x15/${fc}.png" width="16" height="12" style="border-radius:1.5px;flex-shrink:0;">`
       : `<span style="width:16px;flex-shrink:0;"></span>`;
-    const nameColor = isPH ? '#c0c4cc' : won ? '#111' : '#282828';
+    const nameColor = isPH ? '#c0c4cc' : (advanced===false) ? '#b0b5be' : won ? '#111' : '#282828';
     const nameFw = won ? 700 : isPH ? 400 : 500;
     const nameFs = isFinalRound ? 11.5 : 10;
     const scoreStr = (fin||live) ? (sc??'?') : '';
@@ -1704,9 +1704,13 @@ function renderBracketTab() {
     const scoreFw = won ? 700 : 400;
     const ownerStr = (own && !isPH)
       ? `<span style="font-size:8.5px;font-weight:700;color:${color(own)};letter-spacing:-.01em;flex-shrink:0;margin-left:1px;">${own.split(' ')[0]}</span>` : '';
+    const advBadge = (!isPH && advanced===true)
+      ? `<span style="font-size:7.5px;font-weight:700;color:#16a34a;flex-shrink:0;">(a)</span>`
+      : (!isPH && advanced===false)
+      ? `<span style="font-size:7.5px;font-weight:500;color:#b0b5be;flex-shrink:0;">(e)</span>` : '';
     const winBg = won ? 'background:rgba(22,163,74,.09);border-radius:3px;' : '';
     return `<div style="display:flex;align-items:center;gap:4px;padding:${isFinalRound?'4px 8px':'2px 6px'};${winBg}">
-      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${sn(nm,stage)||'?'}</span>${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
+      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${sn(nm,stage)||'?'}</span>${advBadge}${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
     </div>`;
   };
 
@@ -1736,9 +1740,9 @@ function renderBracketTab() {
       const dateStr = fmtDate(m.date);
       cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${ch}px;background:${bg};border:${border};border-radius:8px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:0;box-sizing:border-box;box-shadow:${shadow};">
         ${dateStr?`<div style="font-size:8px;color:#b0b5be;text-align:center;padding:2px 6px 0;line-height:1;flex-shrink:0;">${dateStr}</div>`:''}
-        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s)}
+        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s,m.homeAdvanced)}
         <div style="height:1px;background:#f0f2f4;margin:0 6px;flex-shrink:0;"></div>
-        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s)}
+        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s,m.awayAdvanced)}
         ${isPK?`<div style="position:absolute;bottom:3px;right:5px;font-size:7.5px;font-weight:800;color:#f9a825;letter-spacing:.04em;">PK</div>`:''}
         ${live?`<div style="position:absolute;top:3px;right:5px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
       </div>`;

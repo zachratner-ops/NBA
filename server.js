@@ -1146,7 +1146,9 @@ function parseESPNEvents(events) {
       awayScore: (isFinal || isLive) ? parseInt(away.score || '0', 10) : null,
       status: isFinal ? 'final' : isLive ? 'live' : 'scheduled',
       clock: clockLabel,
-      isPenaltyShootout: espnPK && stage !== 'group'
+      isPenaltyShootout: espnPK && stage !== 'group',
+      homeAdvanced: home.advance ?? null,
+      awayAdvanced: away.advance ?? null,
     };
   });
   return matches;
