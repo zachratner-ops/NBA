@@ -1104,12 +1104,9 @@ function parseESPNEvents(events) {
       else if (txt.includes('semi')) { stage = 'sf'; stageFromNotes = true; }
       else if (txt.includes('final')) { stage = 'final'; stageFromNotes = true; }
     });
-    // ESPN returns empty notes for knockout rounds — fall back to season.type.slug
+    // ESPN returns empty notes for knockout rounds — fall back to event.season.slug
     if (!stageFromNotes) {
-      const slug = (
-        (event.season && event.season.type && event.season.type.slug) ||
-        (event.seasonType && event.seasonType.slug) || ''
-      ).toLowerCase();
+      const slug = ((event.season && event.season.slug) || '').toLowerCase();
       if (slug.includes('round-of-32')) stage = 'r32';
       else if (slug.includes('round-of-16')) stage = 'r16';
       else if (slug.includes('quarter')) stage = 'qf';
