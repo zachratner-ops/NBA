@@ -2001,10 +2001,9 @@ function renderBracketTab(teamAdvanced) {
       if ((m=t.match(/^Group ([A-L]) 2nd Place$/))) return `${m[1]}2`;
       if (/^Third Place Group/.test(t)) return '3rd';
     }
-    if ((m=t.match(/^Round of 32 (\d+) Winner$/))) return `W${m[1]}`;
-    if ((m=t.match(/^Round of 16 (\d+) Winner$/))) return `W${m[1]}`;
-    if ((m=t.match(/^Quarterfinal (\d+) Winner$/))) return `W${m[1]}`;
-    if ((m=t.match(/^Semifinal (\d+) Winner$/))) return `W${m[1]}`;
+    // "Winner of match N" feeder refs → blank; the connector lines already
+    // show which match feeds this slot
+    if (/^(Round of 32|Round of 16|Quarterfinal|Semifinal) \d+ Winner$/.test(t)) return '';
     return SHORT_NAMES[t]||t;
   };
   const isPlaceholder = isPlaceholderName;
@@ -2041,7 +2040,7 @@ function renderBracketTab(teamAdvanced) {
       ? `<span style="font-size:8.5px;font-weight:700;color:${color(own)};letter-spacing:-.01em;flex-shrink:0;margin-left:1px;">${own.split(' ')[0]}</span>` : '';
     const winBg = won ? 'background:rgba(22,163,74,.09);border-radius:3px;' : '';
     return `<div style="display:flex;align-items:center;gap:4px;padding:${isFinalRound?'4px 8px':'2px 6px'};${winBg}">
-      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${sn(nm,stage)||'?'}</span>${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
+      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${(()=>{const d=sn(nm,stage);return d==null?'?':d;})()}</span>${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
     </div>`;
   };
 
