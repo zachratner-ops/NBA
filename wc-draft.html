@@ -1483,7 +1483,7 @@ function renderTracker() {
   const nameColorFor = (v, t) => {
     if (!v) return '#1a1a1a';
     if (v.status==='clinched' || v.status==='advanced') return '#15803d';
-    if (v.status==='eliminated') return teamHasRemaining[t] ? '#dc2626' : '#aab0ba';
+    if (v.status==='eliminated') return '#aab0ba';
     if (v.status==='third') return '#b45309';
     return '#1a1a1a';
   };
@@ -1502,11 +1502,11 @@ function renderTracker() {
           <th style="text-align:left;padding-left:4px;">Team</th>
           <th style="width:22px;">P</th><th style="width:22px;">W</th><th style="width:22px;">D</th><th style="width:22px;">L</th><th style="width:28px;">GD</th><th style="width:28px;">Pts</th>
         </tr></thead>
-        <tbody>${rows.map((r,i)=>{const v=verdicts[r.name];const nc=nameColorFor(v,r.name);const elimDone=v&&v.status==='eliminated'&&!teamHasRemaining[r.name];return `<tr${i<2?' class="qualify"':''}>
+        <tbody>${rows.map((r,i)=>{const v=verdicts[r.name];const nc=nameColorFor(v,r.name);const elim=v&&v.status==='eliminated';return `<tr${i<2?' class="qualify"':''}>
           <td style="font-size:10px;color:#bbb;text-align:center;">${i+1}</td>
           <td style="text-align:left;overflow:hidden;"><div style="display:flex;align-items:center;gap:5px;padding-left:4px;overflow:hidden;">
             ${flagImg(WC_FLAGS[r.name])}
-            <span style="font-weight:${i<2?600:500};color:${nc};${elimDone?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex-shrink:1;">${r.name}</span>
+            <span style="font-weight:${i<2?600:500};color:${nc};${elim?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex-shrink:1;">${r.name}</span>
             ${teamOwners[r.name]?`<span class="owner-chip" style="background:${color(teamOwners[r.name])}22;color:${color(teamOwners[r.name])};font-size:10px;padding:1px 5px;white-space:nowrap;flex-shrink:0;">${teamOwners[r.name]}</span>`:''}
           </div></td>
           <td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
