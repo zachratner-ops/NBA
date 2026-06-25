@@ -916,14 +916,33 @@ function renderTracker() {
   const updatedStr = wcLiveData.updated || null;
   const fin = computeFinancials(matches, teamOwners, participants);
 
-  // teamStatus from ESPN standings API: 'advanced' | 'maybe' | 'eliminated' | undefined
-  const teamStatus = wcLiveData.teamStatus || {};
-  // teamAdvanced: true = advanced/maybe, false = eliminated
-  const teamAdvanced = {};
-  Object.entries(teamStatus).forEach(([t, s]) => {
-    if (s === 'advanced' || s === 'maybe') teamAdvanced[t] = true;
-    else if (s === 'eliminated') teamAdvanced[t] = false;
+  // Advanced = real team name appears in a KO bracket slot
+  // Eliminated = 0 pts after 3 group games
+  const _advancedTeams = new Set();
+  Object.values(matches).forEach(m => {
+    if (['r32','r16','qf','sf','final'].includes(m.stage)) {
+      if (m.homeTeam && !isPlaceholderName(m.homeTeam)) _advancedTeams.add(m.homeTeam);
+      if (m.awayTeam && !isPlaceholderName(m.awayTeam)) _advancedTeams.add(m.awayTeam);
+    }
   });
+  const _groupStats = {};
+  Object.values(matches).forEach(m => {
+    if (m.stage !== 'group' || m.status !== 'final') return;
+    [m.homeTeam, m.awayTeam].forEach(t => { if (t && !_groupStats[t]) _groupStats[t] = {pts:0, mp:0}; });
+    const hs = m.homeScore||0, as_ = m.awayScore||0;
+    if (hs > as_) { _groupStats[m.homeTeam].pts += 3; }
+    else if (as_ > hs) { _groupStats[m.awayTeam].pts += 3; }
+    else { _groupStats[m.homeTeam].pts += 1; _groupStats[m.awayTeam].pts += 1; }
+    if (m.homeTeam) _groupStats[m.homeTeam].mp++;
+    if (m.awayTeam) _groupStats[m.awayTeam].mp++;
+  });
+  const teamAdvanced = {};
+  _advancedTeams.forEach(t => { teamAdvanced[t] = true; });
+  Object.entries(_groupStats).forEach(([t, s]) => {
+    if (!_advancedTeams.has(t) && s.mp >= 3 && s.pts === 0) teamAdvanced[t] = false;
+  });
+  const teamStatus = {}; // kept for leaderboard compatibility
+  Object.entries(teamAdvanced).forEach(([t,v]) => { teamStatus[t] = v ? 'advanced' : 'eliminated'; });
   const ranked = lbSort==='draft'
     ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
     : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
