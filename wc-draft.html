@@ -196,13 +196,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .grp-scn-pills{display:inline-flex;gap:3px;flex-shrink:0;}
 .grp-pill{display:inline-flex;align-items:center;justify-content:center;width:16px;height:15px;border-radius:3px;font-size:9px;font-weight:800;box-sizing:border-box;line-height:1;}
 .grp-dot{display:inline-block;width:8px;height:8px;border-radius:2px;}
+.third-race-card{margin-top:18px;background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;max-width:520px;}
+.third-race-hdr{padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;background:#fafafa;border-bottom:0.5px solid #e0e0e0;}
+.third-race-hdr span{font-size:10px;font-weight:400;color:#bbb;text-transform:none;letter-spacing:0;margin-left:4px;}
+.third-race-list{padding:4px 0;}
+.third-race-row{display:flex;align-items:center;gap:7px;padding:5px 14px;font-size:12px;}
+.third-race-row.out{opacity:.5;}
+.third-race-row .tr-rank{width:16px;text-align:center;font-size:10px;color:#bbb;font-weight:600;flex-shrink:0;}
+.third-race-row .tr-name{font-weight:600;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.third-race-row .tr-grp{font-size:9px;font-weight:700;color:#bbb;background:#f2f3f5;border-radius:3px;padding:1px 4px;flex-shrink:0;}
+.third-race-row .tr-prov{color:#d97706;font-size:12px;line-height:1;flex-shrink:0;}
+.third-race-row .tr-stat{margin-left:auto;font-weight:700;color:#333;font-size:12px;flex-shrink:0;min-width:34px;text-align:right;}
+.third-race-row .tr-stat:last-child{margin-left:10px;min-width:30px;}
+.third-race-row .tr-stat-lbl{font-size:8px;font-weight:500;color:#bbb;margin-left:1px;}
+.third-race-cut{display:flex;align-items:center;justify-content:center;margin:2px 14px;border-top:1.5px dashed #16a34a;}
+.third-race-cut span{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#16a34a;background:#fff;padding:0 8px;transform:translateY(-7px);}
+.third-race-foot{padding:7px 14px 9px;font-size:9px;color:#b0b5be;border-top:0.5px solid #f0f0f0;}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
 .teams-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .teams-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
 .teams-card-name{font-size:14px;font-weight:700;}
 .teams-card-net{font-size:13px;font-weight:700;}
 .teams-card-net.pos{color:#2e7d32;} .teams-card-net.neg{color:#c62828;}
-.team-row{display:grid;grid-template-columns:22px 1fr 14px 28px 14px 42px 32px;align-items:center;gap:3px;padding:6px 14px;border-top:0.5px solid #f5f5f3;font-size:12px;}
+.team-row{display:grid;grid-template-columns:16px 22px 1fr 14px 28px 14px 42px 32px;align-items:center;gap:3px;padding:6px 14px;border-top:0.5px solid #f5f5f3;font-size:12px;}
 .team-name-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:6px;}
 .team-emoji{font-size:11px;text-align:right;line-height:1;}
 .team-goals{font-size:11px;font-weight:700;color:#2e7d32;text-align:left;white-space:nowrap;}
@@ -1439,9 +1455,11 @@ function renderTracker() {
     </div>${myTeams.length===0?'<div style="padding:8px 14px;font-size:12px;color:#aaa;font-style:italic;">No teams</div>':
       myTeams.map(nm=>{
         const rec=teamRecord[nm];
+        const badge=teamAdvanced[nm]===true?`<span style="font-size:8px;font-weight:700;color:#16a34a;">(a)</span>`:teamStatus[nm]==='eliminated'?`<span style="font-size:8px;font-weight:600;color:${teamHasRemaining[nm]?'#dc2626':'#b0b5be'};">(e)</span>`:'';
         return `<div class="team-row">
+          <span style="width:14px;flex-shrink:0;text-align:center;line-height:1;">${badge}</span>
           <span class="team-flag">${flagImg(WC_FLAGS[nm])}</span>
-          <span class="team-name-txt">${nm}${teamAdvanced[nm]===true?` <span style="font-size:8px;font-weight:700;color:#16a34a;">(a)</span>`:teamStatus[nm]==='eliminated'?` <span style="font-size:8px;font-weight:600;color:${teamHasRemaining[nm]?'#dc2626':'#b0b5be'};">(e)</span>`:''}</span>
+          <span class="team-name-txt">${nm}</span>
           <span class="team-emoji">⚽</span>
           <span class="team-goals">${(rec&&(rec.w+rec.l+rec.t>0))||fin.goalsByTeam[nm]?`${fin.goalsByTeam[nm]||0}g`:''}</span>
           <span class="team-emoji">🏆</span>
@@ -1524,6 +1542,35 @@ function renderTracker() {
     </div>`;
   }).join('');
 
+  // ── 3rd-place race ranking — current 3rd of each group, top 8 of 12 advance ──
+  const thirdRows = ['A','B','C','D','E','F','G','H','I','J','K','L'].map(grp=>{
+    const rows=grpStandings[grp]||[];
+    const t=rows[2]; if(!t) return null;
+    const complete = rows.length===4 && rows.every(r=>r.mp>=3);
+    return { grp, name:t.name, pts:t.pts, gd:t.gd, gf:t.gf, mp:t.mp, complete };
+  }).filter(t=>t && (t.mp>0)).sort((a,b)=> b.pts-a.pts || b.gd-a.gd || b.gf-a.gf);
+  const thirdRaceHtml = thirdRows.length ? `
+    <div class="third-race-card">
+      <div class="third-race-hdr">3rd-Place Race <span>top 8 of 12 advance</span></div>
+      <div class="third-race-list">${thirdRows.map((t,i)=>{
+        const inN = i<8;
+        const own = teamOwners[t.name];
+        const nm = SHORT_TEAM[t.name]||t.name;
+        return `${i===8?`<div class="third-race-cut"><span>cut line · 8 advance</span></div>`:''}
+        <div class="third-race-row${inN?'':' out'}">
+          <span class="tr-rank">${i+1}</span>
+          ${flagImg(WC_FLAGS[t.name])}
+          <span class="tr-name">${nm}</span>
+          <span class="tr-grp">${t.grp}</span>
+          ${own?`<span class="owner-chip" style="background:${color(own)}22;color:${color(own)};font-size:9px;padding:1px 5px;">${own.split(' ')[0]}</span>`:''}
+          ${t.complete?'':`<span class="tr-prov" title="group not yet complete">•</span>`}
+          <span class="tr-stat">${t.pts}<span class="tr-stat-lbl">pts</span></span>
+          <span class="tr-stat">${t.gd>0?'+':''}${t.gd}<span class="tr-stat-lbl">GD</span></span>
+        </div>`;
+      }).join('')}</div>
+      <div class="third-race-foot">• = group still in progress · ranked by pts, then goal difference, then goals scored</div>
+    </div>` : '';
+
   const groupsTabHtml=`
     <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 + 8 best 3rd advance</span></span>
@@ -1535,6 +1582,7 @@ function renderTracker() {
       </span>
     </div>
     <div class="groups-grid">${groupCardsHtml}</div>
+    ${thirdRaceHtml}
   `;
 
   const liveTabBadge = liveMatches.length ? ` <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#e65100;color:#fff;font-size:9px;font-weight:800;vertical-align:middle;">${liveMatches.length}</span>` : '';
