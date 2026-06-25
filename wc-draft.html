@@ -916,33 +916,13 @@ function renderTracker() {
   const updatedStr = wcLiveData.updated || null;
   const fin = computeFinancials(matches, teamOwners, participants);
 
-  // Advancement map:
-  //   true  = confirmed in KO bracket (real team name in r32+ match)
-  //   false = mathematically eliminated (0 pts after 3 group games)
-  //   undefined = still in play or uncertain
-  const _advancedTeams = new Set();
-  Object.values(matches).forEach(m => {
-    if (['r32','r16','qf','sf','final'].includes(m.stage)) {
-      if (m.homeTeam && !isPlaceholderName(m.homeTeam)) _advancedTeams.add(m.homeTeam);
-      if (m.awayTeam && !isPlaceholderName(m.awayTeam)) _advancedTeams.add(m.awayTeam);
-    }
-  });
-  // Compute group points to find truly eliminated teams (0 pts, 3 games played)
-  const _groupStats = {};
-  Object.values(matches).forEach(m => {
-    if (m.stage !== 'group' || m.status !== 'final') return;
-    [m.homeTeam, m.awayTeam].forEach(t => { if (t && !_groupStats[t]) _groupStats[t] = {pts:0, mp:0}; });
-    const hs = m.homeScore||0, as_ = m.awayScore||0;
-    if (hs > as_) { _groupStats[m.homeTeam].pts += 3; }
-    else if (as_ > hs) { _groupStats[m.awayTeam].pts += 3; }
-    else { _groupStats[m.homeTeam].pts += 1; _groupStats[m.awayTeam].pts += 1; }
-    if (m.homeTeam) _groupStats[m.homeTeam].mp++;
-    if (m.awayTeam) _groupStats[m.awayTeam].mp++;
-  });
+  // teamStatus from ESPN standings API: 'advanced' | 'maybe' | 'eliminated' | undefined
+  const teamStatus = wcLiveData.teamStatus || {};
+  // teamAdvanced: true = advanced/maybe, false = eliminated
   const teamAdvanced = {};
-  _advancedTeams.forEach(t => { teamAdvanced[t] = true; });
-  Object.entries(_groupStats).forEach(([t, s]) => {
-    if (!_advancedTeams.has(t) && s.mp >= 3 && s.pts === 0) teamAdvanced[t] = false;
+  Object.entries(teamStatus).forEach(([t, s]) => {
+    if (s === 'advanced' || s === 'maybe') teamAdvanced[t] = true;
+    else if (s === 'eliminated') teamAdvanced[t] = false;
   });
   const ranked = lbSort==='draft'
     ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
@@ -1043,7 +1023,7 @@ function renderTracker() {
           <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
         </div>
         <div class="lb-teams" style="flex-wrap:wrap;gap:3px;align-items:center;line-height:1.8;">
-          ${myTeams.map(t=>{const elim=eliminatedTeams.has(t)||teamAdvanced[t]===false;const adv=teamAdvanced[t]===true;const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;const c=elim?'#ccc':adv?'#16a34a':'#1a1a1a';return `<span style="font-size:10px;font-weight:${elim?400:600};color:${c};${elim?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
+          ${myTeams.map(t=>{const elim=eliminatedTeams.has(t)||teamStatus[t]==='eliminated';const adv=teamStatus[t]==='advanced';const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;const c=elim?'#ccc':adv?'#16a34a':'#1a1a1a';return `<span style="font-size:10px;font-weight:${elim?400:600};color:${c};${elim?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
         </div>
       </div>
     </div>`;

@@ -1172,6 +1172,33 @@ async function fetchWCMatchesForDate(dateStr) {
   }
 }
 
+async function fetchWCStandings() {
+  try {
+    const result = await httpsGet(
+      'site.api.espn.com',
+      '/apis/v2/sports/soccer/fifa.world/standings',
+      { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
+    );
+    if (result.status !== 200) return {};
+    const data = JSON.parse(result.body);
+    const teamStatus = {};
+    (data.children || []).forEach(function(group) {
+      (group.standings && group.standings.entries || []).forEach(function(entry) {
+        const name = normalizeWCTeamName(entry.team && entry.team.displayName);
+        if (!name) return;
+        const desc = (entry.note && entry.note.description) || '';
+        if (desc.includes('Advance')) teamStatus[name] = 'advanced';
+        else if (desc.includes('Best 8')) teamStatus[name] = 'maybe';
+        else if (desc.includes('Eliminat')) teamStatus[name] = 'eliminated';
+      });
+    });
+    return teamStatus;
+  } catch(e) {
+    console.error('fetchWCStandings error:', e.message);
+    return {};
+  }
+}
+
 async function fetchWCMatches() {
   try {
     const matches = await fetchWCMatchesForDate(null);
@@ -1223,6 +1250,9 @@ async function pushWCMatchesToFirebase() {
     await db.ref('wc26_live/matches').set(merged);
     await db.ref('wc26_live/updated').set(result.updated);
     console.log('WC matches push: ' + Object.keys(merged).length + ' matches');
+    fetchWCStandings().then(function(ts) {
+      if (Object.keys(ts).length > 0) db.ref('wc26_live/teamStatus').set(ts);
+    }).catch(function(e) { console.error('standings fetch error:', e.message); });
 
     // Detect newly completed ties and fire GroupMe notifications
     const newTies = Object.values(merged).filter(function(m) {
@@ -1542,6 +1572,9 @@ async function runWCScheduleLoad() {
 
     await db.ref('wc26_live/matches').set(merged);
     await db.ref('wc26_live/updated').set(new Date().toISOString());
+    fetchWCStandings().then(function(ts) {
+      if (Object.keys(ts).length > 0) db.ref('wc26_live/teamStatus').set(ts);
+    }).catch(function(e) { console.error('standings fetch error:', e.message); });
 
     const byStatus = { scheduled: 0, live: 0, final: 0, other: 0 };
     Object.values(merged).forEach(function(m) {
