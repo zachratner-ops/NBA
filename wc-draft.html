@@ -1323,7 +1323,7 @@ function renderTracker() {
   // Match tab — three sections: Today / Completed / Upcoming
   function isToday(ds){if(!ds)return false;const d=new Date(ds),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
   function isTomorrow(ds){if(!ds)return false;const d=new Date(ds),n=new Date();n.setDate(n.getDate()+1);return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate();}
-  const SL={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',final:'Final'};
+  const SL={group:'Group',r32:'R32',r16:'R16',qf:'QF',sf:'SF',third:'3rd Place',final:'Final'};
   function mkRow(m){
     const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
     const hs=m.homeScore??'?',as_=m.awayScore??'?';
@@ -1933,7 +1933,9 @@ function renderBracketTab(teamAdvanced) {
     if (m.stage && byStage[m.stage]) byStage[m.stage].push(m);
   });
   KO_STAGES.forEach(s => byStage[s].sort((a,b) => new Date(a.date)-new Date(b.date)));
-  const thirdPlace = byStage['sf'].length > 2 ? byStage['sf'][2] : null;
+  // 3rd-place playoff has its own stage ('third'); fall back to a stray 3rd 'sf' entry
+  const thirdPlace = Object.values(allMatches).find(m => m.stage === 'third')
+    || (byStage['sf'].length > 2 ? byStage['sf'][2] : null);
   byStage['sf'] = byStage['sf'].slice(0,2);
 
   const hasAny = KO_STAGES.some(s => byStage[s].length > 0);

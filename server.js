@@ -1111,7 +1111,12 @@ function parseESPNEvents(events) {
       else if (slug.includes('round-of-16')) stage = 'r16';
       else if (slug.includes('quarter')) stage = 'qf';
       else if (slug.includes('semi')) stage = 'sf';
+      else if (slug.includes('3rd-place') || slug.includes('third-place')) stage = 'third';
       else if (slug === 'final') stage = 'final';
+    }
+    // 3rd-place playoff: ESPN may surface it via slug or the event name
+    if (stage === 'group' && /third place|3rd place|play-?off for third/i.test(event.name || '')) {
+      stage = 'third';
     }
     const detailLower = statusDetail.toLowerCase();
     const espnPK = detailLower.includes('pen') || detailLower.includes('p.k') || detailLower === 'f/p';
