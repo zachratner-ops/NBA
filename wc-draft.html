@@ -182,18 +182,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tiepot-count{font-size:12px;font-weight:700;width:16px;text-align:right;color:#888;}
 .tiepot-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;}
 .tiepot-most{background:#f9a825;color:#1a1a1a;} .tiepot-least{background:#1565c0;color:#fff;}
-.groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:24px;}
+.groups-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:24px;}
+@media(min-width:820px){.groups-grid{grid-template-columns:1fr 1fr;}}
 .group-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .group-card-hdr{padding:8px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;background:#fafafa;border-bottom:0.5px solid #e0e0e0;}
 .group-table{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed;}
 .group-table th{padding:4px 6px;color:#aaa;font-weight:700;font-size:10px;text-align:center;border-bottom:0.5px solid #f0f0f0;}
 .group-table td{padding:5px 6px;border-top:0.5px solid #f5f5f3;text-align:center;vertical-align:middle;}
-.group-table tr.qualify td{background:#f0f9f0;}
-.grp-scenarios{border-top:0.5px solid #eee;background:#fcfcfb;padding:6px 10px 8px;display:flex;flex-direction:column;gap:3px;}
-.grp-scn-row{display:flex;align-items:baseline;gap:6px;font-size:10.5px;line-height:1.3;}
-.grp-scn-ic{flex-shrink:0;width:9px;text-align:center;font-weight:700;font-size:10px;}
-.grp-scn-name{flex-shrink:0;font-weight:600;color:#333;min-width:62px;}
-.grp-scn-verdict{flex:1;min-width:0;font-weight:500;}
+.grp-scenarios{border-top:0.5px solid #eee;background:#fcfcfb;padding:7px 12px 9px;display:flex;flex-direction:column;gap:4px;}
+.grp-scn-hint{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#b0b5be;}
+.grp-scn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;}
+.grp-scn-name{font-weight:600;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.grp-scn-pills{display:inline-flex;gap:3px;flex-shrink:0;}
+.grp-pill{display:inline-flex;align-items:center;justify-content:center;width:16px;height:15px;border-radius:3px;font-size:9px;font-weight:800;box-sizing:border-box;line-height:1;}
+.grp-dot{display:inline-block;width:8px;height:8px;border-radius:2px;}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
 .teams-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .teams-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
@@ -1026,16 +1028,17 @@ function computeScenarios(matches) {
         const a = agg[T];
         if (!a.t3any)  { verdicts[T] = { status:'eliminated', label:'Eliminated' }; return; }
         if (a.t2all)   { verdicts[T] = { status:'clinched', label:'Clinched' }; return; }
-        let detail = 'In contention';
+        let detail = 'In contention', outcomes = null;
         if (ownCountOf(T) === 1) {
           const buckets = {};
           ['W','D','L'].forEach(lab => {
             const r = a.res[lab];
             buckets[lab] = !r ? 'out' : r.t2all ? 'in' : r.t2any ? 'maybe' : r.t3any ? 'third' : 'out';
           });
+          outcomes = buckets;
           detail = phraseScenario(buckets, RW);
         }
-        verdicts[T] = { status:'contention', detail };
+        verdicts[T] = { status:'contention', detail, outcomes };
       });
       grpVerdicts[grp] = verdicts; return;
     }
@@ -1475,17 +1478,23 @@ function renderTracker() {
   });
 
   // Verdict styling for the scenario rows under each group table
-  const verdictStyle = (v) => {
-    if (!v) return { c:'#444', t:'In contention', strike:false, ic:'·' };
-    if (v.status==='clinched')   return { c:'#15803d', t:v.label||'Clinched', strike:false, ic:'✓' };
-    if (v.status==='advanced')   return { c:'#15803d', t:v.label||'Advanced', strike:false, ic:'✓' };
-    if (v.status==='eliminated') return { c:'#aab0ba', t:v.label||'Eliminated', strike:true,  ic:'✗' };
-    if (v.status==='third')      return { c:'#b45309', t:'3rd — best-8 race', strike:false, ic:'•' };
-    return { c:'#444', t:v.detail||'In contention', strike:false, ic:'•' };
+  const SHORT_TEAM={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo','Ivory Coast':'I. Coast','Cape Verde':'C. Verde'};
+  // Status → name color in the standings table
+  const nameColorFor = (v, t) => {
+    if (!v) return '#1a1a1a';
+    if (v.status==='clinched' || v.status==='advanced') return '#15803d';
+    if (v.status==='eliminated') return teamHasRemaining[t] ? '#dc2626' : '#aab0ba';
+    if (v.status==='third') return '#b45309';
+    return '#1a1a1a';
   };
+  // Outcome → pill color for the what-if row
+  const PILL = { in:'#16a34a', maybe:'#16a34a', third:'#d97706', out:'#cbd0d6' };
+  const PILL_FILLED = { in:true, maybe:false, third:true, out:true };
   const groupCardsHtml=['A','B','C','D','E','F','G','H','I','J','K','L'].map(grp=>{
     const rows=grpStandings[grp]||[];
     const verdicts=grpVerdicts[grp]||{};
+    // Compact what-if rows — only teams still undecided with a single game left
+    const whatIf = rows.filter(r=>{const v=verdicts[r.name];return v&&v.status==='contention'&&v.outcomes;});
     return `<div class="group-card">
       <div class="group-card-hdr">Group ${grp}</div>
       <table class="group-table">
@@ -1494,31 +1503,37 @@ function renderTracker() {
           <th style="text-align:left;padding-left:4px;">Team</th>
           <th style="width:22px;">P</th><th style="width:22px;">W</th><th style="width:22px;">D</th><th style="width:22px;">L</th><th style="width:28px;">GD</th><th style="width:28px;">Pts</th>
         </tr></thead>
-        <tbody>${rows.map((r,i)=>`<tr${i<2?' class="qualify"':''}>
+        <tbody>${rows.map((r,i)=>{const v=verdicts[r.name];const nc=nameColorFor(v,r.name);const elimDone=v&&v.status==='eliminated'&&!teamHasRemaining[r.name];return `<tr${i<2?' class="qualify"':''}>
           <td style="font-size:10px;color:#bbb;text-align:center;">${i+1}</td>
           <td style="text-align:left;overflow:hidden;"><div style="display:flex;align-items:center;gap:5px;padding-left:4px;overflow:hidden;">
             ${flagImg(WC_FLAGS[r.name])}
-            <span style="font-weight:${i<2?600:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex-shrink:1;">${r.name}</span>
+            <span style="font-weight:${i<2?600:500};color:${nc};${elimDone?'text-decoration:line-through;':''}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex-shrink:1;">${r.name}</span>
             ${teamOwners[r.name]?`<span class="owner-chip" style="background:${color(teamOwners[r.name])}22;color:${color(teamOwners[r.name])};font-size:10px;padding:1px 5px;white-space:nowrap;flex-shrink:0;">${teamOwners[r.name]}</span>`:''}
           </div></td>
           <td>${r.mp}</td><td>${r.w}</td><td>${r.d}</td><td>${r.l}</td>
           <td style="font-weight:600;color:${r.gd>0?'#2e7d32':r.gd<0?'#c62828':'#888'}">${r.gd>0?'+':''}${r.gd}</td>
           <td style="font-weight:700;">${r.pts}</td>
-        </tr>`).join('')}</tbody>
+        </tr>`;}).join('')}</tbody>
       </table>
-      <div class="grp-scenarios">${rows.map(r=>{
-        const vs=verdictStyle(verdicts[r.name]);
-        return `<div class="grp-scn-row">
-          <span class="grp-scn-ic" style="color:${vs.c};">${vs.ic}</span>
-          <span class="grp-scn-name"${vs.strike?' style="text-decoration:line-through;color:#aab0ba;"':''}>${r.name}</span>
-          <span class="grp-scn-verdict" style="color:${vs.c};">${vs.t}</span>
-        </div>`;
-      }).join('')}</div>
+      ${whatIf.length?`<div class="grp-scenarios">
+        <div class="grp-scn-hint">If they…</div>
+        ${whatIf.map(r=>{const o=verdicts[r.name].outcomes;return `<div class="grp-scn-row">
+          <span class="grp-scn-name">${SHORT_TEAM[r.name]||r.name}</span>
+          <span class="grp-scn-pills">${['W','D','L'].map(k=>{const b=o[k];const col=PILL[b];return `<span class="grp-pill" style="${PILL_FILLED[b]?`background:${col};color:#fff;`:`background:#fff;color:${col};border:1px solid ${col};`}">${k}</span>`;}).join('')}</span>
+        </div>`;}).join('')}
+      </div>`:''}
     </div>`;
   }).join('');
 
   const groupsTabHtml=`
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:12px;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 advance · 8 best 3rd-place also qualify</span></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 + 8 best 3rd advance</span></span>
+      <span style="font-size:9.5px;color:#aaa;display:inline-flex;align-items:center;gap:9px;">
+        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#16a34a;"></span>advances</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#d97706;"></span>3rd-race</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#cbd0d6;"></span>out</span>
+      </span>
+    </div>
     <div class="groups-grid">${groupCardsHtml}</div>
   `;
 
