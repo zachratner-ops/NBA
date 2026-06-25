@@ -1625,6 +1625,15 @@ function renderBracketTab() {
   const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Quarterfinals', sf:'Semifinals', final:'Final' };
   const STAGE_N = { r32:16, r16:8, qf:4, sf:2, final:1 };
 
+  // Build advancement map from group stage matches: teamName → true/false/null
+  const teamAdvanced = {};
+  Object.values(allMatches).forEach(m => {
+    if (m.stage === 'group') {
+      if (m.homeTeam && m.homeAdvanced != null) teamAdvanced[m.homeTeam] = m.homeAdvanced;
+      if (m.awayTeam && m.awayAdvanced != null) teamAdvanced[m.awayTeam] = m.awayAdvanced;
+    }
+  });
+
   const byStage = {};
   KO_STAGES.forEach(s => { byStage[s] = []; });
   Object.values(allMatches).forEach(m => {
@@ -1740,9 +1749,9 @@ function renderBracketTab() {
       const dateStr = fmtDate(m.date);
       cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${ch}px;background:${bg};border:${border};border-radius:8px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:0;box-sizing:border-box;box-shadow:${shadow};">
         ${dateStr?`<div style="font-size:8px;color:#b0b5be;text-align:center;padding:2px 6px 0;line-height:1;flex-shrink:0;">${dateStr}</div>`:''}
-        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s,m.homeAdvanced)}
+        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s,teamAdvanced[m.homeTeam]??null)}
         <div style="height:1px;background:#f0f2f4;margin:0 6px;flex-shrink:0;"></div>
-        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s,m.awayAdvanced)}
+        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s,teamAdvanced[m.awayTeam]??null)}
         ${isPK?`<div style="position:absolute;bottom:3px;right:5px;font-size:7.5px;font-weight:800;color:#f9a825;letter-spacing:.04em;">PK</div>`:''}
         ${live?`<div style="position:absolute;top:3px;right:5px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
       </div>`;
