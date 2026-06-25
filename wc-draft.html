@@ -197,6 +197,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .grp-scn-pills{display:inline-flex;gap:3px;flex-shrink:0;}
 .grp-pill{display:inline-flex;align-items:center;justify-content:center;width:16px;height:15px;border-radius:3px;font-size:9px;font-weight:800;box-sizing:border-box;line-height:1;}
 .grp-dot{display:inline-block;width:8px;height:8px;border-radius:2px;}
+.grp-live{border-top:0.5px solid #f3d9cc;background:#fff8f4;padding:7px 12px 8px;display:flex;flex-direction:column;gap:2px;}
+.grp-live-hdr{font-size:8.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#e65100;display:flex;align-items:center;gap:5px;margin-bottom:2px;flex-wrap:wrap;}
+.grp-live-dot{width:6px;height:6px;border-radius:50%;background:#e65100;animation:livePulse 1.2s infinite;flex-shrink:0;}
+.grp-live-score{font-weight:600;text-transform:none;letter-spacing:0;color:#b85c2a;}
+.grp-live-row{display:flex;align-items:center;gap:6px;font-size:11px;padding:1px 0;}
+.grp-live-row.q .glv-name{font-weight:700;color:#15803d;}
+.grp-live-row.t3 .glv-name{font-weight:600;color:#b45309;}
+.grp-live-row.out .glv-name{color:#aab0ba;text-decoration:line-through;font-weight:500;}
+.glv-rank{width:12px;text-align:center;font-size:9px;color:#bbb;font-weight:600;flex-shrink:0;}
+.glv-mv{width:10px;text-align:center;font-size:9px;flex-shrink:0;}
+.glv-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:#333;}
+.glv-pts{font-weight:700;color:#333;flex-shrink:0;}
+.glv-lbl{font-size:7px;color:#bbb;font-weight:500;margin-left:1px;}
+.glv-gd{width:26px;text-align:right;font-size:10px;color:#888;flex-shrink:0;}
 .third-race-card{margin-top:18px;background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;width:100%;}
 .third-race-hdr{padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;background:#fafafa;border-bottom:0.5px solid #e0e0e0;}
 .third-race-hdr span{font-size:10px;font-weight:400;color:#bbb;text-transform:none;letter-spacing:0;margin-left:4px;}
@@ -1489,11 +1503,10 @@ function renderTracker() {
   Object.entries(WC_GROUPS_MAP).forEach(([team,grp])=>{if(!GRP_TEAMS[grp])GRP_TEAMS[grp]=[];GRP_TEAMS[grp].push(team);});
 
   // Compute standings
-  const grpStandings={};
-  ['A','B','C','D','E','F','G','H','I','J','K','L'].forEach(grp=>{
+  const computeStanding=(grp,includeLive)=>{
     const s={};
     (GRP_TEAMS[grp]||[]).forEach(t=>{s[t]={mp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0};});
-    Object.values(matches).filter(m=>m.status==='final'&&m.stage==='group').forEach(m=>{
+    Object.values(matches).filter(m=>m.stage==='group'&&(m.status==='final'||(includeLive&&m.status==='live'))).forEach(m=>{
       if((m.group||WC_GROUPS_MAP[m.homeTeam])!==grp)return;
       if(!s[m.homeTeam]||!s[m.awayTeam])return;
       const hs=m.homeScore||0,as_=m.awayScore||0;
@@ -1504,9 +1517,16 @@ function renderTracker() {
       else if(as_>hs){s[m.awayTeam].w++;s[m.awayTeam].pts+=3;s[m.homeTeam].l++;}
       else{s[m.homeTeam].d++;s[m.homeTeam].pts++;s[m.awayTeam].d++;s[m.awayTeam].pts++;}
     });
-    grpStandings[grp]=Object.entries(s).map(([name,st])=>({name,...st,gd:st.gf-st.ga}))
+    return Object.entries(s).map(([name,st])=>({name,...st,gd:st.gf-st.ga}))
       .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
-  });
+  };
+  const grpStandings={};
+  ['A','B','C','D','E','F','G','H','I','J','K','L'].forEach(grp=>{ grpStandings[grp]=computeStanding(grp,false); });
+  // Live projection — "if the live score holds" — only for groups with a live match
+  const liveGroupSet=new Set();
+  liveMatches.forEach(m=>{ if(m.stage==='group'){const g=m.group||WC_GROUPS_MAP[m.homeTeam]; if(g) liveGroupSet.add(g);} });
+  const grpProjStandings={};
+  liveGroupSet.forEach(grp=>{ grpProjStandings[grp]=computeStanding(grp,true); });
 
   // Verdict styling for the scenario rows under each group table
   const SHORT_TEAM={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo','Ivory Coast':'I. Coast','Cape Verde':'C. Verde'};
@@ -1545,6 +1565,19 @@ function renderTracker() {
           <td style="font-weight:700;">${r.pts}</td>
         </tr>`;}).join('')}</tbody>
       </table>
+      ${grpProjStandings[grp]?(()=>{
+        const proj=grpProjStandings[grp];
+        const lm=liveMatches.filter(m=>m.stage==='group'&&(m.group||WC_GROUPS_MAP[m.homeTeam])===grp);
+        const scoreTxt=lm.map(m=>`${SHORT_TEAM[m.homeTeam]||m.homeTeam} ${m.homeScore??0}–${m.awayScore??0} ${SHORT_TEAM[m.awayTeam]||m.awayTeam}`).join(' · ');
+        return `<div class="grp-live">
+          <div class="grp-live-hdr"><span class="grp-live-dot"></span>If live score holds${scoreTxt?`<span class="grp-live-score">${scoreTxt}</span>`:''}</div>
+          ${proj.map((r,i)=>{const cur=rows.findIndex(x=>x.name===r.name);const d=cur<0?0:cur-i;const mv=d>0?'<span style="color:#16a34a;">▲</span>':d<0?'<span style="color:#dc2626;">▼</span>':'<span style="color:#d0d4da;">·</span>';const st=teamStatus[r.name];const cls=st==='eliminated'?' out':(st==='advanced'||i<2)?' q':i===2?' t3':'';return `<div class="grp-live-row${cls}">
+            <span class="glv-rank">${i+1}</span><span class="glv-mv">${mv}</span>${flagImg(WC_FLAGS[r.name])}
+            <span class="glv-name">${r.name}</span>
+            <span class="glv-pts">${r.pts}<span class="glv-lbl">pts</span></span>
+            <span class="glv-gd">${r.gd>0?'+':''}${r.gd}</span>
+          </div>`;}).join('')}
+        </div>`;})():''}
       ${whatIf.length?`<div class="grp-scenarios">
         <div class="grp-scn-hint">If they…</div>
         ${whatIf.map(r=>{const o=verdicts[r.name].outcomes;return `<div class="grp-scn-row">
