@@ -915,6 +915,35 @@ function renderTracker() {
   const participants = config.participants || draft?.owners || Object.keys(ALL_COLORS);
   const updatedStr = wcLiveData.updated || null;
   const fin = computeFinancials(matches, teamOwners, participants);
+
+  // Advancement map:
+  //   true  = confirmed in KO bracket (real team name in r32+ match)
+  //   false = mathematically eliminated (0 pts after 3 group games)
+  //   undefined = still in play or uncertain
+  const _advancedTeams = new Set();
+  Object.values(matches).forEach(m => {
+    if (['r32','r16','qf','sf','final'].includes(m.stage)) {
+      if (m.homeTeam && !isPlaceholderName(m.homeTeam)) _advancedTeams.add(m.homeTeam);
+      if (m.awayTeam && !isPlaceholderName(m.awayTeam)) _advancedTeams.add(m.awayTeam);
+    }
+  });
+  // Compute group points to find truly eliminated teams (0 pts, 3 games played)
+  const _groupStats = {};
+  Object.values(matches).forEach(m => {
+    if (m.stage !== 'group' || m.status !== 'final') return;
+    [m.homeTeam, m.awayTeam].forEach(t => { if (t && !_groupStats[t]) _groupStats[t] = {pts:0, mp:0}; });
+    const hs = m.homeScore||0, as_ = m.awayScore||0;
+    if (hs > as_) { _groupStats[m.homeTeam].pts += 3; }
+    else if (as_ > hs) { _groupStats[m.awayTeam].pts += 3; }
+    else { _groupStats[m.homeTeam].pts += 1; _groupStats[m.awayTeam].pts += 1; }
+    if (m.homeTeam) _groupStats[m.homeTeam].mp++;
+    if (m.awayTeam) _groupStats[m.awayTeam].mp++;
+  });
+  const teamAdvanced = {};
+  _advancedTeams.forEach(t => { teamAdvanced[t] = true; });
+  Object.entries(_groupStats).forEach(([t, s]) => {
+    if (!_advancedTeams.has(t) && s.mp >= 3 && s.pts === 0) teamAdvanced[t] = false;
+  });
   const ranked = lbSort==='draft'
     ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
     : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
@@ -1014,7 +1043,7 @@ function renderTracker() {
           <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
         </div>
         <div class="lb-teams" style="flex-wrap:wrap;gap:3px;align-items:center;line-height:1.8;">
-          ${myTeams.map(t=>{const e=eliminatedTeams.has(t);const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;return `<span style="font-size:10px;font-weight:${e?400:600};color:${e?'#ccc':color(p)};${e?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
+          ${myTeams.map(t=>{const elim=eliminatedTeams.has(t)||teamAdvanced[t]===false;const adv=teamAdvanced[t]===true;const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;const c=elim?'#ccc':adv?'#16a34a':'#1a1a1a';return `<span style="font-size:10px;font-weight:${elim?400:600};color:${c};${elim?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
         </div>
       </div>
     </div>`;
@@ -1320,7 +1349,7 @@ function renderTracker() {
   else if(trackerTab==='matches')content=matchesHtml;
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='groups')content=groupsTabHtml;
-  else if(trackerTab==='bracket')content=renderBracketTab();
+  else if(trackerTab==='bracket')content=renderBracketTab(teamAdvanced);
   else if(trackerTab==='rules')content=rulesHtml();
 
   // Live banner — shown when at least one game is in progress
@@ -1617,7 +1646,10 @@ window.finalizeDraft = async function() {
 };
 
 // ── Bracket tab ───────────────────────────────────────────────────
-function renderBracketTab() {
+function isPlaceholderName(t) { return !t || /Winner|2nd Place|Third Place/.test(t); }
+
+function renderBracketTab(teamAdvanced) {
+  teamAdvanced = teamAdvanced || {};
   const allMatches = wcLiveData ? (wcLiveData.matches || {}) : {};
   const teamOwners = wcLiveData ? (wcLiveData.teamOwners || {}) : {};
 
@@ -1625,14 +1657,6 @@ function renderBracketTab() {
   const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Quarterfinals', sf:'Semifinals', final:'Final' };
   const STAGE_N = { r32:16, r16:8, qf:4, sf:2, final:1 };
 
-  // Build advancement map from group stage matches: teamName → true/false/null
-  const teamAdvanced = {};
-  Object.values(allMatches).forEach(m => {
-    if (m.stage === 'group') {
-      if (m.homeTeam && m.homeAdvanced != null) teamAdvanced[m.homeTeam] = m.homeAdvanced;
-      if (m.awayTeam && m.awayAdvanced != null) teamAdvanced[m.awayTeam] = m.awayAdvanced;
-    }
-  });
 
   const byStage = {};
   KO_STAGES.forEach(s => { byStage[s] = []; });
@@ -1681,7 +1705,7 @@ function renderBracketTab() {
     if ((m=t.match(/^Semifinal (\d+) Winner$/))) return `W${m[1]}`;
     return SHORT_NAMES[t]||t;
   };
-  const isPlaceholder = t => !t || /Winner|2nd Place|Third Place/.test(t);
+  const isPlaceholder = isPlaceholderName;
   const fmtDate = d => { if (!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/New_York'}); };
 
   // Connector lines — visible gray
@@ -1700,12 +1724,12 @@ function renderBracketTab() {
   });
 
   // Team row inside a card
-  const teamRow = (nm, own, sc, won, live, fin, isFinalRound, isPH, stage, advanced) => {
+  const teamRow = (nm, own, sc, won, live, fin, isFinalRound, isPH, stage) => {
     const fc = WC_FLAGS[nm];
     const fi = (!isPH && fc)
       ? `<img src="https://flagcdn.com/20x15/${fc}.png" width="16" height="12" style="border-radius:1.5px;flex-shrink:0;">`
       : `<span style="width:16px;flex-shrink:0;"></span>`;
-    const nameColor = isPH ? '#c0c4cc' : (advanced===false) ? '#b0b5be' : won ? '#111' : '#282828';
+    const nameColor = isPH ? '#c0c4cc' : won ? '#111' : '#282828';
     const nameFw = won ? 700 : isPH ? 400 : 500;
     const nameFs = isFinalRound ? 11.5 : 10;
     const scoreStr = (fin||live) ? (sc??'?') : '';
@@ -1713,13 +1737,9 @@ function renderBracketTab() {
     const scoreFw = won ? 700 : 400;
     const ownerStr = (own && !isPH)
       ? `<span style="font-size:8.5px;font-weight:700;color:${color(own)};letter-spacing:-.01em;flex-shrink:0;margin-left:1px;">${own.split(' ')[0]}</span>` : '';
-    const advBadge = (!isPH && advanced===true)
-      ? `<span style="font-size:7.5px;font-weight:700;color:#16a34a;flex-shrink:0;">(a)</span>`
-      : (!isPH && advanced===false)
-      ? `<span style="font-size:7.5px;font-weight:500;color:#b0b5be;flex-shrink:0;">(e)</span>` : '';
     const winBg = won ? 'background:rgba(22,163,74,.09);border-radius:3px;' : '';
     return `<div style="display:flex;align-items:center;gap:4px;padding:${isFinalRound?'4px 8px':'2px 6px'};${winBg}">
-      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${sn(nm,stage)||'?'}</span>${advBadge}${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
+      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${sn(nm,stage)||'?'}</span>${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
     </div>`;
   };
 
@@ -1749,9 +1769,9 @@ function renderBracketTab() {
       const dateStr = fmtDate(m.date);
       cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${ch}px;background:${bg};border:${border};border-radius:8px;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:0;box-sizing:border-box;box-shadow:${shadow};">
         ${dateStr?`<div style="font-size:8px;color:#b0b5be;text-align:center;padding:2px 6px 0;line-height:1;flex-shrink:0;">${dateStr}</div>`:''}
-        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s,teamAdvanced[m.homeTeam]??null)}
+        ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s)}
         <div style="height:1px;background:#f0f2f4;margin:0 6px;flex-shrink:0;"></div>
-        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s,teamAdvanced[m.awayTeam]??null)}
+        ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s)}
         ${isPK?`<div style="position:absolute;bottom:3px;right:5px;font-size:7.5px;font-weight:800;color:#f9a825;letter-spacing:.04em;">PK</div>`:''}
         ${live?`<div style="position:absolute;top:3px;right:5px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
       </div>`;
