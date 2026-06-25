@@ -189,6 +189,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .group-table th{padding:4px 6px;color:#aaa;font-weight:700;font-size:10px;text-align:center;border-bottom:0.5px solid #f0f0f0;}
 .group-table td{padding:5px 6px;border-top:0.5px solid #f5f5f3;text-align:center;vertical-align:middle;}
 .group-table tr.qualify td{background:#f0f9f0;}
+.grp-scenarios{border-top:0.5px solid #eee;background:#fcfcfb;padding:6px 10px 8px;display:flex;flex-direction:column;gap:3px;}
+.grp-scn-row{display:flex;align-items:baseline;gap:6px;font-size:10.5px;line-height:1.3;}
+.grp-scn-ic{flex-shrink:0;width:9px;text-align:center;font-weight:700;font-size:10px;}
+.grp-scn-name{flex-shrink:0;font-weight:600;color:#333;min-width:62px;}
+.grp-scn-verdict{flex:1;min-width:0;font-weight:500;}
 .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;}
 .teams-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;overflow:hidden;}
 .teams-card-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between;}
@@ -896,6 +901,208 @@ function computeFinancials(matches, teamOwners, participants) {
 }
 function fmtMoney(n){return n===0?'$0':(n>0?'+$':'-$')+Math.abs(n).toLocaleString();}
 
+// ── SCENARIO ENGINE ─────────────────────────────────────────────────
+// Pure function: given the matches map, returns per-group, per-team verdicts.
+// status ∈ 'clinched' | 'advanced' | 'eliminated' | 'third' | 'contention'
+//   clinched  = guaranteed top-2 (mathematically certain to advance)
+//   advanced  = finished top-2 in a completed group / resolved top-8 third
+//   eliminated= cannot reach top-3 in any remaining outcome
+//   third     = finished/locked 3rd, awaiting best-8 cross-group race
+//   contention= still alive, fate undecided
+function computeScenarios(matches) {
+  const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+  const grpTeams = {};
+  Object.entries(WC_GROUPS_MAP).forEach(([t,g]) => { (grpTeams[g] = grpTeams[g] || []).push(t); });
+
+  const RW = { W:'win', D:'draw', L:'loss' };
+  const MAXG = 8;           // goal cap per team per match when enumerating hypotheticals
+  const SCORE_ENUM_MAX = 2; // enumerate scorelines only when remaining matches ≤ this (perf)
+
+  // Official FIFA WC 2026 group ranking order:
+  //   1) points  2) head-to-head points  3) H2H goal diff  4) H2H goals
+  //   5) overall goal diff  6) overall goals scored
+  // (NB: 2026 moved head-to-head AHEAD of overall goal difference — unlike prior WCs.)
+  function rankGroup(teams, ms) {
+    const ov = {}; teams.forEach(t => ov[t] = { pts:0, gf:0, ga:0 });
+    ms.forEach(m => {
+      if (!ov[m.home] || !ov[m.away]) return;
+      ov[m.home].gf += m.hg; ov[m.home].ga += m.ag; ov[m.away].gf += m.ag; ov[m.away].ga += m.hg;
+      if (m.hg > m.ag) ov[m.home].pts += 3; else if (m.ag > m.hg) ov[m.away].pts += 3;
+      else { ov[m.home].pts++; ov[m.away].pts++; }
+    });
+    const ogd = t => ov[t].gf - ov[t].ga;
+    const cmp = (a, b) => {
+      if (ov[b].pts !== ov[a].pts) return ov[b].pts - ov[a].pts;
+      // Head-to-head mini-table among every team level on points with a & b
+      const tied = teams.filter(t => ov[t].pts === ov[a].pts);
+      if (tied.length >= 2) {
+        const h = {}; tied.forEach(t => h[t] = { pts:0, gf:0, ga:0 });
+        ms.forEach(m => {
+          if (!h[m.home] || !h[m.away]) return;
+          h[m.home].gf += m.hg; h[m.home].ga += m.ag; h[m.away].gf += m.ag; h[m.away].ga += m.hg;
+          if (m.hg > m.ag) h[m.home].pts += 3; else if (m.ag > m.hg) h[m.away].pts += 3;
+          else { h[m.home].pts++; h[m.away].pts++; }
+        });
+        if (h[b].pts !== h[a].pts) return h[b].pts - h[a].pts;
+        const ahgd = h[a].gf - h[a].ga, bhgd = h[b].gf - h[b].ga;
+        if (bhgd !== ahgd) return bhgd - ahgd;
+        if (h[b].gf !== h[a].gf) return h[b].gf - h[a].gf;
+      }
+      if (ogd(b) !== ogd(a)) return ogd(b) - ogd(a);
+      if (ov[b].gf !== ov[a].gf) return ov[b].gf - ov[a].gf;
+      return 0;
+    };
+    return teams.slice().sort(cmp);
+  }
+
+  const grpVerdicts = {};
+  const grpInfo = {}; // {grp: {played, rem, teams, complete, order}}
+  const teamHasRemaining = {}; // team → true if it still has a group match to play
+
+  GROUPS.forEach(grp => {
+    const teams = (grpTeams[grp] || []).slice();
+    if (!teams.length) return;
+    // Played matches (with scorelines — needed for head-to-head) + remaining pairs
+    const played = [], playedPairs = new Set();
+    Object.values(matches).forEach(m => {
+      if (m.stage !== 'group' || m.status !== 'final') return;
+      const g = m.group || WC_GROUPS_MAP[m.homeTeam];
+      if (g !== grp || teams.indexOf(m.homeTeam) < 0 || teams.indexOf(m.awayTeam) < 0) return;
+      played.push({ home:m.homeTeam, away:m.awayTeam, hg:m.homeScore||0, ag:m.awayScore||0 });
+      playedPairs.add([m.homeTeam, m.awayTeam].sort().join('|'));
+    });
+    const rem = [];
+    for (let i=0;i<teams.length;i++) for (let j=i+1;j<teams.length;j++) {
+      if (!playedPairs.has([teams[i], teams[j]].sort().join('|'))) rem.push([teams[i], teams[j]]);
+    }
+    const complete = rem.length === 0;
+    rem.forEach(p => { teamHasRemaining[p[0]] = true; teamHasRemaining[p[1]] = true; });
+    const order = rankGroup(teams, played);
+    grpInfo[grp] = { played, rem, teams, complete, order };
+    const verdicts = {};
+
+    if (complete) {
+      teams.forEach(T => {
+        const pos = order.indexOf(T);
+        if (pos < 2) verdicts[T] = { status:'advanced', label:'Advanced' };
+        else if (pos === 2) verdicts[T] = { status:'third', label:'3rd place' };
+        else verdicts[T] = { status:'eliminated', label:'Eliminated' };
+      });
+      grpVerdicts[grp] = verdicts; return;
+    }
+
+    if (rem.length <= SCORE_ENUM_MAX) {
+      // Brute-force every scoreline (0..MAXG) of the remaining matches, rank with full
+      // tiebreakers, and aggregate each team's reachable positions.
+      const agg = {};
+      teams.forEach(t => { agg[t] = { t2all:true, t3any:false, res:{} }; });
+      const combo = new Array(rem.length);
+      const ownCountOf = T => rem.reduce((n,p)=> n + (p[0]===T||p[1]===T?1:0), 0);
+      const recurse = (i) => {
+        if (i === rem.length) {
+          const ms = played.concat(rem.map((p,idx)=>({ home:p[0], away:p[1], hg:combo[idx][0], ag:combo[idx][1] })));
+          const ord = rankGroup(teams, ms);
+          teams.forEach(T => {
+            const pos = ord.indexOf(T) + 1, a = agg[T];
+            if (pos > 2) a.t2all = false;
+            if (pos <= 3) a.t3any = true;
+            if (ownCountOf(T) === 1) {
+              const ri = rem.findIndex(p => p[0]===T || p[1]===T);
+              const p = rem[ri], sc = combo[ri], isHome = p[0]===T;
+              const mg = isHome?sc[0]:sc[1], og = isHome?sc[1]:sc[0];
+              const lab = mg>og?'W':mg<og?'L':'D';
+              const r = a.res[lab] || (a.res[lab] = { t2all:true, t2any:false, t3any:false });
+              if (pos > 2) r.t2all = false;
+              if (pos <= 2) r.t2any = true;
+              if (pos <= 3) r.t3any = true;
+            }
+          });
+          return;
+        }
+        for (let h=0;h<=MAXG;h++) for (let a=0;a<=MAXG;a++) { combo[i] = [h,a]; recurse(i+1); }
+      };
+      recurse(0);
+      teams.forEach(T => {
+        const a = agg[T];
+        if (!a.t3any)  { verdicts[T] = { status:'eliminated', label:'Eliminated' }; return; }
+        if (a.t2all)   { verdicts[T] = { status:'clinched', label:'Clinched' }; return; }
+        let detail = 'In contention';
+        if (ownCountOf(T) === 1) {
+          const buckets = {};
+          ['W','D','L'].forEach(lab => {
+            const r = a.res[lab];
+            buckets[lab] = !r ? 'out' : r.t2all ? 'in' : r.t2any ? 'maybe' : r.t3any ? 'third' : 'out';
+          });
+          detail = phraseScenario(buckets, RW);
+        }
+        verdicts[T] = { status:'contention', detail };
+      });
+      grpVerdicts[grp] = verdicts; return;
+    }
+
+    // Fallback (≥3 remaining, early tournament): conservative points-only bound.
+    const basePts = {}; teams.forEach(t => basePts[t] = 0);
+    played.forEach(m => {
+      if (m.hg > m.ag) basePts[m.home] += 3; else if (m.ag > m.hg) basePts[m.away] += 3;
+      else { basePts[m.home]++; basePts[m.away]++; }
+    });
+    teams.forEach(T => {
+      const maxPts = basePts[T] + 3 * rem.reduce((n,p)=> n + (p[0]===T||p[1]===T?1:0), 0);
+      let surelyAbove = 0; teams.forEach(o => { if (o!==T && basePts[o] > maxPts) surelyAbove++; });
+      verdicts[T] = surelyAbove >= 3
+        ? { status:'eliminated', label:'Eliminated' }
+        : { status:'contention', detail:'In contention' };
+    });
+    grpVerdicts[grp] = verdicts;
+  });
+
+  // Best-8 third-place resolution — only valid once ALL groups are complete
+  const allComplete = GROUPS.every(g => !grpInfo[g] || grpInfo[g].complete);
+  if (allComplete) {
+    const thirds = [];
+    GROUPS.forEach(grp => {
+      const info = grpInfo[grp]; if (!info) return;
+      const t = info.order[2]; if (!t) return;
+      let pts=0, gf=0, ga=0;
+      info.played.forEach(m => {
+        if (m.home === t) { gf+=m.hg; ga+=m.ag; if (m.hg>m.ag) pts+=3; else if (m.hg===m.ag) pts++; }
+        else if (m.away === t) { gf+=m.ag; ga+=m.hg; if (m.ag>m.hg) pts+=3; else if (m.ag===m.hg) pts++; }
+      });
+      thirds.push({ team:t, grp, pts, gd:gf-ga, gf });
+    });
+    thirds.sort((a,b)=> b.pts-a.pts || b.gd-a.gd || b.gf-a.gf);
+    thirds.forEach((th, i) => {
+      const v = grpVerdicts[th.grp] && grpVerdicts[th.grp][th.team];
+      if (!v) return;
+      if (i < 8) { v.status='advanced'; v.label='Advanced (3rd)'; }
+      else { v.status='eliminated'; v.label='Eliminated (3rd)'; }
+    });
+  }
+
+  // Roll up to flat maps for leaderboard / bracket coloring
+  const teamAdvanced = {}, teamStatus = {};
+  Object.values(grpVerdicts).forEach(vmap => {
+    Object.entries(vmap).forEach(([t, v]) => {
+      if (v.status==='clinched' || v.status==='advanced') { teamAdvanced[t]=true; teamStatus[t]='advanced'; }
+      else if (v.status==='eliminated') { teamAdvanced[t]=false; teamStatus[t]='eliminated'; }
+    });
+  });
+  return { grpVerdicts, teamAdvanced, teamStatus, teamHasRemaining };
+}
+
+// Turn {W,D,L → in|maybe|third|out} buckets into a concise phrase
+function phraseScenario(buckets, RW) {
+  const groups = { in:[], maybe:[], third:[], out:[] };
+  ['W','D','L'].forEach(k => { if (buckets[k]) groups[buckets[k]].push(k); });
+  const join = arr => arr.map(k => RW[k]).join(' or ');
+  const clauses = [];
+  if (groups.in.length)    clauses.push('Advances with ' + join(groups.in));
+  if (groups.maybe.length) clauses.push(join(groups.maybe) + ' may advance');
+  if (groups.third.length) clauses.push(join(groups.third) + ' → 3rd-place race');
+  if (groups.out.length)   clauses.push('out with ' + join(groups.out));
+  return clauses.join(' · ') || 'In contention';
+}
+
 // ── TRACKER (shown when finalized) ────────────────────────────────
 function renderTracker() {
   document.getElementById('tb-title').textContent = '⚽ ' + (draft?.name || 'WC2026');
@@ -916,33 +1123,25 @@ function renderTracker() {
   const updatedStr = wcLiveData.updated || null;
   const fin = computeFinancials(matches, teamOwners, participants);
 
-  // Advanced = real team name appears in a KO bracket slot
-  // Eliminated = 0 pts after 3 group games
-  const _advancedTeams = new Set();
+  // ── SCENARIO ENGINE ───────────────────────────────────────────────
+  // Rigorous, never-wrong group-stage analysis from current results + remaining
+  // matches. Only declares "clinched" when a team is GUARANTEED top-2, and only
+  // "eliminated" when they cannot reach top-3 in ANY remaining outcome. Teams
+  // whose fate rides on the best-8-third-place race stay "in contention" until
+  // all group play is complete (then thirds are ranked and resolved).
+  const scenario = computeScenarios(matches);
+  const grpVerdicts = scenario.grpVerdicts;   // {grp: {team: {status,label,detail}}}
+  const teamAdvanced = scenario.teamAdvanced; // {team: true(advanced)/false(out)}
+  const teamStatus = scenario.teamStatus;     // {team: 'advanced'/'eliminated'}
+  const teamHasRemaining = scenario.teamHasRemaining; // {team: true if group game(s) left}
+  // Union: if ESPN already placed a real team name into a KO slot, treat advanced.
   Object.values(matches).forEach(m => {
     if (['r32','r16','qf','sf','final'].includes(m.stage)) {
-      if (m.homeTeam && !isPlaceholderName(m.homeTeam)) _advancedTeams.add(m.homeTeam);
-      if (m.awayTeam && !isPlaceholderName(m.awayTeam)) _advancedTeams.add(m.awayTeam);
+      [m.homeTeam, m.awayTeam].forEach(t => {
+        if (t && !isPlaceholderName(t)) { teamAdvanced[t] = true; teamStatus[t] = 'advanced'; }
+      });
     }
   });
-  const _groupStats = {};
-  Object.values(matches).forEach(m => {
-    if (m.stage !== 'group' || m.status !== 'final') return;
-    [m.homeTeam, m.awayTeam].forEach(t => { if (t && !_groupStats[t]) _groupStats[t] = {pts:0, mp:0}; });
-    const hs = m.homeScore||0, as_ = m.awayScore||0;
-    if (hs > as_) { _groupStats[m.homeTeam].pts += 3; }
-    else if (as_ > hs) { _groupStats[m.awayTeam].pts += 3; }
-    else { _groupStats[m.homeTeam].pts += 1; _groupStats[m.awayTeam].pts += 1; }
-    if (m.homeTeam) _groupStats[m.homeTeam].mp++;
-    if (m.awayTeam) _groupStats[m.awayTeam].mp++;
-  });
-  const teamAdvanced = {};
-  _advancedTeams.forEach(t => { teamAdvanced[t] = true; });
-  Object.entries(_groupStats).forEach(([t, s]) => {
-    if (!_advancedTeams.has(t) && s.mp >= 3 && s.pts === 0) teamAdvanced[t] = false;
-  });
-  const teamStatus = {}; // kept for leaderboard compatibility
-  Object.entries(teamAdvanced).forEach(([t,v]) => { teamStatus[t] = v ? 'advanced' : 'eliminated'; });
   const ranked = lbSort==='draft'
     ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
     : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
@@ -1042,7 +1241,7 @@ function renderTracker() {
           <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
         </div>
         <div class="lb-teams" style="flex-wrap:wrap;gap:3px;align-items:center;line-height:1.8;">
-          ${myTeams.map(t=>{const elim=eliminatedTeams.has(t)||teamStatus[t]==='eliminated';const adv=teamStatus[t]==='advanced';const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;const c=elim?'#ccc':adv?'#16a34a':'#1a1a1a';return `<span style="font-size:10px;font-weight:${elim?400:600};color:${c};${elim?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
+          ${myTeams.map(t=>{const elim=eliminatedTeams.has(t)||teamStatus[t]==='eliminated';const elimPending=elim&&teamHasRemaining[t];const adv=teamStatus[t]==='advanced';const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;const c=elimPending?'#dc2626':elim?'#ccc':adv?'#16a34a':'#1a1a1a';return `<span style="font-size:10px;font-weight:${elim&&!elimPending?400:600};color:${c};${elim&&!elimPending?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
         </div>
       </div>
     </div>`;
@@ -1239,7 +1438,7 @@ function renderTracker() {
         const rec=teamRecord[nm];
         return `<div class="team-row">
           <span class="team-flag">${flagImg(WC_FLAGS[nm])}</span>
-          <span class="team-name-txt">${nm}</span>
+          <span class="team-name-txt">${nm}${teamAdvanced[nm]===true?` <span style="font-size:8px;font-weight:700;color:#16a34a;">(a)</span>`:teamStatus[nm]==='eliminated'?` <span style="font-size:8px;font-weight:600;color:${teamHasRemaining[nm]?'#dc2626':'#b0b5be'};">(e)</span>`:''}</span>
           <span class="team-emoji">⚽</span>
           <span class="team-goals">${(rec&&(rec.w+rec.l+rec.t>0))||fin.goalsByTeam[nm]?`${fin.goalsByTeam[nm]||0}g`:''}</span>
           <span class="team-emoji">🏆</span>
@@ -1275,8 +1474,18 @@ function renderTracker() {
       .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
   });
 
+  // Verdict styling for the scenario rows under each group table
+  const verdictStyle = (v) => {
+    if (!v) return { c:'#444', t:'In contention', strike:false, ic:'·' };
+    if (v.status==='clinched')   return { c:'#15803d', t:v.label||'Clinched', strike:false, ic:'✓' };
+    if (v.status==='advanced')   return { c:'#15803d', t:v.label||'Advanced', strike:false, ic:'✓' };
+    if (v.status==='eliminated') return { c:'#aab0ba', t:v.label||'Eliminated', strike:true,  ic:'✗' };
+    if (v.status==='third')      return { c:'#b45309', t:'3rd — best-8 race', strike:false, ic:'•' };
+    return { c:'#444', t:v.detail||'In contention', strike:false, ic:'•' };
+  };
   const groupCardsHtml=['A','B','C','D','E','F','G','H','I','J','K','L'].map(grp=>{
     const rows=grpStandings[grp]||[];
+    const verdicts=grpVerdicts[grp]||{};
     return `<div class="group-card">
       <div class="group-card-hdr">Group ${grp}</div>
       <table class="group-table">
@@ -1297,35 +1506,20 @@ function renderTracker() {
           <td style="font-weight:700;">${r.pts}</td>
         </tr>`).join('')}</tbody>
       </table>
-    </div>`;
-  }).join('');
-
-  const KNOCKOUT_STAGES=[{key:'r32',label:'Round of 32'},{key:'r16',label:'Round of 16'},{key:'qf',label:'Quarterfinals'},{key:'sf',label:'Semifinals'},{key:'final',label:'Final'}];
-  const knockoutHtml=KNOCKOUT_STAGES.map(({key,label})=>{
-    const sm=Object.values(matches).filter(m=>m.stage===key).sort((a,b)=>new Date(a.date)-new Date(b.date));
-    if(!sm.length)return '';
-    return `<div class="match-table-wrap" style="margin-bottom:12px;">
-      <div style="padding:9px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;border-bottom:0.5px solid #e0e0e0;background:#fafafa;">${label} <span style="font-weight:400;color:#bbb;">(${sm.length})</span></div>
-      <table class="match-table"><tbody>${sm.map(m=>{
-        const ho=teamOwners[m.homeTeam],ao=teamOwners[m.awayTeam];
-        const hs=m.homeScore,as_=m.awayScore;
-        const dl=m.date?new Date(m.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
-        const hw=m.status==='final'&&!m.isPenaltyShootout&&hs>as_,aw=m.status==='final'&&!m.isPenaltyShootout&&as_>hs;
-        const sc=m.status==='final'?`${hs}–${as_}${m.isPenaltyShootout?' <span class="pk-badge">PK</span>':''}`:m.status==='live'?`<span style="color:#e65100;font-weight:700;">${hs}–${as_}</span>`:'–';
-        return `<tr>
-          <td style="font-size:11px;color:#aaa;">${dl}</td>
-          <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.homeTeam])}<span style="font-weight:${hw?700:400}">${m.homeTeam||'TBD'}</span>${ho?`<span class="owner-chip" style="background:${color(ho)}22;color:${color(ho)}">${ho}</span>`:''}</div></td>
-          <td class="score-cell">${sc}</td>
-          <td><div style="display:flex;align-items:center;gap:4px;">${flagImg(WC_FLAGS[m.awayTeam])}<span style="font-weight:${aw?700:400}">${m.awayTeam||'TBD'}</span>${ao?`<span class="owner-chip" style="background:${color(ao)}22;color:${color(ao)}">${ao}</span>`:''}</div></td>
-        </tr>`;
-      }).join('')}</tbody></table>
+      <div class="grp-scenarios">${rows.map(r=>{
+        const vs=verdictStyle(verdicts[r.name]);
+        return `<div class="grp-scn-row">
+          <span class="grp-scn-ic" style="color:${vs.c};">${vs.ic}</span>
+          <span class="grp-scn-name"${vs.strike?' style="text-decoration:line-through;color:#aab0ba;"':''}>${r.name}</span>
+          <span class="grp-scn-verdict" style="color:${vs.c};">${vs.t}</span>
+        </div>`;
+      }).join('')}</div>
     </div>`;
   }).join('');
 
   const groupsTabHtml=`
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:12px;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 advance</span></div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:12px;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 advance · 8 best 3rd-place also qualify</span></div>
     <div class="groups-grid">${groupCardsHtml}</div>
-    ${knockoutHtml?`<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin:8px 0 12px;">Knockout Round</div>${knockoutHtml}`:''}
   `;
 
   const liveTabBadge = liveMatches.length ? ` <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#e65100;color:#fff;font-size:9px;font-weight:800;vertical-align:middle;">${liveMatches.length}</span>` : '';
@@ -1675,13 +1869,46 @@ function renderBracketTab(teamAdvanced) {
     </div>`;
   }
 
+  // ── Bracket topology (fixed for WC 2026) ──────────────────────────
+  // Each round's matches are numbered by ascending ESPN id; FEEDERS maps a
+  // match number to the two earlier-round matches [top, bottom] that feed it.
+  // (Derived from ESPN's "Round of X N Winner" references — the tree is NOT
+  // a simple 1-2, 3-4 pairing, so we can't lay it out by date or index.)
+  const FEEDERS = {
+    r16: {1:[['r32',3],['r32',1]],2:[['r32',5],['r32',2]],3:[['r32',6],['r32',4]],4:[['r32',8],['r32',7]],
+          5:[['r32',12],['r32',11]],6:[['r32',10],['r32',9]],7:[['r32',15],['r32',13]],8:[['r32',16],['r32',14]]},
+    qf:  {1:[['r16',2],['r16',1]],2:[['r16',6],['r16',5]],3:[['r16',4],['r16',3]],4:[['r16',8],['r16',7]]},
+    sf:  {1:[['qf',2],['qf',1]],2:[['qf',4],['qf',3]]},
+    final:{1:[['sf',2],['sf',1]]}
+  };
+  const NUMS = { r32:16, r16:8, qf:4, sf:2, final:1 };
+  // Order matches within each stage by ascending numeric id → 1-based number
+  const stageArr = {};
+  KO_STAGES.forEach(s => { stageArr[s] = byStage[s].slice().sort((a,b)=>(parseInt(a.id,10)||0)-(parseInt(b.id,10)||0)); });
+  const getM = (stage,num) => stageArr[stage][num-1];
+  // Vertical leaf order from an in-order DFS of the tree
+  const leafOrder = [];
+  (function dfs(stage,num){
+    if (stage==='r32') { leafOrder.push(num); return; }
+    const f = FEEDERS[stage][num]; dfs(f[0][0],f[0][1]); dfs(f[1][0],f[1][1]);
+  })('final',1);
+  const r32Row = {}; leafOrder.forEach((num,idx)=>{ r32Row[num]=idx; });
+  // rowOf(stage,num): vertical center in leaf units (fractional for internal nodes)
+  const rowCache = {};
+  function rowOf(stage,num){
+    const k=stage+num; if (rowCache[k]!=null) return rowCache[k];
+    let r;
+    if (stage==='r32') r = r32Row[num];
+    else { const f=FEEDERS[stage][num]; r=(rowOf(f[0][0],f[0][1])+rowOf(f[1][0],f[1][1]))/2; }
+    return (rowCache[k]=r);
+  }
+
   // Layout — card heights grow with each round to signal importance
   const CW=156, CONN=22, RH=56, HDR=32;
   const CH={ r32:54, r16:54, qf:60, sf:68, final:82 };
   const TH=16*RH, TW=KO_STAGES.length*CW+(KO_STAGES.length-1)*CONN;
-
   const sx = si => si*(CW+CONN);
-  const cy = (si,mi) => { const sh=TH/STAGE_N[KO_STAGES[si]]; return mi*sh+sh/2; };
+  const yOf = (stage,num) => rowOf(stage,num)*RH + RH/2;
 
   // Abbreviate ESPN placeholder names; keep real team names short
   const SHORT_NAMES={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'NZ','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo DR','Ivory Coast':'I. Coast','Cape Verde':'C. Verde'};
@@ -1707,18 +1934,18 @@ function renderBracketTab(teamAdvanced) {
   const isPlaceholder = isPlaceholderName;
   const fmtDate = d => { if (!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'America/New_York'}); };
 
-  // Connector lines — visible gray
+  // Connector lines — each match links to its two real feeder matches
   let lines='';
-  KO_STAGES.forEach((s,si) => {
-    if (si>=KO_STAGES.length-1) return;
-    const nP=STAGE_N[KO_STAGES[si+1]];
-    const x0=sx(si)+CW, x1=sx(si+1), xm=x0+CONN/2;
-    for (let j=0;j<nP;j++) {
-      const yA=cy(si,j*2), yB=cy(si,j*2+1), yP=cy(si+1,j);
-      lines+=`<line x1="${x0}" y1="${yA}" x2="${xm}" y2="${yA}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>
-<line x1="${x0}" y1="${yB}" x2="${xm}" y2="${yB}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>
+  ['r16','qf','sf','final'].forEach(s => {
+    const si=KO_STAGES.indexOf(s);
+    for (let num=1; num<=NUMS[s]; num++) {
+      const f=FEEDERS[s][num];
+      const xChildRight=sx(si-1)+CW, xParentLeft=sx(si), xm=xChildRight+CONN/2;
+      const yP=yOf(s,num), yA=yOf(f[0][0],f[0][1]), yB=yOf(f[1][0],f[1][1]);
+      lines+=`<line x1="${xChildRight}" y1="${yA}" x2="${xm}" y2="${yA}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="${xChildRight}" y1="${yB}" x2="${xm}" y2="${yB}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>
 <line x1="${xm}" y1="${Math.min(yA,yB)}" x2="${xm}" y2="${Math.max(yA,yB)}" stroke="#c8cdd4" stroke-width="1.5"/>
-<line x1="${xm}" y1="${yP}" x2="${x1}" y2="${yP}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>`;
+<line x1="${xm}" y1="${yP}" x2="${xParentLeft}" y2="${yP}" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round"/>`;
     }
   });
 
@@ -1745,10 +1972,10 @@ function renderBracketTab(teamAdvanced) {
   // Match cards
   let cards='';
   KO_STAGES.forEach((s,si) => {
-    const n=STAGE_N[s], stx=sx(si), ch=CH[s], isFR=(s==='final');
-    for (let j=0;j<n;j++) {
-      const top=Math.round(cy(si,j)-ch/2);
-      const m=byStage[s][j];
+    const n=NUMS[s], stx=sx(si), ch=CH[s], isFR=(s==='final');
+    for (let num=1;num<=n;num++) {
+      const top=Math.round(yOf(s,num)-ch/2);
+      const m=getM(s,num);
       if (!m) {
         cards+=`<div style="position:absolute;left:${stx}px;top:${top}px;width:${CW}px;height:${ch}px;background:#f8f9fb;border:1px dashed #dde0e5;border-radius:8px;display:flex;align-items:center;justify-content:center;box-sizing:border-box;">
           <span style="font-size:10px;color:#c8cdd4;letter-spacing:.04em;font-style:italic;">TBD</span>
@@ -1780,7 +2007,7 @@ function renderBracketTab(teamAdvanced) {
   // Column headers
   let hdrs='';
   KO_STAGES.forEach((s,si) => {
-    const cnt=byStage[s].length, n=STAGE_N[s], isFR=(s==='final');
+    const cnt=byStage[s].length, n=NUMS[s], isFR=(s==='final');
     hdrs+=`<div style="position:absolute;left:${sx(si)}px;top:0;width:${CW}px;text-align:center;line-height:1;">
       <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${isFR?'#b8860b':'#8a9099'};">${STAGE_LABELS[s]}</span>
       <span style="font-size:8px;color:#c8cdd4;margin-left:5px;">${cnt}/${n}</span>
