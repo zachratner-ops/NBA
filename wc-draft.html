@@ -1487,9 +1487,8 @@ function renderTracker() {
     if (v.status==='third') return '#b45309';
     return '#1a1a1a';
   };
-  // Outcome → pill color for the what-if row
-  const PILL = { in:'#16a34a', maybe:'#16a34a', third:'#d97706', out:'#cbd0d6' };
-  const PILL_FILLED = { in:true, maybe:false, third:true, out:true };
+  // Outcome → pill color for the what-if row (each outcome its own solid color)
+  const PILL = { in:'#16a34a', maybe:'#2563eb', third:'#d97706', out:'#aab0ba' };
   const groupCardsHtml=['A','B','C','D','E','F','G','H','I','J','K','L'].map(grp=>{
     const rows=grpStandings[grp]||[];
     const verdicts=grpVerdicts[grp]||{};
@@ -1518,8 +1517,8 @@ function renderTracker() {
       ${whatIf.length?`<div class="grp-scenarios">
         <div class="grp-scn-hint">If they…</div>
         ${whatIf.map(r=>{const o=verdicts[r.name].outcomes;return `<div class="grp-scn-row">
-          <span class="grp-scn-name">${SHORT_TEAM[r.name]||r.name}</span>
-          <span class="grp-scn-pills">${['W','D','L'].map(k=>{const b=o[k];const col=PILL[b];return `<span class="grp-pill" style="${PILL_FILLED[b]?`background:${col};color:#fff;`:`background:#fff;color:${col};border:1px solid ${col};`}">${k}</span>`;}).join('')}</span>
+          <span class="grp-scn-name">${r.name}</span>
+          <span class="grp-scn-pills">${['W','D','L'].map(k=>`<span class="grp-pill" style="background:${PILL[o[k]]};color:#fff;">${k}</span>`).join('')}</span>
         </div>`;}).join('')}
       </div>`:''}
     </div>`;
@@ -1528,10 +1527,11 @@ function renderTracker() {
   const groupsTabHtml=`
     <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
       <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;">Group Stage <span style="font-size:10px;color:#bbb;font-weight:400;">· top 2 + 8 best 3rd advance</span></span>
-      <span style="font-size:9.5px;color:#aaa;display:inline-flex;align-items:center;gap:9px;">
+      <span style="font-size:9.5px;color:#888;display:inline-flex;align-items:center;gap:9px;flex-wrap:wrap;">
         <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#16a34a;"></span>advances</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#d97706;"></span>3rd-race</span>
-        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#cbd0d6;"></span>out</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#2563eb;"></span>could advance</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#d97706;"></span>3rd-place race</span>
+        <span style="display:inline-flex;align-items:center;gap:3px;"><span class="grp-dot" style="background:#aab0ba;"></span>out</span>
       </span>
     </div>
     <div class="groups-grid">${groupCardsHtml}</div>
