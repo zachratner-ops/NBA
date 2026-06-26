@@ -1160,8 +1160,8 @@ function parseESPNEvents(events) {
     // they clear once a match kicks off). 3-way moneyline + over/under.
     let odds = null;
     const oArr = comp.odds || [];
-    if (oArr.length) {
-      const o = oArr[0];
+    const o = oArr.find(function(x) { return x != null; });
+    if (o) {
       // In the scoreboard feed the 3-way moneyline lives under o.moneyline.{home,away,draw}
       // as strings (e.g. "+450"); homeTeamOdds/awayTeamOdds are usually null here.
       const ml = o.moneyline || {};
