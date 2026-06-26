@@ -223,6 +223,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .third-race-row.out{opacity:.5;}
 .third-race-row .tr-rank{width:16px;text-align:center;font-size:10px;color:#bbb;font-weight:600;flex-shrink:0;}
 .third-race-row .tr-name{font-weight:600;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.third-race-row.clinched .tr-name{color:#15803d;}
+.third-race-row .tr-clinch{color:#15803d;font-size:10px;font-weight:800;margin-left:4px;}
 .third-race-row .tr-grp{font-size:9px;font-weight:700;color:#bbb;background:#f2f3f5;border-radius:3px;padding:1px 4px;flex-shrink:0;}
 .third-race-row .tr-prov{color:#d97706;font-size:12px;line-height:1;flex-shrink:0;}
 .third-race-row .tr-stat{margin-left:auto;font-weight:700;color:#333;font-size:12px;flex-shrink:0;min-width:34px;text-align:right;}
@@ -1669,13 +1671,14 @@ function renderTracker() {
       <div class="third-race-hdr">3rd-Place Race <span>top 8 of 12 advance</span></div>
       <div class="third-race-list">${thirdRows.map((t,i)=>{
         const inN = i<8;
+        const clinched = teamStatus[t.name]==='advanced';
         const own = teamOwners[t.name];
         const nm = SHORT_TEAM[t.name]||t.name;
         return `${i===8?`<div class="third-race-cut"><span>cut line · 8 advance</span></div>`:''}
-        <div class="third-race-row${inN?'':' out'}">
+        <div class="third-race-row${inN?'':' out'}${clinched?' clinched':''}">
           <span class="tr-rank">${i+1}</span>
           ${flagImg(WC_FLAGS[t.name])}
-          <span class="tr-name">${nm}</span>
+          <span class="tr-name">${nm}${clinched?`<span class="tr-clinch">✓</span>`:''}</span>
           <span class="tr-grp">${t.grp}</span>
           ${own?`<span class="owner-chip" style="background:${color(own)}22;color:${color(own)};font-size:9px;padding:1px 5px;">${own.split(' ')[0]}</span>`:''}
           ${t.complete?'':`<span class="tr-prov" title="group not yet complete">•</span>`}
