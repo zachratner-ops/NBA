@@ -1123,6 +1123,45 @@ function computeScenarios(matches) {
       if (i < 8) { v.status='advanced'; v.label='Advanced (3rd)'; }
       else { v.status='eliminated'; v.label='Eliminated (3rd)'; }
     });
+  } else {
+    // Progressive best-8 clinch: a locked third (from a completed group) goes
+    // GREEN once it cannot fall below the 8-team cut no matter how the rest
+    // plays out. Each remaining group yields at most ONE third; bound its
+    // best-possible third points (3rd-highest of teams' max-possible points).
+    // A team clinches if ≤7 other groups could produce a third at/above it.
+    const resumeOf = (info, t) => {
+      let pts=0, gf=0, ga=0;
+      info.played.forEach(m => {
+        if (m.home===t){gf+=m.hg;ga+=m.ag; if(m.hg>m.ag)pts+=3; else if(m.hg===m.ag)pts++;}
+        else if (m.away===t){gf+=m.ag;ga+=m.hg; if(m.ag>m.hg)pts+=3; else if(m.ag===m.hg)pts++;}
+      });
+      return { pts, gd:gf-ga, gf };
+    };
+    const aboveRes = (a,b) => a.pts>b.pts || (a.pts===b.pts && (a.gd>b.gd || (a.gd===b.gd && a.gf>b.gf)));
+    const lockedThird = {}, maxThirdPts = {};
+    GROUPS.forEach(grp => {
+      const info = grpInfo[grp]; if (!info) return;
+      if (info.complete) {
+        const t = info.order[2];
+        if (t) lockedThird[grp] = { team:t, res:resumeOf(info, t) };
+      } else {
+        const base = {}; info.teams.forEach(t=>base[t]=0);
+        info.played.forEach(m => { if(m.hg>m.ag)base[m.home]+=3; else if(m.ag>m.hg)base[m.away]+=3; else {base[m.home]++;base[m.away]++;} });
+        const maxP = info.teams.map(t => base[t] + 3*info.rem.reduce((n,p)=>n+(p[0]===t||p[1]===t?1:0),0)).sort((x,y)=>y-x);
+        maxThirdPts[grp] = maxP.length>=3 ? maxP[2] : 0;
+      }
+    });
+    Object.entries(lockedThird).forEach(([grp, T]) => {
+      const v = grpVerdicts[grp] && grpVerdicts[grp][T.team];
+      if (!v || v.status !== 'third') return;
+      let threats = 0;
+      GROUPS.forEach(g => {
+        if (g === grp || !grpInfo[g]) return;
+        if (lockedThird[g]) { if (!aboveRes(T.res, lockedThird[g].res)) threats++; }
+        else if (maxThirdPts[g] != null && maxThirdPts[g] >= T.res.pts) threats++;
+      });
+      if (threats <= 7) { v.status = 'advanced'; v.label = 'Advanced (3rd)'; }
+    });
   }
 
   // Roll up to flat maps for leaderboard / bracket coloring
