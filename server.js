@@ -448,34 +448,47 @@ cron.schedule('0 14 * * *', async function() {
   console.log('Cron: NBA push result:', result);
 });
 
-// ── 9am ET daily WC cron (13:00 UTC) — runs Jun 11 – Jul 19 only ──
-cron.schedule('0 13 * * *', async function() {
-  const todayET = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
-  if (todayET < '2026-06-11' || todayET > '2026-07-19') return;
+// node-cron uses the server's local timezone unless told otherwise; pin to ET
+// so these fire at the intended Eastern clock times regardless of host TZ.
+const ET_TZ = { timezone: 'America/New_York' };
+const inWCWindow = function() {
+  const todayET = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
+  return todayET >= '2026-06-11' && todayET <= '2026-07-19';
+};
+
+// ── 9am ET daily WC GroupMe — runs Jun 11 – Jul 19 only ──
+cron.schedule('0 9 * * *', async function() {
+  if (!inWCWindow()) return;
   console.log('Cron: WC daily GroupMe starting...');
   const result = await postWCDailyGroupMe();
   console.log('Cron: WC daily GroupMe result:', result);
-});
+}, ET_TZ);
 
-// ── WC live score refresh — every 5 min, 14:00-04:00 UTC, Jun 11–Jul 19 ──
-// Covers game windows across all WC 2026 host cities (ET noon to midnight+)
-cron.schedule('*/5 14-23,0-4 * * *', async function() {
-  const todayET = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
-  if (todayET < '2026-06-11' || todayET > '2026-07-19') return;
-  if (!firebaseReady) return;
+// ── WC live score refresh — every 5 min, 10:00–02:59 ET, Jun 11–Jul 19 ──
+// Covers game windows across all WC 2026 host cities.
+cron.schedule('*/5 10-23,0-2 * * *', async function() {
+  if (!inWCWindow() || !firebaseReady) return;
   const result = await pushWCMatchesToFirebase();
-  if (result.ok) console.log('WC live cron: ' + result.matchCount + ' matches synced');
-  else if (result.error) console.error('WC live cron error:', result.error);
-});
+  if (result.ok) {
+    console.log('WC live cron: ' + result.matchCount + ' matches synced');
+    try { await admin.database().ref('wc26_live/cronStatus/liveSync').set(new Date().toISOString()); } catch (e) {}
+  } else if (result.error) console.error('WC live cron error:', result.error);
+}, ET_TZ);
 
-// ── 8am ET daily WC full schedule load (12:00 UTC) — runs Jun 11 – Jul 19 only ──
-cron.schedule('0 12 * * *', async function() {
-  const todayET = new Date(Date.now() - 4 * 3600000).toISOString().slice(0, 10);
-  if (todayET < '2026-06-11' || todayET > '2026-07-19') return;
+// ── 8am ET daily WC full schedule load — runs Jun 11 – Jul 19 only ──
+cron.schedule('0 8 * * *', async function() {
+  if (!inWCWindow()) return;
   console.log('Cron: WC morning schedule load starting...');
   const result = await runWCScheduleLoad();
   console.log('Cron: WC schedule load:', result.ok ? (result.total + ' matches') : result.error);
-});
+  try { await admin.database().ref('wc26_live/cronStatus/scheduleLoad').set({ at: new Date().toISOString(), ok: !!result.ok, total: result.total || 0 }); } catch (e) {}
+}, ET_TZ);
+
+// Startup diagnostic — confirms cron registration and reveals the host clock/TZ
+console.log('[cron] WC crons registered | server=' + new Date().toString() +
+  ' | resolvedTZ=' + (Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown') +
+  ' | ET=' + new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) +
+  ' | inWCWindow=' + inWCWindow());
 
 // ── WebSocket ─────────────────────────────────────────────────────
 const clients = {};
