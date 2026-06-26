@@ -1027,10 +1027,11 @@ const WC_TEAMS = [
 const wcDrafts = {};
 const ALL_WC_OWNERS = ['Ben + Mark','Marc','Jared','Andrew','Zach','Adam + Max','Matt','Mike'];
 let lastWCScheduleLoadTime = 0;
-// Short dedupe window only — so a manual refresh + cron tick that detect the
-// same final don't both fire a load. Every newly-finished game still triggers
-// a schedule load (so the bracket updates promptly as teams advance).
-const WC_SCHEDULE_LOAD_THROTTLE_MS = 90 * 1000; // 90 seconds
+// Throttle the post-match full schedule load. Each load hits ~38 date queries,
+// so firing it too often risks ESPN blocking the cloud IP. 10 min keeps the
+// bracket fresh without hammering ESPN (the every-5-min live cron still syncs
+// today's scores in between).
+const WC_SCHEDULE_LOAD_THROTTLE_MS = 10 * 60 * 1000; // 10 minutes
 
 function getOrCreateWCDraft(slug) {
   if (!wcDrafts[slug]) {
@@ -1206,22 +1207,39 @@ function parseESPNEvents(events) {
   return matches;
 }
 
+let lastEspnFetch = { at: null, status: null, host: null }; // visibility into ESPN reachability
 async function fetchWCMatchesForDate(dateStr) {
   // dateStr: YYYYMMDD, or null/undefined for today's scoreboard
   const path = '/apis/site/v2/sports/soccer/fifa.world/scoreboard' + (dateStr ? '?dates=' + dateStr : '');
-  try {
-    const result = await httpsGet(
-      'site.api.espn.com',
-      path,
-      { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json', 'Referer': 'https://www.espn.com/' }
-    );
-    if (result.status !== 200) return {};
-    const parsed = JSON.parse(result.body);
-    return parseESPNEvents(parsed.events || []);
-  } catch(e) {
-    console.error('fetchWCMatchesForDate error for ' + dateStr + ':', e.message);
-    return {};
+  const hosts = ['site.api.espn.com', 'site.web.api.espn.com']; // ESPN blocks cloud IPs intermittently; try edges
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Referer': 'https://www.espn.com/soccer/',
+    'Origin': 'https://www.espn.com'
+  };
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const host = hosts[Math.min(attempt, hosts.length - 1)];
+    try {
+      const result = await httpsGet(host, path, headers);
+      lastStatus = result.status;
+      if (result.status === 200) {
+        const events = (JSON.parse(result.body).events) || [];
+        if (events.length || !dateStr) {
+          lastEspnFetch = { at: new Date().toISOString(), status: 200, host: host };
+          return parseESPNEvents(events);
+        }
+      }
+    } catch(e) {
+      lastStatus = -1;
+      console.error('fetchWCMatchesForDate ' + dateStr + ' (' + host + ') attempt ' + (attempt + 1) + ': ' + e.message);
+    }
+    await new Promise(function(r) { setTimeout(r, 400 * (attempt + 1)); });
   }
+  lastEspnFetch = { at: new Date().toISOString(), status: lastStatus, host: 'all-failed' };
+  console.error('fetchWCMatchesForDate ' + dateStr + ': all attempts failed (last status ' + lastStatus + ')');
+  return {};
 }
 
 async function fetchWCMatches() {
@@ -1272,9 +1290,24 @@ async function pushWCMatchesToFirebase() {
       }
     });
 
+    // Safety net: if ESPN goes unreachable (cloud-IP block), a finished game can
+    // get stuck on 'live' with its last in-play score. Finalize any match still
+    // 'live' well past kickoff using that last-known score so results/bracket
+    // keep progressing. Group games have no extra time; knockout can run longer.
+    const nowMs = Date.now();
+    Object.values(merged).forEach(function(m) {
+      if (!m || m.status !== 'live' || !m.date) return;
+      const ageH = (nowMs - new Date(m.date).getTime()) / 3600000;
+      if (ageH >= (m.stage === 'group' ? 2.5 : 3.75)) {
+        m.status = 'final';
+        m.clock = null;
+      }
+    });
+
     await db.ref('wc26_live/matches').set(merged);
     await db.ref('wc26_live/updated').set(result.updated);
-    console.log('WC matches push: ' + Object.keys(merged).length + ' matches');
+    try { await db.ref('wc26_live/cronStatus/lastEspnFetch').set(lastEspnFetch); } catch (e) {}
+    console.log('WC matches push: ' + Object.keys(merged).length + ' matches | espn=' + JSON.stringify(lastEspnFetch));
 
 
     // Detect newly completed ties and fire GroupMe notifications
