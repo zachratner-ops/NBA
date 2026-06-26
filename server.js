@@ -1027,7 +1027,10 @@ const WC_TEAMS = [
 const wcDrafts = {};
 const ALL_WC_OWNERS = ['Ben + Mark','Marc','Jared','Andrew','Zach','Adam + Max','Matt','Mike'];
 let lastWCScheduleLoadTime = 0;
-const WC_SCHEDULE_LOAD_THROTTLE_MS = 30 * 60 * 1000; // 30 minutes
+// Short dedupe window only — so a manual refresh + cron tick that detect the
+// same final don't both fire a load. Every newly-finished game still triggers
+// a schedule load (so the bracket updates promptly as teams advance).
+const WC_SCHEDULE_LOAD_THROTTLE_MS = 90 * 1000; // 90 seconds
 
 function getOrCreateWCDraft(slug) {
   if (!wcDrafts[slug]) {
