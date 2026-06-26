@@ -1139,6 +1139,25 @@ function parseESPNEvents(events) {
       const gm2 = evtNameLower.match(/group ([a-l])/);
       if (gm2) { group = gm2[1].toUpperCase(); }
     }
+    // Pre-match betting odds (ESPN populates these only for scheduled matches;
+    // they clear once a match kicks off). 3-way moneyline + over/under.
+    let odds = null;
+    const oArr = comp.odds || [];
+    if (oArr.length) {
+      const o = oArr[0];
+      const hML = o.homeTeamOdds && o.homeTeamOdds.moneyLine;
+      const aML = o.awayTeamOdds && o.awayTeamOdds.moneyLine;
+      const dML = o.drawOdds && o.drawOdds.moneyLine;
+      if (hML != null || aML != null || dML != null) {
+        odds = {
+          home: (hML != null ? hML : null),
+          away: (aML != null ? aML : null),
+          draw: (dML != null ? dML : null),
+          ou: (o.overUnder != null ? o.overUnder : null),
+          provider: (o.provider && o.provider.name) || null
+        };
+      }
+    }
     matches[event.id] = {
       id: event.id,
       date: event.date,
@@ -1154,6 +1173,7 @@ function parseESPNEvents(events) {
       isPenaltyShootout: espnPK && stage !== 'group',
       homeAdvanced: home.advance ?? null,
       awayAdvanced: away.advance ?? null,
+      odds: odds,
     };
   });
   return matches;

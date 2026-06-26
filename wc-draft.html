@@ -192,9 +192,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .group-table td{padding:5px 6px;border-top:0.5px solid #f5f5f3;text-align:center;vertical-align:middle;}
 .grp-scenarios{border-top:0.5px solid #eee;background:#fcfcfb;padding:7px 12px 9px;display:flex;flex-direction:column;gap:4px;}
 .grp-scn-hint{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#b0b5be;}
+.grp-scn-odds-note{font-weight:600;color:#cdd2d8;margin-left:4px;}
 .grp-scn-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;}
-.grp-scn-name{font-weight:600;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
-.grp-scn-pills{display:inline-flex;gap:3px;flex-shrink:0;}
+.grp-scn-name{font-weight:600;color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;display:flex;align-items:baseline;gap:6px;}
+.grp-scn-adv{font-size:9.5px;font-weight:700;color:#15803d;white-space:nowrap;flex-shrink:0;}
+.grp-scn-pills{display:inline-flex;gap:4px;flex-shrink:0;align-items:flex-start;}
+.grp-pill-col{display:inline-flex;flex-direction:column;align-items:center;gap:1px;}
+.grp-pill-pct{font-size:7.5px;font-weight:600;color:#9aa0a8;font-variant-numeric:tabular-nums;line-height:1;}
 .grp-pill{display:inline-flex;align-items:center;justify-content:center;width:16px;height:15px;border-radius:3px;font-size:9px;font-weight:800;box-sizing:border-box;line-height:1;}
 .grp-dot{display:inline-block;width:8px;height:8px;border-radius:2px;}
 .grp-live{border-top:0.5px solid #f3d9cc;background:#fff8f4;padding:7px 12px 8px;display:flex;flex-direction:column;gap:2px;}
@@ -1540,6 +1544,17 @@ function renderTracker() {
   };
   // Outcome → pill color for the what-if row (each outcome its own solid color)
   const PILL = { in:'#16a34a', maybe:'#2563eb', third:'#d97706', out:'#aab0ba' };
+  // Implied probability from American moneyline; 3-way market normalized to remove vig
+  const mlProb = n => n==null?null:(n>0?100/(n+100):(-n)/((-n)+100));
+  const teamMatchProbs = (team) => {
+    const m = Object.values(matches).find(x=>x.stage==='group'&&x.status==='scheduled'&&x.odds&&(x.homeTeam===team||x.awayTeam===team));
+    if (!m) return null;
+    const ph=mlProb(m.odds.home), pd=mlProb(m.odds.draw), pa=mlProb(m.odds.away);
+    if (ph==null||pd==null||pa==null) return null;
+    const s=ph+pd+pa, isHome=m.homeTeam===team;
+    return { W:(isHome?ph:pa)/s, D:pd/s, L:(isHome?pa:ph)/s };
+  };
+  const pct = x => Math.round(x*100)+'%';
   const groupCardsHtml=['A','B','C','D','E','F','G','H','I','J','K','L'].map(grp=>{
     const rows=grpStandings[grp]||[];
     const verdicts=grpVerdicts[grp]||{};
@@ -1579,10 +1594,14 @@ function renderTracker() {
           </div>`;}).join('')}
         </div>`;})():''}
       ${whatIf.length?`<div class="grp-scenarios">
-        <div class="grp-scn-hint">If they…</div>
-        ${whatIf.map(r=>{const o=verdicts[r.name].outcomes;return `<div class="grp-scn-row">
-          <span class="grp-scn-name">${r.name}</span>
-          <span class="grp-scn-pills">${['W','D','L'].map(k=>`<span class="grp-pill" style="background:${PILL[o[k]]};color:#fff;">${k}</span>`).join('')}</span>
+        <div class="grp-scn-hint">If they…${whatIf.some(r=>teamMatchProbs(r.name))?`<span class="grp-scn-odds-note">· odds-implied</span>`:''}</div>
+        ${whatIf.map(r=>{const o=verdicts[r.name].outcomes;const pr=teamMatchProbs(r.name);
+          // P(reach top 2) is exact when no result is the ambiguous "maybe" (depends on other games)
+          const hasMaybe=['W','D','L'].some(k=>o[k]==='maybe');
+          const pTop2=pr&&!hasMaybe?['W','D','L'].reduce((a,k)=>a+(o[k]==='in'?pr[k]:0),0):null;
+          return `<div class="grp-scn-row">
+          <span class="grp-scn-name">${r.name}${pTop2!=null&&pTop2>0?`<span class="grp-scn-adv">${pct(pTop2)} to top 2</span>`:''}</span>
+          <span class="grp-scn-pills">${['W','D','L'].map(k=>`<span class="grp-pill-col"><span class="grp-pill" style="background:${PILL[o[k]]};color:#fff;">${k}</span>${pr?`<span class="grp-pill-pct">${pct(pr[k])}</span>`:''}</span>`).join('')}</span>
         </div>`;}).join('')}
       </div>`:''}
     </div>`;
