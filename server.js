@@ -1145,9 +1145,20 @@ function parseESPNEvents(events) {
     const oArr = comp.odds || [];
     if (oArr.length) {
       const o = oArr[0];
-      const hML = o.homeTeamOdds && o.homeTeamOdds.moneyLine;
-      const aML = o.awayTeamOdds && o.awayTeamOdds.moneyLine;
-      const dML = o.drawOdds && o.drawOdds.moneyLine;
+      // In the scoreboard feed the 3-way moneyline lives under o.moneyline.{home,away,draw}
+      // as strings (e.g. "+450"); homeTeamOdds/awayTeamOdds are usually null here.
+      const ml = o.moneyline || {};
+      const pickML = function(side) {
+        const s = ml[side] || {};
+        const v = (s.close && s.close.odds) != null ? s.close.odds : (s.open && s.open.odds);
+        if (v == null) return null;
+        const n = parseInt(String(v), 10);
+        return isNaN(n) ? null : n;
+      };
+      let hML = pickML('home'), aML = pickML('away'), dML = pickML('draw');
+      if (hML == null && o.homeTeamOdds) hML = o.homeTeamOdds.moneyLine != null ? o.homeTeamOdds.moneyLine : null;
+      if (aML == null && o.awayTeamOdds) aML = o.awayTeamOdds.moneyLine != null ? o.awayTeamOdds.moneyLine : null;
+      if (dML == null && o.drawOdds) dML = o.drawOdds.moneyLine != null ? o.drawOdds.moneyLine : null;
       if (hML != null || aML != null || dML != null) {
         odds = {
           home: (hML != null ? hML : null),
