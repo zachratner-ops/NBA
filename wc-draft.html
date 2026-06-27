@@ -2059,11 +2059,14 @@ function renderBracketTab(teamAdvanced) {
   // (Derived from ESPN's "Round of X N Winner" references — the tree is NOT
   // a simple 1-2, 3-4 pairing, so we can't lay it out by date or index.)
   const FEEDERS = {
-    r16: {1:[['r32',1],['r32',3]],2:[['r32',2],['r32',5]],3:[['r32',4],['r32',6]],4:[['r32',7],['r32',8]],
-          5:[['r32',11],['r32',12]],6:[['r32',9],['r32',10]],7:[['r32',13],['r32',15]],8:[['r32',14],['r32',16]]},
-    qf:  {1:[['r16',1],['r16',2]],2:[['r16',5],['r16',6]],3:[['r16',3],['r16',4]],4:[['r16',7],['r16',8]]},
-    sf:  {1:[['qf',2],['qf',1]],2:[['qf',4],['qf',3]]},
-    final:{1:[['sf',2],['sf',1]]}
+    // ESPN numbers R32/R16 slots by bracket match# (M73=1…M88=16), not by ESPN event ID.
+    // R32 code-sort order (by ESPN event ID): 1=RSA/CAN,2=BRA,3=NED,4=GER,5=CIV,6=MEX,
+    //   7=FRA,8=GrpG,9=USA,10=GrpL,11=2K/2L,12=1H/2J,13=SUI,14=AUS,15=ARG,16=1K
+    r16: {1:[['r32',1],['r32',3]],2:[['r32',4],['r32',7]],3:[['r32',2],['r32',5]],4:[['r32',6],['r32',10]],
+          5:[['r32',11],['r32',12]],6:[['r32',9],['r32',8]],7:[['r32',13],['r32',16]],8:[['r32',15],['r32',14]]},
+    qf:  {1:[['r16',2],['r16',1]],2:[['r16',5],['r16',6]],3:[['r16',3],['r16',4]],4:[['r16',8],['r16',7]]},
+    sf:  {1:[['qf',1],['qf',2]],2:[['qf',3],['qf',4]]},
+    final:{1:[['sf',1],['sf',2]]}
   };
   const NUMS = { r32:16, r16:8, qf:4, sf:2, final:1 };
   // Order matches within each stage by ascending numeric id → 1-based number
