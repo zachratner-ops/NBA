@@ -1292,9 +1292,17 @@ function renderTracker() {
       eliminatedTeams.add(team);
       teamStatus[team] = 'eliminated';
       teamAdvanced[team] = false;
+      // Override group verdict so race-for-third shows them as eliminated
+      Object.values(grpVerdicts).forEach(vmap => {
+        if (vmap[team]) vmap[team] = { status:'eliminated', label:'Eliminated' };
+      });
     } else if (forceElim === false) {
       eliminatedTeams.delete(team);
       if (teamStatus[team] === 'eliminated') { delete teamStatus[team]; delete teamAdvanced[team]; }
+      // Override group verdict so race-for-third shows them as in contention
+      Object.values(grpVerdicts).forEach(vmap => {
+        if (vmap[team] && vmap[team].status === 'eliminated') vmap[team] = { status:'contention', label:'In contention' };
+      });
     }
   });
 
