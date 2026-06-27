@@ -1288,8 +1288,14 @@ function renderTracker() {
   });
   const elimOverrides = (wcLiveData && wcLiveData.elimOverrides) || {};
   Object.entries(elimOverrides).forEach(([team, forceElim]) => {
-    if (forceElim === true) eliminatedTeams.add(team);
-    else if (forceElim === false) eliminatedTeams.delete(team);
+    if (forceElim === true) {
+      eliminatedTeams.add(team);
+      teamStatus[team] = 'eliminated';
+      teamAdvanced[team] = false;
+    } else if (forceElim === false) {
+      eliminatedTeams.delete(team);
+      if (teamStatus[team] === 'eliminated') { delete teamStatus[team]; delete teamAdvanced[team]; }
+    }
   });
 
   // Owners with a team currently playing
