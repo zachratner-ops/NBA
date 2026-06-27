@@ -387,6 +387,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- Elimination override modal -->
+<div class="modal-bg" id="elim-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal" style="max-width:520px;">
+    <h3>Manage Eliminations</h3>
+    <div class="modal-sub">Override auto-computed elimination status for any team. Auto = derived from knockout match results.</div>
+    <div id="elim-modal-body" style="display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;"></div>
+    <div style="margin-top:16px;text-align:right;"><button class="btn btn-outline" onclick="document.getElementById('elim-modal').style.display='none'">Close</button></div>
+  </div>
+</div>
+
 <!-- Rules modal -->
 <div class="modal-bg" id="rules-modal" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
   <div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto;">
@@ -1263,17 +1273,23 @@ function renderTracker() {
     <button class="btn btn-sm btn-amber" onclick="openMatchModal()">+ Add / Edit Match</button>
     <button class="btn btn-sm btn-outline" onclick="refreshDateFromESPN()" style="color:#1565c0;border-color:#1565c0;">📡 Refresh Date from ESPN</button>
     <button class="btn btn-sm btn-outline" onclick="loadSchedule()" style="color:#1565c0;border-color:#1565c0;">📅 Load Schedule</button>
+    <button class="btn btn-sm btn-outline" onclick="openElimModal()" style="color:#7B1FA2;border-color:#7B1FA2;">⚡ Eliminations</button>
     <button class="btn btn-sm btn-outline" onclick="clearMatches()" style="color:#c62828;border-color:#c62828;">🗑 Clear Matches</button>
     <button class="btn btn-sm btn-outline" onclick="seedMatches()" style="color:#e65100;border-color:#e65100;">⚡ Seed Group Stage</button>
     <button class="btn btn-sm btn-outline" onclick="seedFullTournament()" style="color:#7B1FA2;border-color:#7B1FA2;">⚡ Seed Full Tournament</button>
     ${updatedAgo?`<span class="updated-txt">Updated ${updatedAgo}</span>`:''}
   </div></div>` : '';
 
-  // Eliminated teams: lost a decisive knockout match (non-PK)
+  // Eliminated teams: lost a decisive knockout match (non-PK), with manual overrides
   const eliminatedTeams = new Set();
   Object.values(matches).filter(m=>m.status==='final'&&m.stage!=='group'&&!m.isPenaltyShootout).forEach(m=>{
     if((m.homeScore||0)>(m.awayScore||0)) eliminatedTeams.add(m.awayTeam);
     else if((m.awayScore||0)>(m.homeScore||0)) eliminatedTeams.add(m.homeTeam);
+  });
+  const elimOverrides = (wcLiveData && wcLiveData.elimOverrides) || {};
+  Object.entries(elimOverrides).forEach(([team, forceElim]) => {
+    if (forceElim === true) eliminatedTeams.add(team);
+    else if (forceElim === false) eliminatedTeams.delete(team);
   });
 
   // Owners with a team currently playing
@@ -1898,6 +1914,55 @@ window.refreshScores = async function() {
   try{await fetch(`${PROXY}/wc/matches/refresh`,{method:'POST'});}catch(e){console.error(e);}
   finally{trackerRefreshing=false;document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.remove('spinning'));}
 };
+window.openElimModal = function() {
+  if (!wcLiveData) return alert('Live data not loaded yet.');
+  const matches = wcLiveData.matches || {};
+  const overrides = (wcLiveData.elimOverrides) || {};
+
+  // Compute auto-eliminated set (without overrides)
+  const autoElim = new Set();
+  Object.values(matches).filter(m=>m.status==='final'&&m.stage!=='group'&&!m.isPenaltyShootout).forEach(m=>{
+    if((m.homeScore||0)>(m.awayScore||0)) autoElim.add(m.awayTeam);
+    else if((m.awayScore||0)>(m.homeScore||0)) autoElim.add(m.homeTeam);
+  });
+
+  // All teams that appear in any match
+  const allTeams = new Set();
+  Object.values(matches).forEach(m=>{if(m.homeTeam)allTeams.add(m.homeTeam);if(m.awayTeam)allTeams.add(m.awayTeam);});
+  const sorted = [...allTeams].filter(t=>!/^(Group|Round|Quarterfinal|Semifinal|Third Place)/.test(t)).sort();
+
+  const body = document.getElementById('elim-modal-body');
+  body.innerHTML = sorted.map(team => {
+    const auto = autoElim.has(team);
+    const ov = overrides[team]; // true=force elim, false=force not elim, undefined=auto
+    const effectiveElim = ov === true || (ov !== false && auto);
+    const statusLabel = ov === true ? '🔴 Forced OUT' : ov === false ? '🟢 Forced IN' : auto ? '⚫ Auto-OUT' : '⚪ Auto-IN';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#f8f9fb;border-radius:7px;gap:10px;">
+      <span style="font-size:12px;font-weight:600;color:${effectiveElim?'#888':'#111'};${effectiveElim?'text-decoration:line-through;':''}">${team}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span style="font-size:10px;color:#8a9099;">${statusLabel}</span>
+        <button onclick="toggleElim('${team.replace(/'/g,"\\'")}', true)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid ${ov===true?'#dc2626':'#ddd'};background:${ov===true?'#dc2626':'#fff'};color:${ov===true?'#fff':'#555'};cursor:pointer;font-weight:600;">OUT</button>
+        <button onclick="toggleElim('${team.replace(/'/g,"\\'")}', null)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid ${ov==null?'#1565c0':'#ddd'};background:${ov==null?'#1565c0':'#fff'};color:${ov==null?'#fff':'#555'};cursor:pointer;font-weight:600;">Auto</button>
+        <button onclick="toggleElim('${team.replace(/'/g,"\\'")}', false)" style="font-size:10px;padding:3px 8px;border-radius:5px;border:1px solid ${ov===false?'#16a34a':'#ddd'};background:${ov===false?'#16a34a':'#fff'};color:${ov===false?'#fff':'#555'};cursor:pointer;font-weight:600;">IN</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('elim-modal').style.display = 'flex';
+};
+
+window.toggleElim = async function(team, value) {
+  try {
+    if (value === null) {
+      await set(ref(db, 'wc26_live/elimOverrides/' + team.replace(/[.#$/[\]]/g,'_')), null);
+    } else {
+      await set(ref(db, 'wc26_live/elimOverrides/' + team.replace(/[.#$/[\]]/g,'_')), value);
+    }
+    // Re-open modal to reflect update (wcLiveData will update via onValue)
+    setTimeout(() => window.openElimModal(), 300);
+  } catch(e) { alert('Firebase error: ' + e.message); }
+};
+
 window.refreshDateFromESPN = async function() {
   const todayET = new Date(Date.now() - 4*3600000).toISOString().slice(0,10).replace(/-/g,'');
   const input = prompt('Fetch ESPN data for date (YYYYMMDD):', todayET);
