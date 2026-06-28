@@ -2193,7 +2193,7 @@ function renderBracketTab(teamAdvanced) {
     }
     // "Winner of match N" feeder refs → blank; the connector lines already
     // show which match feeds this slot
-    if (/^(Round of 32|Round of 16|Quarterfinal|Semifinal) \d+ Winner$/.test(t)) return '';
+    if (/^(Round of 32|Round of 16|Quarterfinal|Semifinal) \d+ Winner$/.test(t)) return null;
     return SHORT_NAMES[t]||t;
   };
   const isPlaceholder = isPlaceholderName;
@@ -2223,14 +2223,15 @@ function renderBracketTab(teamAdvanced) {
     const nameColor = isPH ? '#c0c4cc' : won ? '#111' : '#282828';
     const nameFw = won ? 700 : isPH ? 400 : 500;
     const nameFs = isFinalRound ? 11.5 : 10;
-    const scoreStr = (fin||live) ? (sc??'?') : '';
+    const scoreStr = fin ? (sc??'?') : live ? (sc??0) : '';
     const scoreColor = live ? '#e65100' : won ? '#111' : '#aaa';
     const scoreFw = won ? 700 : 400;
     const ownerStr = (own && !isPH)
       ? `<span style="font-size:8.5px;font-weight:700;color:${color(own)};letter-spacing:-.01em;flex-shrink:0;margin-left:1px;">${own.split(' ')[0]}</span>` : '';
     const winBg = won ? 'background:rgba(22,163,74,.09);border-radius:3px;' : '';
+    const displayName = (()=>{ const d=sn(nm,stage); if(d==null) return isPH?'<span style="color:#c8cdd4;font-style:italic;">TBD</span>':'?'; return d; })();
     return `<div style="display:flex;align-items:center;gap:4px;padding:${isFinalRound?'4px 8px':'2px 6px'};${winBg}">
-      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${(()=>{const d=sn(nm,stage);return d==null?'?':d;})()}</span>${ownerStr}${scoreStr?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
+      ${fi}<span style="font-size:${nameFs}px;font-weight:${nameFw};color:${nameColor};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:${isPH?'italic':'normal'};">${displayName}</span>${ownerStr}${scoreStr!==''?`<span style="font-size:${isFinalRound?13:11}px;font-weight:${scoreFw};color:${scoreColor};width:14px;text-align:right;flex-shrink:0;">${scoreStr}</span>`:''}
     </div>`;
   };
 
