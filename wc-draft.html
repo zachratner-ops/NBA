@@ -1282,9 +1282,11 @@ function renderTracker() {
 
   // Eliminated teams: lost a decisive knockout match (non-PK), with manual overrides
   const eliminatedTeams = new Set();
+  const koElimStage = {}; // team → stage they were knocked out in (e.g. 'r32','r16','qf','sf')
+  const STAGE_SHORT = { r32:'32', r16:'16', qf:'QF', sf:'SF', final:'F' };
   Object.values(matches).filter(m=>m.status==='final'&&m.stage!=='group'&&!m.isPenaltyShootout).forEach(m=>{
-    if((m.homeScore||0)>(m.awayScore||0)) eliminatedTeams.add(m.awayTeam);
-    else if((m.awayScore||0)>(m.homeScore||0)) eliminatedTeams.add(m.homeTeam);
+    if((m.homeScore||0)>(m.awayScore||0)) { eliminatedTeams.add(m.awayTeam); koElimStage[m.awayTeam]=m.stage; }
+    else if((m.awayScore||0)>(m.homeScore||0)) { eliminatedTeams.add(m.homeTeam); koElimStage[m.homeTeam]=m.stage; }
   });
   const elimOverrides = (wcLiveData && wcLiveData.elimOverrides) || {};
   Object.entries(elimOverrides).forEach(([team, forceElim]) => {
@@ -1568,7 +1570,8 @@ function renderTracker() {
     </div>${myTeams.length===0?'<div style="padding:8px 14px;font-size:12px;color:#aaa;font-style:italic;">No teams</div>':
       myTeams.map(nm=>{
         const rec=teamRecord[nm];
-        const badge=teamAdvanced[nm]===true?`<span style="font-size:8px;font-weight:700;color:#16a34a;">(a)</span>`:teamStatus[nm]==='eliminated'?`<span style="font-size:8px;font-weight:600;color:${teamHasRemaining[nm]?'#dc2626':'#b0b5be'};">(e)</span>`:'';
+        const koStage=koElimStage[nm];
+        const badge=koStage?`<span style="font-size:8px;font-weight:600;color:#b0b5be;">(e-${STAGE_SHORT[koStage]||koStage})</span>`:teamAdvanced[nm]===true?`<span style="font-size:8px;font-weight:700;color:#16a34a;">(a)</span>`:teamStatus[nm]==='eliminated'?`<span style="font-size:8px;font-weight:600;color:${teamHasRemaining[nm]?'#dc2626':'#b0b5be'};">(e)</span>`:'';
         return `<div class="team-row">
           <span style="width:14px;flex-shrink:0;text-align:center;line-height:1;">${badge}</span>
           <span class="team-flag">${flagImg(WC_FLAGS[nm])}</span>
