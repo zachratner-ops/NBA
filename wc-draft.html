@@ -2254,9 +2254,9 @@ function renderBracketTab(teamAdvanced) {
       const ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
       const hs=m.homeScore, as_=m.awayScore;
       const live=m.status==='live', fin=m.status==='final';
-      const hw=fin&&!m.isPenaltyShootout&&(hs||0)>(as_||0);
-      const aw=fin&&!m.isPenaltyShootout&&(as_||0)>(hs||0);
       const isPK=m.isPenaltyShootout;
+      const hw=fin&&(isPK ? m.homeAdvanced===true : (hs||0)>(as_||0));
+      const aw=fin&&(isPK ? m.awayAdvanced===true : (as_||0)>(hs||0));
       const isPHh=isPlaceholder(m.homeTeam), isPHa=isPlaceholder(m.awayTeam);
       const border = live ? '2px solid #e65100' : isFR ? '1.5px solid #d4a800' : isPK ? '1px solid #f9a825' : '1px solid #e2e5ea';
       const bg = live ? '#fff8f5' : isFR ? '#fffef5' : '#fff';
@@ -2267,7 +2267,7 @@ function renderBracketTab(teamAdvanced) {
         ${teamRow(m.homeTeam,ho,hs,hw,live,fin,isFR,isPHh,s)}
         <div style="height:1px;background:#f0f2f4;margin:0 6px;flex-shrink:0;"></div>
         ${teamRow(m.awayTeam,ao,as_,aw,live,fin,isFR,isPHa,s)}
-        ${isPK?`<div style="position:absolute;bottom:3px;right:5px;font-size:7.5px;font-weight:800;color:#f9a825;letter-spacing:.04em;">PK</div>`:''}
+        ${isPK?`<div style="position:absolute;top:3px;left:5px;font-size:7.5px;font-weight:800;color:#f9a825;letter-spacing:.04em;">PK</div>`:''}
         ${live?`<div style="position:absolute;top:3px;right:5px;font-size:8px;font-weight:800;color:#e65100;animation:livePulse 1.2s ease-in-out infinite;">●</div>`:''}
       </div>`;
     }
