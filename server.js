@@ -1100,7 +1100,7 @@ function parseESPNEvents(events) {
     if (!home || !away) return;
     const statusName = (comp.status && comp.status.type && comp.status.type.name) || '';
     const statusDetail = (comp.status && comp.status.type && comp.status.type.detail) || '';
-    const isFinal = statusName === 'STATUS_FINAL' || statusName === 'STATUS_FULL_TIME';
+    const isFinal = statusName === 'STATUS_FINAL' || statusName === 'STATUS_FULL_TIME' || statusName === 'STATUS_FINAL_PEN';
     const isLive = statusName === 'STATUS_IN_PROGRESS'
       || statusName === 'STATUS_FIRST_HALF'
       || statusName === 'STATUS_SECOND_HALF'
