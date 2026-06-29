@@ -1284,9 +1284,14 @@ function renderTracker() {
   const eliminatedTeams = new Set();
   const koElimStage = {}; // team → stage they were knocked out in (e.g. 'r32','r16','qf','sf')
   const STAGE_SHORT = { r32:'32', r16:'16', qf:'QF', sf:'SF', final:'F' };
-  Object.values(matches).filter(m=>m.status==='final'&&m.stage!=='group'&&!m.isPenaltyShootout).forEach(m=>{
-    if((m.homeScore||0)>(m.awayScore||0)) { eliminatedTeams.add(m.awayTeam); koElimStage[m.awayTeam]=m.stage; }
-    else if((m.awayScore||0)>(m.homeScore||0)) { eliminatedTeams.add(m.homeTeam); koElimStage[m.homeTeam]=m.stage; }
+  Object.values(matches).filter(m=>m.status==='final'&&m.stage!=='group').forEach(m=>{
+    if(m.isPenaltyShootout) {
+      if(m.awayAdvanced===true) { eliminatedTeams.add(m.homeTeam); koElimStage[m.homeTeam]=m.stage; }
+      else if(m.homeAdvanced===true) { eliminatedTeams.add(m.awayTeam); koElimStage[m.awayTeam]=m.stage; }
+    } else {
+      if((m.homeScore||0)>(m.awayScore||0)) { eliminatedTeams.add(m.awayTeam); koElimStage[m.awayTeam]=m.stage; }
+      else if((m.awayScore||0)>(m.homeScore||0)) { eliminatedTeams.add(m.homeTeam); koElimStage[m.homeTeam]=m.stage; }
+    }
   });
   const elimOverrides = (wcLiveData && wcLiveData.elimOverrides) || {};
   Object.entries(elimOverrides).forEach(([team, forceElim]) => {
