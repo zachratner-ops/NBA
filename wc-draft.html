@@ -1265,6 +1265,25 @@ function renderTracker() {
   const leastTbMax = leastTied.length>1?Math.max(...leastTied.map(p=>fin.gamesPlayed[p]||0)):null;
   const leastTbLeaders = leastTied.length>1?leastTied.filter(p=>(fin.gamesPlayed[p]||0)===leastTbMax):[];
 
+  // Clinching: max additional ties any owner can gain = remaining non-final KO matches with their team
+  const remainingKOTies = {};
+  participants.forEach(p=>remainingKOTies[p]=0);
+  Object.values(matches).filter(m=>m.status!=='final'&&m.stage!=='group').forEach(m=>{
+    const ho=teamOwners[m.homeTeam], ao=teamOwners[m.awayTeam];
+    if(ho) remainingKOTies[ho]++;
+    if(ao&&ao!==ho) remainingKOTies[ao]++;
+  });
+  const sortedDescTies=[...participants].sort((a,b)=>(fin.tieCount[b]||0)-(fin.tieCount[a]||0));
+  const sortedAscTies=[...participants].sort((a,b)=>(fin.tieCount[a]||0)-(fin.tieCount[b]||0));
+  const secondMaxTies=sortedDescTies.length>1?(fin.tieCount[sortedDescTies[1]]||0):0;
+  const secondMinTies=sortedAscTies.length>1?(fin.tieCount[sortedAscTies[1]]||0):Infinity;
+  // Most clinched: leader can't be caught even if every remaining game for the chaser goes to PKs
+  const mostClinched = mostTied.length===1 && fin.tiePotTotal>0 &&
+    (secondMaxTies + (remainingKOTies[sortedDescTies[1]]||0)) < maxTies;
+  // Fewest clinched: even if the fewest-ties leader's remaining games all go to PKs, still fewer than second
+  const leastClinched = leastTied.length===1 && fin.tiePotTotal>0 &&
+    (minTies + (remainingKOTies[leastTied[0]]||0)) < secondMinTies;
+
   // Commissioner panel
   const commHtml = isComm ? `<div class="comm-panel"><div class="comm-label">Commissioner Controls</div><div class="comm-actions">
     <button class="refresh-btn" id="refresh-btn" onclick="refreshScores()">
@@ -1332,7 +1351,8 @@ function renderTracker() {
     </div>
   </div>
   <div class="lb-grid">${ranked.map((p,i)=>{
-    const n=fin.net[p]||0;
+    const tiePotCredit=(mostClinched&&mostTied[0]===p?halfPot:0)+(leastClinched&&leastTied[0]===p?halfPot:0);
+    const n=(fin.net[p]||0)+tiePotCredit;
     const isMost=mostTied.includes(p)&&maxTies>0,isLeast=leastTied.includes(p)&&fin.tiePotTotal>0;
     const myTeams=Object.entries(teamOwners).filter(([,o])=>o===p).map(([t])=>t);
     const totalTeams=myTeams.length;
@@ -1393,13 +1413,15 @@ function renderTracker() {
         <span class="tiepot-badge tiepot-most">MOST</span>
         <span class="tiepot-winner-name">${mostTied.join(', ')}${mostTied.length>1?'*':''}</span>
         <span class="tiepot-winner-count">${maxTies} tie${maxTies!==1?'s':''}</span>
-        <span class="tiepot-payout">+$${halfPot}</span>
+        ${mostClinched?'<span style="font-size:9px;font-weight:800;color:#2e7d32;background:#e8f5e9;padding:2px 6px;border-radius:10px;letter-spacing:.04em;">CLINCHED ✓</span>':''}
+        <span class="tiepot-payout" style="${mostClinched?'color:#2e7d32;font-size:15px;':''}">${mostClinched?'':'~'}+$${halfPot}</span>
       </div>`:''}
       ${leastTied.length?`<div class="tiepot-winner">
         <span class="tiepot-badge tiepot-least">FEWEST</span>
         <span class="tiepot-winner-name">${leastTied.join(', ')}${leastTied.length>1?'*':''}</span>
         <span class="tiepot-winner-count">${minTies} tie${minTies!==1?'s':''}</span>
-        <span class="tiepot-payout">+$${halfPot}</span>
+        ${leastClinched?'<span style="font-size:9px;font-weight:800;color:#2e7d32;background:#e8f5e9;padding:2px 6px;border-radius:10px;letter-spacing:.04em;">CLINCHED ✓</span>':''}
+        <span class="tiepot-payout" style="${leastClinched?'color:#2e7d32;font-size:15px;':''}">${leastClinched?'':'~'}+$${halfPot}</span>
       </div>`:''}
     </div>
     <div class="tiepot-bars">
@@ -1568,7 +1590,8 @@ function renderTracker() {
     const myTeams=draftPicks.length>0
       ?draftPicks.map(t=>t.name).filter(Boolean)
       :Object.entries(teamOwners).filter(([,o])=>o===p).map(([n])=>n);
-    const mn=fin.net[p]||0,cls=mn>0?'pos':mn<0?'neg':'';
+    const tiePotCredit=(mostClinched&&mostTied[0]===p?halfPot:0)+(leastClinched&&leastTied[0]===p?halfPot:0);
+    const mn=(fin.net[p]||0)+tiePotCredit,cls=mn>0?'pos':mn<0?'neg':'';
     return `<div class="teams-card"><div class="teams-card-header" style="border-bottom:3px solid ${color(p)}">
       <div class="teams-card-name" style="color:${color(p)}">${p}</div>
       <div class="teams-card-net ${cls}">${fmtMoney(mn)}</div>
