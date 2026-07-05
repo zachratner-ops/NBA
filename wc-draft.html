@@ -1246,9 +1246,6 @@ function renderTracker() {
       });
     }
   });
-  const ranked = lbSort==='draft'
-    ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
-    : [...participants].sort((a,b)=>(fin.net[b]||0)-(fin.net[a]||0));
   const updatedAgo = updatedStr ? (() => {
     const m=Math.floor((Date.now()-new Date(updatedStr))/60000);
     return m<1?'just now':m<60?`${m}m ago`:`${Math.floor(m/60)}h ago`;
@@ -1284,6 +1281,10 @@ function renderTracker() {
   const leastClinched = leastTied.length===1 && fin.tiePotTotal>0 &&
     (minTies + (remainingKOTies[leastTied[0]]||0)) < secondMinTies;
   const halfPot = Math.round(fin.tiePotTotal / 2);
+  const tiePotCreditFor = p => (mostClinched&&mostTied[0]===p?halfPot:0)+(leastClinched&&leastTied[0]===p?halfPot:0);
+  const ranked = lbSort==='draft'
+    ? (draft?.pickOrder ? [...draft.pickOrder].filter(p=>participants.includes(p)) : [...participants])
+    : [...participants].sort((a,b)=>((fin.net[b]||0)+tiePotCreditFor(b))-((fin.net[a]||0)+tiePotCreditFor(a)));
 
   // Commissioner panel
   const commHtml = isComm ? `<div class="comm-panel"><div class="comm-label">Commissioner Controls</div><div class="comm-actions">
@@ -1352,7 +1353,7 @@ function renderTracker() {
     </div>
   </div>
   <div class="lb-grid">${ranked.map((p,i)=>{
-    const tiePotCredit=(mostClinched&&mostTied[0]===p?halfPot:0)+(leastClinched&&leastTied[0]===p?halfPot:0);
+    const tiePotCredit=tiePotCreditFor(p);
     const n=(fin.net[p]||0)+tiePotCredit;
     const isMost=mostTied.includes(p)&&maxTies>0,isLeast=leastTied.includes(p)&&fin.tiePotTotal>0;
     const myTeams=Object.entries(teamOwners).filter(([,o])=>o===p).map(([t])=>t);
@@ -1589,7 +1590,7 @@ function renderTracker() {
     const myTeams=draftPicks.length>0
       ?draftPicks.map(t=>t.name).filter(Boolean)
       :Object.entries(teamOwners).filter(([,o])=>o===p).map(([n])=>n);
-    const tiePotCredit=(mostClinched&&mostTied[0]===p?halfPot:0)+(leastClinched&&leastTied[0]===p?halfPot:0);
+    const tiePotCredit=tiePotCreditFor(p);
     const mn=(fin.net[p]||0)+tiePotCredit,cls=mn>0?'pos':mn<0?'neg':'';
     return `<div class="teams-card"><div class="teams-card-header" style="border-bottom:3px solid ${color(p)}">
       <div class="teams-card-name" style="color:${color(p)}">${p}</div>
