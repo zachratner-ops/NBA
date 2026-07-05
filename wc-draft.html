@@ -181,7 +181,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .tiepot-bar{height:5px;border-radius:3px;}
 .tiepot-count{font-size:12px;font-weight:700;width:16px;text-align:right;color:#888;}
 .tiepot-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:4px;}
-.tiepot-most{background:#f9a825;color:#1a1a1a;} .tiepot-least{background:#1565c0;color:#fff;}
+.tiepot-most{background:#f9a825;color:#1a1a1a;} .tiepot-least{background:#1565c0;color:#fff;} .tiepot-clinched{background:#15803d;color:#fff;}
 .groups-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:24px;}
 @media(min-width:820px){.groups-grid{grid-template-columns:1fr 1fr;}}
 @media(min-width:1200px){.groups-grid{grid-template-columns:1fr 1fr 1fr;}}
@@ -1391,7 +1391,7 @@ function renderTracker() {
         <div class="lb-stat" style="border-top:0.5px solid #f0f0f0;padding-top:8px;margin-bottom:10px;">
           <span class="lb-stat-icon">🏦</span>
           <span class="lb-stat-label">Tie Side Pot</span>
-          <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?' <span class="tiepot-badge tiepot-most">MOST</span>':''}${isLeast?' <span class="tiepot-badge tiepot-least">FEWEST</span>':''}</span>
+          <span style="font-size:11px;color:#888;">${t} tie${t!==1?'s':''}${isMost?` <span class="tiepot-badge ${mostClinched?'tiepot-clinched':'tiepot-most'}">MOST${mostClinched?' ✓':''}</span>`:''}${isLeast?` <span class="tiepot-badge ${leastClinched?'tiepot-clinched':'tiepot-least'}">FEWEST${leastClinched?' ✓':''}</span>`:''}</span>
         </div>
         <div class="lb-teams" style="flex-wrap:wrap;gap:3px;align-items:center;line-height:1.8;">
           ${myTeams.map(t=>{const elim=eliminatedTeams.has(t)||teamStatus[t]==='eliminated';const elimPending=elim&&teamHasRemaining[t];const adv=teamStatus[t]==='advanced';const n={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'}[t]||t;const c=elimPending?'#dc2626':elim?'#ccc':adv?'#16a34a':'#1a1a1a';return `<span style="font-size:10px;font-weight:${elim&&!elimPending?400:600};color:${c};${elim&&!elimPending?'text-decoration:line-through;':''}">${n}</span>`;}).join('<span style="color:#e0e0e0;margin:0 1px;">·</span>')}
