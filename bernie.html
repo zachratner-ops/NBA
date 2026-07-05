@@ -162,6 +162,8 @@ body{
 .pol-loading{text-align:center;padding:20px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
 .pol-error{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;padding:16px;}
 </style>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
 </head>
 <body>
 
@@ -176,13 +178,13 @@ body{
   </div>
 </div>
 
-<div class="topbar">
-  <div class="topbar-title">Giesener, Are You In?</div>
-  <div style="display:flex;align-items:center;gap:16px;">
-    <div class="topbar-nav"><a href="index.html">← Home</a></div>
-    <a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a>
+<header class="sitebar">
+  <a class="sb-home" href="index.html" aria-label="Home">🏠</a>
+  <div class="sb-title">☠️ The Bernie Bet</div>
+  <div class="sb-actions">
+    <a class="sb-btn" href="#" onclick="event.preventDefault();openFeedback()" aria-label="Suggest a bet">💡</a>
   </div>
-</div>
+</header>
 
 <div class="page">
 

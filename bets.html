@@ -155,6 +155,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .bet-actions{flex-wrap:wrap;}
 }
 </style>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
 </head>
 <body>
 
@@ -169,15 +171,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
-<div class="topbar">
-  <div class="topbar-title">One-Off Bets</div>
-  <div style="display:flex;align-items:center;gap:16px;">
-    <div class="topbar-nav">
-      <a href="index.html">← Home</a>
-    </div>
-    <a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a>
+<header class="sitebar">
+  <a class="sb-home" href="index.html" aria-label="Home">🏠</a>
+  <div class="sb-title">🤝 One-Off Bets</div>
+  <div class="sb-actions">
+    <a class="sb-btn" href="#" onclick="event.preventDefault();openFeedback()" aria-label="Suggest a bet">💡</a>
   </div>
-</div>
+</header>
 
 <div class="hero">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;">

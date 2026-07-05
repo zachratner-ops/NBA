@@ -217,17 +217,19 @@ a{color:inherit;}
 .comm-inline{display:flex;gap:10px;}
 .comm-inline label{flex:1;}
 </style>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
 </head>
 <body>
 
-<div class="topbar">
-  <span class="topbar-title">🦌 Dunlap 2026</span>
-  <div class="topbar-actions">
-    <button class="topbar-log" id="log-day-btn" style="display:none">＋ Log day</button>
-    <div class="topbar-nav"><a href="index.html">← Home</a></div>
-    <a class="fb-link" href="#" onclick="event.preventDefault();openFeedback()">💡 Suggest</a>
+<header class="sitebar">
+  <a class="sb-home" href="index.html" aria-label="Home">🏠</a>
+  <div class="sb-title">🦌 Dunlap 2026</div>
+  <div class="sb-actions">
+    <button class="sb-btn" id="log-day-btn" style="display:none">＋ Log day</button>
+    <a class="sb-btn" href="#" onclick="event.preventDefault();openFeedback()" aria-label="Suggest a bet">💡</a>
   </div>
-</div>
+</header>
 
 <div class="hero">
   <div class="hero-kicker">The Reckoning · 2026 Goals & Punishments</div>
