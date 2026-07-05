@@ -1283,6 +1283,7 @@ function renderTracker() {
   // Fewest clinched: even if the fewest-ties leader's remaining games all go to PKs, still fewer than second
   const leastClinched = leastTied.length===1 && fin.tiePotTotal>0 &&
     (minTies + (remainingKOTies[leastTied[0]]||0)) < secondMinTies;
+  const halfPot = Math.round(fin.tiePotTotal / 2);
 
   // Commissioner panel
   const commHtml = isComm ? `<div class="comm-panel"><div class="comm-label">Commissioner Controls</div><div class="comm-actions">
@@ -1399,7 +1400,7 @@ function renderTracker() {
   }).join('')}</div>`;
 
   // Tie pot
-  const halfPot = Math.round(fin.tiePotTotal / 2);
+  const tpSorted=[...participants].sort((a,b)=>(fin.tieCount[b]||0)-(fin.tieCount[a]||0));
   const tiepotHtml = `<div class="tiepot-card">
     <div class="tiepot-head">
       <div>
@@ -1408,37 +1409,35 @@ function renderTracker() {
       </div>
       <div class="tiepot-total">$${fin.tiePotTotal}</div>
     </div>
-    <div class="tiepot-winners">
-      ${mostTied.length?`<div class="tiepot-winner">
-        <span class="tiepot-badge tiepot-most">MOST</span>
-        <span class="tiepot-winner-name">${mostTied.join(', ')}${mostTied.length>1?'*':''}</span>
-        <span class="tiepot-winner-count">${maxTies} tie${maxTies!==1?'s':''}</span>
-        ${mostClinched?'<span style="font-size:9px;font-weight:800;color:#2e7d32;background:#e8f5e9;padding:2px 6px;border-radius:10px;letter-spacing:.04em;">CLINCHED ✓</span>':''}
-        <span class="tiepot-payout" style="${mostClinched?'color:#2e7d32;font-size:15px;':''}">${mostClinched?'':'~'}+$${halfPot}</span>
-      </div>`:''}
-      ${leastTied.length?`<div class="tiepot-winner">
-        <span class="tiepot-badge tiepot-least">FEWEST</span>
-        <span class="tiepot-winner-name">${leastTied.join(', ')}${leastTied.length>1?'*':''}</span>
-        <span class="tiepot-winner-count">${minTies} tie${minTies!==1?'s':''}</span>
-        ${leastClinched?'<span style="font-size:9px;font-weight:800;color:#2e7d32;background:#e8f5e9;padding:2px 6px;border-radius:10px;letter-spacing:.04em;">CLINCHED ✓</span>':''}
-        <span class="tiepot-payout" style="${leastClinched?'color:#2e7d32;font-size:15px;':''}">${leastClinched?'':'~'}+$${halfPot}</span>
-      </div>`:''}
-    </div>
-    <div class="tiepot-bars">
-      ${[...participants].sort((a,b)=>(fin.tieCount[b]||0)-(fin.tieCount[a]||0)).map(p=>{
-        const tc=fin.tieCount[p]||0,pct=maxTies>0?(tc/maxTies)*100:0;
-        return `<div class="tiepot-row">
-          <span class="tiepot-name" style="color:${color(p)}">${p}</span>
-          <div class="tiepot-bar-wrap"><div class="tiepot-bar" style="width:${pct}%;background:${color(p)}"></div></div>
-          <span class="tiepot-count">${tc}</span>
-          ${mostTied.includes(p)&&maxTies>0?'<span class="tiepot-badge tiepot-most">M</span>':leastTied.includes(p)&&fin.tiePotTotal>0?'<span class="tiepot-badge tiepot-least">F</span>':'<span style="width:24px;display:inline-block;"></span>'}
+    <div class="tiepot-bars" style="padding:8px 16px 12px;">
+      ${tpSorted.map((p,i)=>{
+        const tc=fin.tieCount[p]||0;
+        const isMost=mostTied.includes(p)&&maxTies>0;
+        const isLeast=leastTied.includes(p)&&fin.tiePotTotal>0;
+        const clinched=(isMost&&mostClinched)||(isLeast&&leastClinched);
+        const pct=maxTies>0?(tc/maxTies)*100:0;
+        const isBottom=(i===tpSorted.length-1);
+        const rowBg=isMost?'background:rgba(249,168,37,.07);border-radius:6px;':isLeast?'background:rgba(21,101,192,.07);border-radius:6px;':'';
+        const badge=isMost
+          ?`<span class="tiepot-badge tiepot-most" style="flex-shrink:0;">${mostClinched?'MOST ✓':'MOST'}</span>`
+          :isLeast
+          ?`<span class="tiepot-badge tiepot-least" style="flex-shrink:0;">${leastClinched?'FEWEST ✓':'FEWEST'}</span>`
+          :`<span style="width:54px;flex-shrink:0;display:inline-block;"></span>`;
+        const payout=(isMost||isLeast)
+          ?`<span style="font-size:12px;font-weight:700;color:${clinched?'#2e7d32':'#aaa'};flex-shrink:0;width:42px;text-align:right;">${clinched?'':'+'}${clinched?'+$'+halfPot:'~$'+halfPot}</span>`
+          :`<span style="width:42px;flex-shrink:0;"></span>`;
+        return `<div class="tiepot-row" style="${rowBg}padding:5px 6px;${isBottom?'':'border-bottom:0.5px solid #f5f5f3;'}">
+          <span class="tiepot-name" style="color:${color(p)};width:72px;">${p.split(' ')[0]}</span>
+          <div class="tiepot-bar-wrap" style="height:8px;"><div class="tiepot-bar" style="width:${pct}%;background:${color(p)};height:8px;"></div></div>
+          <span class="tiepot-count" style="font-size:13px;font-weight:${isMost||isLeast?700:400};color:${isMost?'#b8860b':isLeast?'#1565c0':'#888'};width:20px;">${tc}</span>
+          ${badge}${payout}
         </div>`;
       }).join('')}
     </div>
-    ${(mostTied.length>1||leastTied.length>1)?`<div style="padding:8px 16px 4px;font-size:10px;color:#aaa;line-height:1.8;">
-      ${mostTied.length>1?`* Tiebreaker (Most): Fewest games played wins — ${mostTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} currently leading`:''}
+    ${(mostTied.length>1||leastTied.length>1)?`<div style="padding:4px 16px 10px;font-size:10px;color:#aaa;line-height:1.8;">
+      ${mostTied.length>1?`* Tiebreaker (Most): Fewest games played — ${mostTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} leading`:''}
       ${mostTied.length>1&&leastTied.length>1?'<br>':''}
-      ${leastTied.length>1?`* Tiebreaker (Fewest): Most games played wins — ${leastTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} currently leading`:''}
+      ${leastTied.length>1?`* Tiebreaker (Fewest): Most games played — ${leastTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} leading`:''}
     </div>`:''}
   </div>`;
 
@@ -1804,12 +1803,10 @@ function renderTracker() {
 
   el.innerHTML=`<div class="tracker-wrap">${commHtml}${liveBannerHtml}${tabsHtml}${content}</div>`;
 
-  // Auto-refresh: 60s when live games are running, 3 min otherwise — only reset if period changes
-  const refreshMs = liveMatches.length > 0 ? 60000 : 3 * 60 * 1000;
-  if (refreshMs !== autoRefreshMs) {
-    if(autoRefreshInterval) clearInterval(autoRefreshInterval);
-    autoRefreshMs = refreshMs;
-    autoRefreshInterval = setInterval(function(){window.refreshScores();}, refreshMs);
+  // Auto-refresh every 60s always — Firebase onValue handles rendering when data changes
+  if (!autoRefreshInterval) {
+    autoRefreshMs = 60000;
+    autoRefreshInterval = setInterval(function(){window.refreshScores();}, 60000);
   }
 }
 window.switchTrackerTab = function(t){trackerTab=t;localStorage.setItem('wc_tab',t);renderScreen();};
@@ -1956,7 +1953,11 @@ window.submitMatch = async function() {
 window.refreshScores = async function() {
   if(trackerRefreshing)return; trackerRefreshing=true;
   document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.add('spinning'));
-  try{await fetch(`${PROXY}/wc/matches/refresh`,{method:'POST'});}catch(e){console.error(e);}
+  try{
+    await fetch(`${PROXY}/wc/matches/refresh`,{method:'POST'});
+    // Force re-render even if Firebase saw no diff (data may already be current)
+    if(draft?.status==='finalized') renderScreen();
+  }catch(e){console.error(e);}
   finally{trackerRefreshing=false;document.querySelectorAll('.refresh-btn').forEach(b=>b.classList.remove('spinning'));}
 };
 window.openElimModal = function() {
