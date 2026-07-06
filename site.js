@@ -9,11 +9,8 @@
     { href: 'bets.html', label: 'One-Off Bets', icon: '🤝' },
     { href: 'bernie.html', label: 'The Bernie Bet', icon: '☠️' },
     { group: 'History' },
-    { href: 'nba-playoffs-2026.html', label: 'Playoff Points 2026', icon: '🏀' },
     { href: 'nba-history.html', label: 'NBA Playoff History', icon: '🏀' },
     { href: 'golf.html', label: 'Golf Major History', icon: '⛳' },
-    { group: 'Side Quests' },
-    { href: 'dunlap.html', label: 'Dunlap 2026', icon: '🦌' },
   ];
 
   function init() {
