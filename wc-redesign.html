@@ -300,6 +300,77 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </style>
 <link rel="stylesheet" href="site.css">
 <script src="site.js" defer></script>
+<style id="nu-skin">
+/* ── Northwestern redesign skin (wc-redesign fork) ─────────────── */
+:root{
+  --nu:#4E2A84; --nu-dark:#401F68; --nu-deep:#634093;
+  --nu-mid:#836EAA; --nu-light:#B6ACD1; --nu-tint:#E4E0EE; --nu-hair:#F1EEF7;
+  --nu-paper:#FAF9FC; --nu-ink:#1a1230; --nu-body:#5B4A7E;
+  --nu-gold:#F5C518; --nu-mint:#7FE0B0;
+  --nu-serif:Georgia,'Times New Roman',serif;
+}
+body{background:var(--nu-paper);color:var(--nu-ink);}
+
+/* Topbar */
+.sitebar{background:var(--nu);}
+.sitebar .sb-title{font-family:var(--nu-serif);font-weight:400;font-size:16px;letter-spacing:.01em;}
+.sitebar .sb-home{color:var(--nu-light);}
+.sitebar .sb-btn{border-color:var(--nu-deep);color:var(--nu-light);}
+.sitebar .sb-btn:hover{border-color:var(--nu-mid);color:#fff;}
+.sitebar .sb-btn.active{background:var(--nu-gold);border-color:var(--nu-gold);color:#402D00;}
+
+/* Tabs → segmented control */
+.tracker-tabs{background:#EFEBF5;border-radius:10px;padding:3px;border-bottom:none;gap:2px;display:inline-flex;margin-bottom:20px;}
+.tracker-tab{padding:6px 14px;font-size:12.5px;font-weight:600;color:var(--nu-body);border-bottom:none;margin-bottom:0;border-radius:8px;}
+.tracker-tab.active{color:#fff;background:var(--nu);border-bottom:none;}
+
+/* Cards */
+.card,.lb-card,.tiepot-card,.group-card,.teams-card,.third-race-card,.grp-live,.match-table-wrap,.match-card{border-color:var(--nu-tint);border-radius:14px;}
+.lb-stripe{height:3px;}
+.lb-rank{font-family:var(--nu-serif);font-size:12px;font-weight:400;color:var(--nu-light);letter-spacing:.04em;}
+.lb-name{font-weight:700;color:var(--nu-ink);}
+.lb-net{font-family:var(--nu-serif);font-weight:400;font-size:23px;}
+.lb-stats{border-top-color:var(--nu-hair);}
+.lb-stat-label{color:var(--nu-body);}
+.lb-stat-sub{color:var(--nu-light);}
+.lb-teams{border-top-color:var(--nu-hair);}
+
+/* Tie pot */
+.tiepot-label{color:var(--nu);letter-spacing:.08em;}
+.tiepot-sub{color:var(--nu-mid);}
+.tiepot-total{font-family:var(--nu-serif);font-weight:400;}
+.tiepot-bar-wrap{background:var(--nu-hair);}
+.tiepot-count{color:var(--nu-body);}
+.tiepot-badge{font-weight:600;}
+.tiepot-most{background:var(--nu-gold);color:#402D00;}
+.tiepot-least{background:var(--nu-mint);color:#04342C;}
+.tiepot-clinched{background:#0F6E56;color:#fff;}
+
+/* Tables & badges */
+.match-table th{color:var(--nu-light);border-bottom-color:var(--nu-tint);}
+.match-table td{border-bottom-color:var(--nu-hair);}
+.score-cell{font-family:var(--nu-serif);font-weight:400;font-size:15px;}
+.stage-badge{background:var(--nu-hair);color:var(--nu-mid);}
+.pk-badge{background:var(--nu-gold);color:#402D00;}
+.ml,.mct-ml{color:var(--nu-mid);}
+.group-card-hdr{color:var(--nu);}
+.group-table th{color:var(--nu-light);}
+.team-record,.team-group{color:var(--nu-light);}
+.teams-card-name{color:var(--nu-ink);}
+
+/* Buttons & chrome */
+.btn{background:var(--nu);}
+.btn:hover{background:var(--nu-dark);}
+.btn-outline{background:transparent;color:var(--nu);border-color:var(--nu-light);}
+.btn-outline:hover{background:var(--nu-hair);}
+.refresh-btn{background:var(--nu);}
+.refresh-btn:hover{background:var(--nu-dark);}
+.comm-panel{background:var(--nu-dark);}
+.comm-label{color:var(--nu-light);}
+.comm-toggle.active{background:var(--nu-gold);border-color:var(--nu-gold);color:#402D00;}
+.updated-txt{color:var(--nu-light);}
+.tracker-wrap .section-hdr{color:var(--nu-ink);}
+</style>
 </head>
 <body>
 
@@ -1766,7 +1837,7 @@ function renderTracker() {
     ${thirdRaceHtml}
   `;
 
-  const liveTabBadge = liveMatches.length ? ` <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#e65100;color:#fff;font-size:9px;font-weight:800;vertical-align:middle;">${liveMatches.length}</span>` : '';
+  const liveTabBadge = liveMatches.length ? ` <span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#F5C518;color:#402D00;font-size:9px;font-weight:800;vertical-align:middle;">${liveMatches.length}</span>` : '';
   // Rules is no longer a tab (moved to header button → modal); coerce any stale stored tab
   if(trackerTab==='rules'){trackerTab='leaderboard';localStorage.setItem('wc_tab','leaderboard');}
   const tabsHtml=`<div class="tracker-tabs">
@@ -1791,10 +1862,10 @@ function renderTracker() {
 
   // Live banner — shown when at least one game is in progress
   const liveBannerHtml = liveMatches.length ? `
-    <div style="background:#e65100;color:#fff;border-radius:10px;padding:10px 16px;margin-bottom:14px;">
+    <div style="background:#401F68;color:#fff;border-radius:14px;padding:10px 16px;margin-bottom:14px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;">
-          <span style="width:8px;height:8px;border-radius:50%;background:#fff;animation:livePulse 1.2s infinite;display:inline-block;"></span>
+        <span style="display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#7FE0B0;">
+          <span style="width:8px;height:8px;border-radius:50%;background:#7FE0B0;animation:livePulse 1.2s infinite;display:inline-block;"></span>
           ${liveMatches.length} LIVE
         </span>
         <button onclick="refreshScores()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;cursor:pointer;">↻ Refresh</button>
