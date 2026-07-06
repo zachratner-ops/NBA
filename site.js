@@ -5,13 +5,12 @@
   const NAV = [
     { href: 'index.html', label: 'Home', icon: '🏠' },
     { group: 'Active' },
-    { href: 'wc-draft.html', label: 'World Cup 2026', icon: '⚽' },
+    { href: 'wc-draft.html?slug=wc2026', label: 'World Cup 2026', icon: '⚽' },
     { href: 'bets.html', label: 'One-Off Bets', icon: '🤝' },
     { href: 'bernie.html', label: 'The Bernie Bet', icon: '☠️' },
     { group: 'History' },
     { href: 'nba-playoffs-2026.html', label: 'Playoff Points 2026', icon: '🏀' },
     { href: 'nba-history.html', label: 'NBA Playoff History', icon: '🏀' },
-    { href: 'golf-live.html', label: 'Golf Live', icon: '⛳' },
     { href: 'golf.html', label: 'Golf Major History', icon: '⛳' },
     { group: 'Side Quests' },
     { href: 'dunlap.html', label: 'Dunlap 2026', icon: '🦌' },
@@ -36,7 +35,7 @@
     menu.setAttribute('aria-label', 'All bets');
     menu.innerHTML = NAV.map(item => item.group
       ? `<div class="sb-group">${item.group}</div>`
-      : `<a href="${item.href}"${item.href === here ? ' class="current"' : ''}><span>${item.icon}</span>${item.label}</a>`
+      : `<a href="${item.href}"${item.href.split('?')[0] === here ? ' class="current"' : ''}><span>${item.icon}</span>${item.label}</a>`
     ).join('');
 
     btn.addEventListener('click', e => {
