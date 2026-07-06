@@ -1387,6 +1387,39 @@ function computeWCFinancials(matches, teamOwners, participants) {
   return { net, tieCount, tiePotTotal };
 }
 
+// Mirrors the tie pot clinch logic in wc-draft.html so the daily alert
+// and the site always agree on who has locked up each half of the pot.
+function computeWCTiePotClinch(matches, teamOwners, participants, fin) {
+  const halfPot = Math.round(fin.tiePotTotal / 2);
+  const tieVals = participants.map(function(p) { return fin.tieCount[p] || 0; });
+  const maxTies = Math.max.apply(null, tieVals.concat([0]));
+  const minTies = Math.min.apply(null, tieVals);
+  const mostTied = participants.filter(function(p) { return (fin.tieCount[p] || 0) === maxTies && maxTies > 0; });
+  const leastTied = fin.tiePotTotal > 0 ? participants.filter(function(p) { return (fin.tieCount[p] || 0) === minTies; }) : [];
+
+  // Max additional ties an owner can gain = remaining non-final KO matches with their team
+  const remainingKOTies = {};
+  participants.forEach(function(p) { remainingKOTies[p] = 0; });
+  Object.values(matches || {}).filter(function(m) { return m.status !== 'final' && m.stage !== 'group'; }).forEach(function(m) {
+    const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
+    if (ho) remainingKOTies[ho]++;
+    if (ao && ao !== ho) remainingKOTies[ao]++;
+  });
+  const sortedDesc = [...participants].sort(function(a, b) { return (fin.tieCount[b] || 0) - (fin.tieCount[a] || 0); });
+  const sortedAsc = [...participants].sort(function(a, b) { return (fin.tieCount[a] || 0) - (fin.tieCount[b] || 0); });
+  const secondMaxTies = sortedDesc.length > 1 ? (fin.tieCount[sortedDesc[1]] || 0) : 0;
+  const secondMinTies = sortedAsc.length > 1 ? (fin.tieCount[sortedAsc[1]] || 0) : Infinity;
+  const mostClinched = mostTied.length === 1 && fin.tiePotTotal > 0 &&
+    (secondMaxTies + (remainingKOTies[sortedDesc[1]] || 0)) < maxTies;
+  const leastClinched = leastTied.length === 1 && fin.tiePotTotal > 0 &&
+    (minTies + (remainingKOTies[leastTied[0]] || 0)) < secondMinTies;
+
+  const creditFor = function(p) {
+    return (mostClinched && mostTied[0] === p ? halfPot : 0) + (leastClinched && leastTied[0] === p ? halfPot : 0);
+  };
+  return { halfPot, maxTies, minTies, mostTied, leastTied, mostClinched, leastClinched, creditFor };
+}
+
 function wcDateInET(isoStr) {
   return new Date(new Date(isoStr).getTime() - 4 * 3600000).toISOString().slice(0, 10);
 }
@@ -1486,25 +1519,31 @@ async function postWCDailyGroupMe() {
     lines.push('📅 No matches today (' + MO[todayDt.getUTCMonth()] + ' ' + todayDt.getUTCDate() + ')');
   }
 
-  const ranked = [...participants].sort(function(a, b) { return (fin.net[b] || 0) - (fin.net[a] || 0); });
+  // Fold clinched tie pot winnings into the standings, matching the site
+  const clinch = computeWCTiePotClinch(matches, teamOwners, participants, fin);
+  const netWithPot = function(p) { return (fin.net[p] || 0) + clinch.creditFor(p); };
+  const ranked = [...participants].sort(function(a, b) { return netWithPot(b) - netWithPot(a); });
   lines.push('');
   lines.push('🏆 Standings');
   const medals = ['🥇','🥈','🥉'];
   ranked.forEach(function(p, i) {
-    const val = fin.net[p] || 0;
+    const val = netWithPot(p);
     const valStr = val > 0 ? '+$' + val : val < 0 ? '-$' + Math.abs(val) : '$0';
-    lines.push((i < 3 ? medals[i] : (i + 1) + '.') + ' ' + p + '  ' + valStr);
+    const potNote = clinch.creditFor(p) > 0 ? ' (incl. $' + clinch.creditFor(p) + ' pot ✅)' : '';
+    lines.push((i < 3 ? medals[i] : (i + 1) + '.') + ' ' + p + '  ' + valStr + potNote);
   });
 
   lines.push('');
   lines.push('⚖️ Tie pot: $' + fin.tiePotTotal);
   if (fin.tiePotTotal > 0) {
-    const maxTies = Math.max(...participants.map(function(p) { return fin.tieCount[p] || 0; }));
-    const minTies = Math.min(...participants.map(function(p) { return fin.tieCount[p] || 0; }));
-    const mostTied = participants.filter(function(p) { return (fin.tieCount[p] || 0) === maxTies; });
-    const leastTied = participants.filter(function(p) { return (fin.tieCount[p] || 0) === minTies; });
-    if (maxTies > 0) lines.push('  Most ties: ' + mostTied.map(function(p) { return p + ' (' + (fin.tieCount[p] || 0) + ')'; }).join(', '));
-    if (minTies < maxTies) lines.push('  Fewest ties: ' + leastTied.map(function(p) { return p + ' (' + (fin.tieCount[p] || 0) + ')'; }).join(', '));
+    if (clinch.maxTies > 0) {
+      const mostStr = clinch.mostTied.map(function(p) { return p + ' (' + (fin.tieCount[p] || 0) + ')'; }).join(', ');
+      lines.push('  Most ties: ' + mostStr + (clinch.mostClinched ? ' ✅ CLINCHED +$' + clinch.halfPot : ' — ~$' + clinch.halfPot));
+    }
+    if (clinch.minTies < clinch.maxTies) {
+      const leastStr = clinch.leastTied.map(function(p) { return p + ' (' + (fin.tieCount[p] || 0) + ')'; }).join(', ');
+      lines.push('  Fewest ties: ' + leastStr + (clinch.leastClinched ? ' ✅ CLINCHED +$' + clinch.halfPot : ' — ~$' + clinch.halfPot));
+    }
   }
 
   lines.push('');
