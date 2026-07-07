@@ -1397,22 +1397,61 @@ function computeWCTiePotClinch(matches, teamOwners, participants, fin) {
   const mostTied = participants.filter(function(p) { return (fin.tieCount[p] || 0) === maxTies && maxTies > 0; });
   const leastTied = fin.tiePotTotal > 0 ? participants.filter(function(p) { return (fin.tieCount[p] || 0) === minTies; }) : [];
 
-  // Max additional ties an owner can gain = remaining non-final KO matches with their team
-  const remainingKOTies = {};
-  participants.forEach(function(p) { remainingKOTies[p] = 0; });
-  Object.values(matches || {}).filter(function(m) { return m.status !== 'final' && m.stage !== 'group'; }).forEach(function(m) {
-    const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
-    if (ho) remainingKOTies[ho]++;
-    if (ao && ao !== ho) remainingKOTies[ao]++;
+  // Ceiling on additional ties each owner could still gain. Per team, every
+  // remaining group match can be a tie, and an alive KO team can reach PKs in
+  // every round it could still play — counted by stage math so unfilled
+  // placeholder fixtures (e.g. "Winner R16 #5") are included.
+  const STAGE_POT = { r32: 5, r16: 4, qf: 3, sf: 2, final: 1, '3rd': 1 };
+  const allMatches = Object.values(matches || {});
+  const groupDone = allMatches.filter(function(m) { return m.stage === 'group'; }).every(function(m) { return m.status === 'final'; });
+  const koLost = new Set();
+  const teamTiePot = {};
+  Object.keys(teamOwners).forEach(function(t) { teamTiePot[t] = 0; });
+  allMatches.filter(function(m) { return m.stage === 'group' && m.status !== 'final'; }).forEach(function(m) {
+    [m.homeTeam, m.awayTeam].forEach(function(t) { if (t && teamOwners[t] !== undefined) teamTiePot[t]++; });
   });
-  const sortedDesc = [...participants].sort(function(a, b) { return (fin.tieCount[b] || 0) - (fin.tieCount[a] || 0); });
-  const sortedAsc = [...participants].sort(function(a, b) { return (fin.tieCount[a] || 0) - (fin.tieCount[b] || 0); });
-  const secondMaxTies = sortedDesc.length > 1 ? (fin.tieCount[sortedDesc[1]] || 0) : 0;
-  const secondMinTies = sortedAsc.length > 1 ? (fin.tieCount[sortedAsc[1]] || 0) : Infinity;
+  const pendingKO = {}, wonAfter = {}, koSeen = new Set();
+  allMatches.filter(function(m) { return m.stage !== 'group'; }).forEach(function(m) {
+    [m.homeTeam, m.awayTeam].forEach(function(t) { if (t && teamOwners[t] !== undefined) koSeen.add(t); });
+    if (m.status !== 'final') {
+      [m.homeTeam, m.awayTeam].forEach(function(t) {
+        if (t && teamOwners[t] !== undefined) {
+          const v = STAGE_POT[m.stage] || 0;
+          if (!(t in pendingKO) || v > pendingKO[t]) pendingKO[t] = v;
+        }
+      });
+    } else {
+      let w = null, l = null;
+      if (m.isPenaltyShootout) {
+        if (m.homeAdvanced === true) { w = m.homeTeam; l = m.awayTeam; }
+        else if (m.awayAdvanced === true) { w = m.awayTeam; l = m.homeTeam; }
+      } else if ((m.homeScore || 0) > (m.awayScore || 0)) { w = m.homeTeam; l = m.awayTeam; }
+      else if ((m.awayScore || 0) > (m.homeScore || 0)) { w = m.awayTeam; l = m.homeTeam; }
+      if (l) koLost.add(l);
+      if (w && teamOwners[w] !== undefined) {
+        const after = (STAGE_POT[m.stage] || 1) - 1;
+        if (!(w in wonAfter) || after < wonAfter[w]) wonAfter[w] = after;
+      }
+    }
+  });
+  Object.keys(teamOwners).forEach(function(t) {
+    if (koLost.has(t)) return;
+    if (t in pendingKO) teamTiePot[t] += pendingKO[t];
+    else if (t in wonAfter) teamTiePot[t] += wonAfter[t];
+    else if (!koSeen.has(t) && !groupDone) teamTiePot[t] += 5; // group ongoing: could still reach R32
+  });
+  const maxMoreTies = {};
+  participants.forEach(function(p) { maxMoreTies[p] = 0; });
+  Object.entries(teamOwners).forEach(function(e) { if (maxMoreTies[e[1]] !== undefined) maxMoreTies[e[1]] += teamTiePot[e[0]]; });
+  // Most clinched: NO other owner can reach the leader even if every possible remaining game ties
   const mostClinched = mostTied.length === 1 && fin.tiePotTotal > 0 &&
-    (secondMaxTies + (remainingKOTies[sortedDesc[1]] || 0)) < maxTies;
+    participants.filter(function(p) { return p !== mostTied[0]; })
+      .every(function(p) { return (fin.tieCount[p] || 0) + (maxMoreTies[p] || 0) < maxTies; });
+  // Fewest clinched: even if all the leader's possible remaining games tie, still fewer than everyone else
+  const othersMin = Math.min.apply(null, participants.filter(function(p) { return p !== (leastTied[0] || null); })
+    .map(function(p) { return fin.tieCount[p] || 0; }));
   const leastClinched = leastTied.length === 1 && fin.tiePotTotal > 0 &&
-    (minTies + (remainingKOTies[leastTied[0]] || 0)) < secondMinTies;
+    (minTies + (maxMoreTies[leastTied[0]] || 0)) < othersMin;
 
   const creditFor = function(p) {
     return (mostClinched && mostTied[0] === p ? halfPot : 0) + (leastClinched && leastTied[0] === p ? halfPot : 0);
