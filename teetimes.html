@@ -40,6 +40,9 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
 .st-paused{background:#f5f5f3;color:#888;}
 .st-expired{background:#fbeaea;color:#c62828;}
 .st-booked{background:#2e7d32;color:#fff;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.chip{font-size:12px;font-weight:600;background:#f5f5f3;border:0.5px solid #e0e0e0;border-radius:20px;padding:4px 10px;display:flex;gap:6px;align-items:center;}
+.chip button{border:none;background:none;cursor:pointer;color:#888;font-size:13px;padding:0;line-height:1;}
 .watch-actions{display:flex;gap:6px;align-items:flex-start;}
 .steps{font-size:13px;line-height:1.8;color:#444;}
 .steps b{color:#1a1a1a;}
@@ -64,9 +67,18 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
 
 <div class="card">
   <div class="section-label">New Watch</div>
+  <div class="row" id="savedRow" style="display:none;">
+    <div class="field" style="flex:3;">
+      <label>Saved course</label>
+      <select id="savedSel" onchange="pickSaved()"><option value="">— pick a course —</option></select>
+    </div>
+    <div class="field" style="flex:0;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="removeSaved()">Remove</button>
+    </div>
+  </div>
   <div class="row">
     <div class="field" style="flex:3;">
-      <label>ForeUp booking page URL</label>
+      <label id="urlLabel">ForeUp booking page URL</label>
       <input id="urlInput" placeholder="https://foreupsoftware.com/index.php/booking/…" >
     </div>
     <div class="field" style="flex:0;justify-content:flex-end;">
@@ -87,7 +99,13 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
       </div>
     </div>
     <div class="row">
-      <div class="field"><label>Date</label><input type="date" id="dateInput"></div>
+      <div class="field" style="flex:2;"><label>Dates (add one or more)</label>
+        <div style="display:flex;gap:6px;">
+          <input type="date" id="dateInput" style="flex:1;">
+          <button class="btn btn-ghost" onclick="addDate()">+ Add</button>
+        </div>
+        <div class="chips" id="dateChips"></div>
+      </div>
       <div class="field"><label>Earliest</label><input type="time" id="earliestInput" value="07:00"></div>
       <div class="field"><label>Latest</label><input type="time" id="latestInput" value="15:00"></div>
     </div>
@@ -156,6 +174,19 @@ window.testPush = async function() {
   } catch(e) { el.textContent = 'Server unreachable'; }
 };
 
+function loadCourse(data) {
+  resolved = data;
+  const schedSel = document.getElementById('schedSel');
+  schedSel.innerHTML = data.schedules.map(s =>
+    `<option value="${s.scheduleId}">${data.courseName} — ${s.title}</option>`).join('');
+  fillClasses();
+  const dateInput = document.getElementById('dateInput');
+  const today = new Date();
+  dateInput.min = today.toISOString().slice(0,10);
+  if (!dateInput.value) dateInput.value = new Date(today.getTime() + 86400000 * 5).toISOString().slice(0,10);
+  document.getElementById('watchForm').style.display = 'block';
+}
+
 window.resolveUrl = async function() {
   const url = document.getElementById('urlInput').value.trim();
   const errEl = document.getElementById('resolveErr');
@@ -167,21 +198,60 @@ window.resolveUrl = async function() {
     const r = await fetch(PROXY + '/api/resolve?url=' + encodeURIComponent(url));
     const data = await r.json();
     if (data.error) { errEl.textContent = data.error; return; }
-    resolved = data;
-    const schedSel = document.getElementById('schedSel');
-    schedSel.innerHTML = data.schedules.map(s =>
-      `<option value="${s.scheduleId}">${data.courseName} — ${s.title}</option>`).join('');
-    fillClasses();
-    const dateInput = document.getElementById('dateInput');
-    const today = new Date();
-    dateInput.min = today.toISOString().slice(0,10);
-    dateInput.value = new Date(today.getTime() + 86400000 * 5).toISOString().slice(0,10);
-    document.getElementById('watchForm').style.display = 'block';
+    loadCourse(data);
+    // Remember the course so it can be picked from the dropdown next time
+    await set(ref(db, 'teetimes/courses/' + data.courseId), { ...data, savedAt: Date.now() });
+    document.getElementById('savedSel').value = data.courseId;
+    document.getElementById('urlInput').value = '';
   } catch(e) {
     errEl.textContent = 'Could not reach the alert server.';
   } finally {
     btn.disabled = false; btn.textContent = 'Find course';
   }
+};
+
+// ── Saved courses ──────────────────────────────────────────────────
+let savedCourses = {};
+onValue(ref(db, 'teetimes/courses'), snap => {
+  savedCourses = snap.val() || {};
+  const sel = document.getElementById('savedSel');
+  const keys = Object.keys(savedCourses).sort((a,b) => (savedCourses[a].courseName||'').localeCompare(savedCourses[b].courseName||''));
+  document.getElementById('savedRow').style.display = keys.length ? 'flex' : 'none';
+  document.getElementById('urlLabel').textContent = keys.length ? 'Or add a new course by URL' : 'ForeUp booking page URL';
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— pick a course —</option>' +
+    keys.map(k => `<option value="${k}">${savedCourses[k].courseName}</option>`).join('');
+  if (savedCourses[cur]) sel.value = cur;
+});
+
+window.pickSaved = function() {
+  const k = document.getElementById('savedSel').value;
+  if (k && savedCourses[k]) loadCourse(savedCourses[k]);
+};
+
+window.removeSaved = function() {
+  const k = document.getElementById('savedSel').value;
+  if (!k || !savedCourses[k]) return;
+  if (confirm(`Remove ${savedCourses[k].courseName} from saved courses?`)) {
+    remove(ref(db, 'teetimes/courses/' + k));
+    document.getElementById('watchForm').style.display = 'none';
+    resolved = null;
+  }
+};
+
+// ── Multi-date selection ───────────────────────────────────────────
+let watchDates = [];
+function renderDateChips() {
+  document.getElementById('dateChips').innerHTML = watchDates.map(d =>
+    `<span class="chip">${fmtDate(d)}<button onclick="removeDate('${d}')" title="Remove">✕</button></span>`).join('');
+}
+window.addDate = function() {
+  const v = document.getElementById('dateInput').value;
+  if (v && !watchDates.includes(v)) { watchDates.push(v); watchDates.sort(); renderDateChips(); }
+};
+window.removeDate = function(d) {
+  watchDates = watchDates.filter(x => x !== d);
+  renderDateChips();
 };
 
 window.fillClasses = function() {
@@ -201,7 +271,13 @@ window.saveWatch = async function() {
   const schedId = document.getElementById('schedSel').value;
   const sched = resolved.schedules.find(s => s.scheduleId === schedId);
   const classSel = document.getElementById('classSel');
-  const w = {
+  // Use the chip list; fall back to the date input so a single date
+  // doesn't require pressing "+ Add" first
+  let dates = [...watchDates];
+  const pending = document.getElementById('dateInput').value;
+  if (pending && !dates.includes(pending)) dates.push(pending);
+  if (!dates.length) { alert('Pick at least one date'); return; }
+  const base = {
     courseId: resolved.courseId,
     courseName: resolved.courseName,
     scheduleId: schedId,
@@ -210,7 +286,6 @@ window.saveWatch = async function() {
     bookingClassName: classSel.selectedOptions[0]?.textContent || '',
     bookingUrl: resolved.bookingUrl,
     timezone: sched?.timezone || resolved.timezone,
-    date: document.getElementById('dateInput').value,
     earliest: document.getElementById('earliestInput').value,
     latest: document.getElementById('latestInput').value,
     minSpots: parseInt(document.getElementById('spotsSel').value, 10),
@@ -222,9 +297,13 @@ window.saveWatch = async function() {
     created: Date.now(),
     alertCount: 0
   };
-  if (!w.date) { alert('Pick a date'); return; }
-  await set(push(ref(db, 'teetimes/watches')), w);
-  document.getElementById('saveMsg').textContent = '✓ Watching — you\'ll get a push when a matching time opens.';
+  for (const date of dates.sort()) {
+    await set(push(ref(db, 'teetimes/watches')), { ...base, date });
+  }
+  watchDates = [];
+  renderDateChips();
+  document.getElementById('saveMsg').textContent =
+    `✓ Watching ${dates.length} date${dates.length === 1 ? '' : 's'} — you'll get a push when a matching time opens.`;
   setTimeout(() => document.getElementById('saveMsg').textContent = '', 4000);
   fetch(PROXY + '/api/check', { method: 'POST' }).catch(()=>{});
 };
