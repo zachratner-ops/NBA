@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tee Time Alerts</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;}
+.topbar{background:#1a1a1a;color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-title{font-size:16px;font-weight:600;}
+.main{max-width:760px;margin:0 auto;padding:28px 20px;}
+.page-title{font-size:28px;font-weight:700;margin-bottom:4px;}
+.page-sub{font-size:14px;color:#888;margin-bottom:20px;}
+.card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:18px;margin-bottom:16px;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:12px;}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px;}
+.field label{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;}
+input,select{font-size:14px;padding:8px 10px;border:0.5px solid #ccc;border-radius:8px;background:#fff;font-family:inherit;}
+input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
+.btn{font-size:13px;font-weight:600;padding:9px 18px;border-radius:8px;border:none;background:#1a1a1a;color:#fff;cursor:pointer;}
+.btn:hover{background:#333;}
+.btn:disabled{background:#bbb;cursor:default;}
+.btn-ghost{background:#f5f5f3;color:#1a1a1a;border:0.5px solid #e0e0e0;}
+.btn-ghost:hover{background:#eee;}
+.btn-sm{font-size:11px;padding:5px 10px;}
+.btn-danger{background:#fbeaea;color:#c62828;border:0.5px solid #f0caca;}
+.btn-danger:hover{background:#f5dada;}
+.hint{font-size:12px;color:#888;line-height:1.5;}
+.err{font-size:12px;color:#c62828;margin-top:6px;}
+.ok{font-size:12px;color:#2e7d32;margin-top:6px;}
+.topic-pill{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:#f5f5f3;border:0.5px solid #e0e0e0;border-radius:8px;padding:6px 10px;display:inline-block;user-select:all;}
+.watch{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:0.5px solid #eee;flex-wrap:wrap;}
+.watch:last-child{border-bottom:none;}
+.watch-course{font-size:15px;font-weight:700;}
+.watch-meta{font-size:12px;color:#666;margin-top:3px;line-height:1.6;}
+.watch-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;display:inline-block;margin-top:6px;}
+.st-watching{background:#f0faf0;color:#2e7d32;}
+.st-paused{background:#f5f5f3;color:#888;}
+.st-expired{background:#fbeaea;color:#c62828;}
+.watch-actions{display:flex;gap:6px;align-items:flex-start;}
+.steps{font-size:13px;line-height:1.8;color:#444;}
+.steps b{color:#1a1a1a;}
+.empty{font-size:13px;color:#888;padding:10px 0;}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-title">⛳ Tee Time Alerts</div></div>
+<div class="main">
+<div class="page-title">Tee Time Alerts</div>
+<div class="page-sub">Get a push notification when a tee time opens up at a ForeUp course.</div>
+
+<div class="card">
+  <div class="section-label">Phone Setup (one time)</div>
+  <div class="steps">
+    1. Install the free <b>ntfy</b> app (App Store / Google Play).<br>
+    2. Tap <b>+</b> and subscribe to this topic:<br>
+    <span class="topic-pill" id="topicPill">…</span><br>
+    3. <button class="btn btn-ghost btn-sm" onclick="testPush()">Send test notification</button> <span id="testMsg"></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-label">New Watch</div>
+  <div class="row">
+    <div class="field" style="flex:3;">
+      <label>ForeUp booking page URL</label>
+      <input id="urlInput" placeholder="https://foreupsoftware.com/index.php/booking/…" >
+    </div>
+    <div class="field" style="flex:0;justify-content:flex-end;">
+      <button class="btn" id="resolveBtn" onclick="resolveUrl()">Find course</button>
+    </div>
+  </div>
+  <div class="err" id="resolveErr"></div>
+
+  <div id="watchForm" style="display:none;">
+    <div class="row" style="margin-top:6px;">
+      <div class="field" style="flex:2;">
+        <label>Course / Schedule</label>
+        <select id="schedSel" onchange="fillClasses()"></select>
+      </div>
+      <div class="field" style="flex:2;">
+        <label>Rate class</label>
+        <select id="classSel"></select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Date</label><input type="date" id="dateInput"></div>
+      <div class="field"><label>Earliest</label><input type="time" id="earliestInput" value="07:00"></div>
+      <div class="field"><label>Latest</label><input type="time" id="latestInput" value="15:00"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Spots needed</label>
+        <select id="spotsSel"><option value="1">1+</option><option value="2">2+</option><option value="3">3+</option><option value="4" selected>4</option></select>
+      </div>
+      <div class="field"><label>Holes</label>
+        <select id="holesSel"><option value="any">Any</option><option value="18">18</option><option value="9">9</option></select>
+      </div>
+      <div class="field" style="flex:0;justify-content:flex-end;">
+        <button class="btn" onclick="saveWatch()">Start watching</button>
+      </div>
+    </div>
+    <div class="hint" id="bookingWindowHint"></div>
+    <div class="ok" id="saveMsg"></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-label">Active Watches</div>
+  <div id="watchList"><div class="empty">Loading…</div></div>
+</div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, remove, push } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const PROXY = localStorage.teetimeProxy || 'https://teetime-alerts-production.up.railway.app';
+const NTFY_TOPIC = 'gyou-teetimes-zr84kq';
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
+  authDomain: "giesener-bets.firebaseapp.com",
+  databaseURL: "https://giesener-bets-default-rtdb.firebaseio.com",
+  projectId: "giesener-bets",
+  storageBucket: "giesener-bets.firebasestorage.app",
+  messagingSenderId: "728665249382",
+  appId: "1:728665249382:web:ec1635941b04d3aba7ffa7"
+};
+
+const db = getDatabase(initializeApp(FIREBASE_CONFIG));
+document.getElementById('topicPill').textContent = 'ntfy.sh/' + NTFY_TOPIC;
+
+let resolved = null;
+
+window.testPush = async function() {
+  const el = document.getElementById('testMsg');
+  el.textContent = 'Sending…';
+  try {
+    const r = await fetch(PROXY + '/api/test-push', { method: 'POST' });
+    el.textContent = r.ok ? '✓ Sent — check your phone' : 'Failed to send';
+  } catch(e) { el.textContent = 'Server unreachable'; }
+};
+
+window.resolveUrl = async function() {
+  const url = document.getElementById('urlInput').value.trim();
+  const errEl = document.getElementById('resolveErr');
+  const btn = document.getElementById('resolveBtn');
+  errEl.textContent = '';
+  if (!url) { errEl.textContent = 'Paste a booking URL first.'; return; }
+  btn.disabled = true; btn.textContent = 'Looking up…';
+  try {
+    const r = await fetch(PROXY + '/api/resolve?url=' + encodeURIComponent(url));
+    const data = await r.json();
+    if (data.error) { errEl.textContent = data.error; return; }
+    resolved = data;
+    const schedSel = document.getElementById('schedSel');
+    schedSel.innerHTML = data.schedules.map(s =>
+      `<option value="${s.scheduleId}">${data.courseName} — ${s.title}</option>`).join('');
+    fillClasses();
+    const dateInput = document.getElementById('dateInput');
+    const today = new Date();
+    dateInput.min = today.toISOString().slice(0,10);
+    dateInput.value = new Date(today.getTime() + 86400000 * 5).toISOString().slice(0,10);
+    document.getElementById('watchForm').style.display = 'block';
+  } catch(e) {
+    errEl.textContent = 'Could not reach the alert server.';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Find course';
+  }
+};
+
+window.fillClasses = function() {
+  const schedId = document.getElementById('schedSel').value;
+  const sched = resolved.schedules.find(s => s.scheduleId === schedId);
+  const classSel = document.getElementById('classSel');
+  const classes = sched?.bookingClasses || [];
+  classSel.innerHTML = classes.length
+    ? classes.map(c => `<option value="${c.id}">${c.name || 'Standard'}</option>`).join('')
+    : '<option value="">Standard</option>';
+  const days = classes[0]?.daysOut || sched?.daysOut;
+  document.getElementById('bookingWindowHint').textContent =
+    days ? `This course opens bookings ${days} days out. You can watch a date beyond that — alerts start once times appear.` : '';
+};
+
+window.saveWatch = async function() {
+  const schedId = document.getElementById('schedSel').value;
+  const sched = resolved.schedules.find(s => s.scheduleId === schedId);
+  const classSel = document.getElementById('classSel');
+  const w = {
+    courseId: resolved.courseId,
+    courseName: resolved.courseName,
+    scheduleId: schedId,
+    scheduleName: sched?.title || '',
+    bookingClassId: classSel.value || null,
+    bookingClassName: classSel.selectedOptions[0]?.textContent || '',
+    bookingUrl: resolved.bookingUrl,
+    timezone: sched?.timezone || resolved.timezone,
+    date: document.getElementById('dateInput').value,
+    earliest: document.getElementById('earliestInput').value,
+    latest: document.getElementById('latestInput').value,
+    minSpots: parseInt(document.getElementById('spotsSel').value, 10),
+    holes: document.getElementById('holesSel').value,
+    active: true,
+    status: 'watching',
+    created: Date.now(),
+    alertCount: 0
+  };
+  if (!w.date) { alert('Pick a date'); return; }
+  await set(push(ref(db, 'teetimes/watches')), w);
+  document.getElementById('saveMsg').textContent = '✓ Watching — you\'ll get a push when a matching time opens.';
+  setTimeout(() => document.getElementById('saveMsg').textContent = '', 4000);
+  fetch(PROXY + '/api/check', { method: 'POST' }).catch(()=>{});
+};
+
+function fmtDate(iso) {
+  const [y,m,d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m-1, d)).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', timeZone:'UTC' });
+}
+function fmt12(hhmm) {
+  let [h,m] = hhmm.split(':').map(Number);
+  const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ap}`;
+}
+function ago(ts) {
+  if (!ts) return 'never';
+  const s = Math.floor((Date.now() - ts)/1000);
+  if (s < 90) return 'just now';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
+}
+
+window.togglePause = (id, active) => update(ref(db, 'teetimes/watches/' + id), { active: !active, status: active ? 'paused' : 'watching' });
+window.deleteWatch = (id) => { if (confirm('Delete this watch?')) remove(ref(db, 'teetimes/watches/' + id)); };
+
+onValue(ref(db, 'teetimes/watches'), snap => {
+  const watches = snap.val() || {};
+  const el = document.getElementById('watchList');
+  const entries = Object.entries(watches).sort((a,b) => (a[1].date||'').localeCompare(b[1].date||''));
+  if (!entries.length) { el.innerHTML = '<div class="empty">No watches yet — add one above.</div>'; return; }
+  el.innerHTML = entries.map(([id, w]) => {
+    const st = w.status === 'expired' ? 'expired' : (w.active ? 'watching' : 'paused');
+    const stLabel = { watching:'Watching', paused:'Paused', expired:'Expired' }[st];
+    return `<div class="watch">
+      <div>
+        <div class="watch-course">${w.courseName}${w.scheduleName ? ' — ' + w.scheduleName : ''}</div>
+        <div class="watch-meta">
+          ${fmtDate(w.date)} · ${fmt12(w.earliest)}–${fmt12(w.latest)} · ${w.minSpots}+ spots · ${w.holes === 'any' ? 'any holes' : w.holes + ' holes'}<br>
+          Checked ${ago(w.lastChecked)} · ${w.matchCount ?? 0} open now · ${w.alertCount || 0} alert${(w.alertCount||0) === 1 ? '' : 's'} sent
+          ${w.lastError ? '<br><span style="color:#c62828;">Error: ' + w.lastError + '</span>' : ''}
+        </div>
+        <span class="watch-status st-${st}">${stLabel}</span>
+      </div>
+      <div class="watch-actions">
+        <a class="btn btn-ghost btn-sm" href="${w.bookingUrl}" target="_blank" style="text-decoration:none;">Book ↗</a>
+        ${st !== 'expired' ? `<button class="btn btn-ghost btn-sm" onclick="togglePause('${id}', ${w.active})">${w.active ? 'Pause' : 'Resume'}</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteWatch('${id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+});
+</script>
+</body>
+</html>
