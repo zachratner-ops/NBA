@@ -39,6 +39,7 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
 .st-watching{background:#f0faf0;color:#2e7d32;}
 .st-paused{background:#f5f5f3;color:#888;}
 .st-expired{background:#fbeaea;color:#c62828;}
+.st-booked{background:#2e7d32;color:#fff;}
 .watch-actions{display:flex;gap:6px;align-items:flex-start;}
 .steps{font-size:13px;line-height:1.8;color:#444;}
 .steps b{color:#1a1a1a;}
@@ -97,10 +98,23 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
       <div class="field"><label>Holes</label>
         <select id="holesSel"><option value="any">Any</option><option value="18">18</option><option value="9">9</option></select>
       </div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:2;"><label>If a time opens</label>
+        <select id="modeSel" onchange="document.getElementById('maxFeeField').style.display = this.value === 'auto' ? 'flex' : 'none'">
+          <option value="alert">Notify me</option>
+          <option value="confirm">Notify me with a Book button</option>
+          <option value="auto">Book it automatically</option>
+        </select>
+      </div>
+      <div class="field" id="maxFeeField" style="display:none;"><label>Max $/player</label>
+        <input type="number" id="maxFeeInput" placeholder="no limit" min="0">
+      </div>
       <div class="field" style="flex:0;justify-content:flex-end;">
         <button class="btn" onclick="saveWatch()">Start watching</button>
       </div>
     </div>
+    <div class="hint" id="modeHint" style="margin-bottom:6px;">Auto-book grabs the earliest matching time for the number of spots selected, then sends a confirmation push.</div>
     <div class="hint" id="bookingWindowHint"></div>
     <div class="ok" id="saveMsg"></div>
   </div>
@@ -201,6 +215,8 @@ window.saveWatch = async function() {
     latest: document.getElementById('latestInput').value,
     minSpots: parseInt(document.getElementById('spotsSel').value, 10),
     holes: document.getElementById('holesSel').value,
+    bookMode: document.getElementById('modeSel').value,
+    maxFee: parseInt(document.getElementById('maxFeeInput').value, 10) || null,
     active: true,
     status: 'watching',
     created: Date.now(),
@@ -239,21 +255,24 @@ onValue(ref(db, 'teetimes/watches'), snap => {
   const entries = Object.entries(watches).sort((a,b) => (a[1].date||'').localeCompare(b[1].date||''));
   if (!entries.length) { el.innerHTML = '<div class="empty">No watches yet — add one above.</div>'; return; }
   el.innerHTML = entries.map(([id, w]) => {
-    const st = w.status === 'expired' ? 'expired' : (w.active ? 'watching' : 'paused');
-    const stLabel = { watching:'Watching', paused:'Paused', expired:'Expired' }[st];
+    const st = w.status === 'booked' ? 'booked' : (w.status === 'expired' ? 'expired' : (w.active ? 'watching' : 'paused'));
+    const stLabel = { watching:'Watching', paused:'Paused', expired:'Expired', booked:'Booked ✓' }[st];
+    const modeLabel = { alert:'notify', confirm:'tap-to-book', auto:'auto-book' }[w.bookMode || 'alert'];
     return `<div class="watch">
       <div>
         <div class="watch-course">${w.courseName}${w.scheduleName ? ' — ' + w.scheduleName : ''}</div>
         <div class="watch-meta">
-          ${fmtDate(w.date)} · ${fmt12(w.earliest)}–${fmt12(w.latest)} · ${w.minSpots}+ spots · ${w.holes === 'any' ? 'any holes' : w.holes + ' holes'}<br>
-          Checked ${ago(w.lastChecked)} · ${w.matchCount ?? 0} open now · ${w.alertCount || 0} alert${(w.alertCount||0) === 1 ? '' : 's'} sent
+          ${fmtDate(w.date)} · ${fmt12(w.earliest)}–${fmt12(w.latest)} · ${w.minSpots}+ spots · ${w.holes === 'any' ? 'any holes' : w.holes + ' holes'} · ${modeLabel}${w.maxFee ? ' ≤$' + w.maxFee : ''}<br>
+          ${st === 'booked'
+            ? `<b>Booked ${fmt12(w.bookedTime.slice(11,16))} for ${w.bookedPlayers} player${w.bookedPlayers === 1 ? '' : 's'}</b>${w.confirmationId ? ' · conf ' + w.confirmationId : ''}`
+            : `Checked ${ago(w.lastChecked)} · ${w.matchCount ?? 0} open now · ${w.alertCount || 0} alert${(w.alertCount||0) === 1 ? '' : 's'} sent`}
           ${w.lastError ? '<br><span style="color:#c62828;">Error: ' + w.lastError + '</span>' : ''}
         </div>
         <span class="watch-status st-${st}">${stLabel}</span>
       </div>
       <div class="watch-actions">
         <a class="btn btn-ghost btn-sm" href="${w.bookingUrl}" target="_blank" style="text-decoration:none;">Book ↗</a>
-        ${st !== 'expired' ? `<button class="btn btn-ghost btn-sm" onclick="togglePause('${id}', ${w.active})">${w.active ? 'Pause' : 'Resume'}</button>` : ''}
+        ${st !== 'expired' && st !== 'booked' ? `<button class="btn btn-ghost btn-sm" onclick="togglePause('${id}', ${w.active})">${w.active ? 'Pause' : 'Resume'}</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="deleteWatch('${id}')">Delete</button>
       </div>
     </div>`;
