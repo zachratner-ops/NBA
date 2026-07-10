@@ -55,6 +55,17 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
 <div class="page-title">Tee Time Alerts</div>
 <div class="page-sub">Get a push notification when a tee time opens up at a ForeUp course.</div>
 
+<div class="card" id="codeCard" style="display:none;border:2px solid #2e7d32;">
+  <div class="section-label">Finish Booking — Enter Code</div>
+  <div class="hint">Your tee time is on hold. ForeUp emailed a booking code to your account email — enter it below within ~5 minutes.</div>
+  <div class="row" style="margin-top:10px;">
+    <div class="field"><label>Booking code</label><input id="codeInput" inputmode="numeric" autocomplete="one-time-code" placeholder="123456"></div>
+    <div class="field" style="flex:0;justify-content:flex-end;"><button class="btn" id="codeBtn" onclick="submitCode()">Complete booking</button></div>
+  </div>
+  <div class="err" id="codeErr"></div>
+  <div class="ok" id="codeOk"></div>
+</div>
+
 <div class="card">
   <div class="section-label">Phone Setup (one time)</div>
   <div class="steps">
@@ -164,6 +175,41 @@ const db = getDatabase(initializeApp(FIREBASE_CONFIG));
 document.getElementById('topicPill').textContent = 'ntfy.sh/' + NTFY_TOPIC;
 
 let resolved = null;
+
+// ── Email-code booking completion (?enterCode=<watchId>) ──────────
+const enterCodeId = new URLSearchParams(location.search).get('enterCode');
+if (enterCodeId) {
+  document.getElementById('codeCard').style.display = 'block';
+  setTimeout(() => document.getElementById('codeInput').focus(), 300);
+}
+
+window.submitCode = async function() {
+  const code = document.getElementById('codeInput').value.trim();
+  const errEl = document.getElementById('codeErr');
+  const okEl = document.getElementById('codeOk');
+  const btn = document.getElementById('codeBtn');
+  errEl.textContent = ''; okEl.textContent = '';
+  if (!code) { errEl.textContent = 'Enter the code from your email.'; return; }
+  btn.disabled = true; btn.textContent = 'Booking…';
+  try {
+    const r = await fetch(PROXY + '/api/complete-booking', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ watchId: enterCodeId, code })
+    });
+    const data = await r.json();
+    if (data.booked) {
+      okEl.textContent = '✓ Booked!' + (data.confirmationId ? ' Confirmation: ' + data.confirmationId : '');
+      btn.textContent = 'Booked ✓';
+    } else {
+      errEl.textContent = data.error || 'Booking failed.';
+      btn.disabled = false; btn.textContent = 'Complete booking';
+    }
+  } catch(e) {
+    errEl.textContent = 'Could not reach the alert server.';
+    btn.disabled = false; btn.textContent = 'Complete booking';
+  }
+};
 
 window.testPush = async function() {
   const el = document.getElementById('testMsg');
@@ -290,6 +336,7 @@ window.saveWatch = async function() {
     latest: document.getElementById('latestInput').value,
     minSpots: parseInt(document.getElementById('spotsSel').value, 10),
     holes: document.getElementById('holesSel').value,
+    needsCode: sched?.needsBookingCode || false,
     bookMode: document.getElementById('modeSel').value,
     maxFee: parseInt(document.getElementById('maxFeeInput').value, 10) || null,
     active: true,
@@ -309,10 +356,12 @@ window.saveWatch = async function() {
 };
 
 function fmtDate(iso) {
+  if (!iso) return '—';
   const [y,m,d] = iso.split('-').map(Number);
   return new Date(Date.UTC(y, m-1, d)).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', timeZone:'UTC' });
 }
 function fmt12(hhmm) {
+  if (!hhmm) return '—';
   let [h,m] = hhmm.split(':').map(Number);
   const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
   return `${h}:${String(m).padStart(2,'0')} ${ap}`;
@@ -331,7 +380,11 @@ window.deleteWatch = (id) => { if (confirm('Delete this watch?')) remove(ref(db,
 onValue(ref(db, 'teetimes/watches'), snap => {
   const watches = snap.val() || {};
   const el = document.getElementById('watchList');
-  const entries = Object.entries(watches).sort((a,b) => (a[1].date||'').localeCompare(b[1].date||''));
+  // Skip malformed/zombie records (a valid watch always has a date) so one bad
+  // entry can never crash the whole list render
+  const entries = Object.entries(watches)
+    .filter(([, w]) => w && w.date)
+    .sort((a,b) => (a[1].date||'').localeCompare(b[1].date||''));
   if (!entries.length) { el.innerHTML = '<div class="empty">No watches yet — add one above.</div>'; return; }
   el.innerHTML = entries.map(([id, w]) => {
     const st = w.status === 'booked' ? 'booked' : (w.status === 'expired' ? 'expired' : (w.active ? 'watching' : 'paused'));
