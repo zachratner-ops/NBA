@@ -130,10 +130,18 @@ input:focus,select:focus{outline:2px solid #1a1a1a;border-color:transparent;}
     </div>
     <div class="row">
       <div class="field" style="flex:2;"><label>If a time opens</label>
-        <select id="modeSel" onchange="document.getElementById('maxFeeField').style.display = this.value === 'auto' ? 'flex' : 'none'">
+        <select id="modeSel" onchange="modeChanged()">
           <option value="alert">Notify me</option>
           <option value="confirm">Notify me with a Book button</option>
           <option value="auto">Book it automatically</option>
+        </select>
+      </div>
+      <div class="field" id="bookPlayersField" style="display:none;"><label>Book for</label>
+        <select id="bookPlayersSel">
+          <option value="1">1 player</option>
+          <option value="2">2 players</option>
+          <option value="3">3 players</option>
+          <option value="4" selected>4 players</option>
         </select>
       </div>
       <div class="field" id="maxFeeField" style="display:none;"><label>Max $/player</label>
@@ -256,6 +264,12 @@ window.resolveUrl = async function() {
   }
 };
 
+window.modeChanged = function() {
+  const mode = document.getElementById('modeSel').value;
+  document.getElementById('bookPlayersField').style.display = mode !== 'alert' ? 'flex' : 'none';
+  document.getElementById('maxFeeField').style.display = mode === 'auto' ? 'flex' : 'none';
+};
+
 // ── Saved courses ──────────────────────────────────────────────────
 let savedCourses = {};
 onValue(ref(db, 'teetimes/courses'), snap => {
@@ -338,6 +352,7 @@ window.saveWatch = async function() {
     holes: document.getElementById('holesSel').value,
     needsCode: sched?.needsBookingCode || false,
     bookMode: document.getElementById('modeSel').value,
+    bookPlayers: parseInt(document.getElementById('bookPlayersSel').value, 10) || 4,
     maxFee: parseInt(document.getElementById('maxFeeInput').value, 10) || null,
     active: true,
     status: 'watching',
@@ -389,7 +404,8 @@ onValue(ref(db, 'teetimes/watches'), snap => {
   el.innerHTML = entries.map(([id, w]) => {
     const st = w.status === 'booked' ? 'booked' : (w.status === 'expired' ? 'expired' : (w.active ? 'watching' : 'paused'));
     const stLabel = { watching:'Watching', paused:'Paused', expired:'Expired', booked:'Booked ✓' }[st];
-    const modeLabel = { alert:'notify', confirm:'tap-to-book', auto:'auto-book' }[w.bookMode || 'alert'];
+    const modeLabel = ({ alert:'notify', confirm:'tap-to-book', auto:'auto-book' }[w.bookMode || 'alert'])
+      + (w.bookMode && w.bookMode !== 'alert' ? ` for ${w.bookPlayers || w.minSpots}` : '');
     return `<div class="watch">
       <div>
         <div class="watch-course">${w.courseName}${w.scheduleName ? ' — ' + w.scheduleName : ''}</div>
