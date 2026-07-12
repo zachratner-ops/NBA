@@ -287,6 +287,39 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .match-card-score{font-size:18px;font-weight:800;text-align:center;white-space:nowrap;flex-shrink:0;}
 .match-card-footer{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-top:8px;padding-top:6px;border-top:0.5px solid #f0f0f0;}
 
+/* Stats tab */
+.stats-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat-tile{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:14px 16px;}
+.stat-tile-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
+.stat-tile-val{font-size:24px;font-weight:800;color:#1a1a1a;line-height:1;}
+.stat-tile-sub{font-size:11px;color:#aaa;margin-top:5px;line-height:1.4;}
+.stats-supers{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.super-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:12px 16px;display:flex;align-items:center;gap:12px;}
+.super-icon{font-size:22px;flex-shrink:0;}
+.super-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:3px;}
+.super-main{font-size:14px;font-weight:700;color:#1a1a1a;line-height:1.3;}
+.super-sub{font-size:11px;color:#aaa;margin-top:2px;}
+.sankey-card{background:#fff;border-radius:14px;border:0.5px solid #e0e0e0;margin-bottom:14px;overflow:hidden;}
+.sankey-head{padding:14px 16px 4px;}
+.sankey-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#555;}
+.sankey-sub{font-size:11px;color:#aaa;margin-top:3px;}
+.sankey-scroll{overflow-x:auto;padding:8px 8px 14px;}
+.sankey-swipe{display:none;font-size:10px;color:#bbb;text-align:right;padding:6px 16px 0;}
+.sankey-scroll svg{display:block;min-width:560px;width:100%;height:auto;}
+.sk-link{opacity:.45;transition:opacity .15s;cursor:pointer;}
+.sk-link:hover{opacity:.85;}
+.flow-table{padding:0 16px 14px;}
+.flow-table summary{font-size:11px;font-weight:700;color:#888;cursor:pointer;padding:6px 0;}
+.flow-rows{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;padding-top:6px;}
+.flow-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;border-bottom:0.5px solid #f5f5f3;}
+.flow-amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;}
+.team-value-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
+.tv-card{background:#fff;border-radius:12px;border:0.5px solid #e0e0e0;padding:12px 16px;}
+.tv-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#888;margin-bottom:8px;}
+.tv-row{display:flex;align-items:center;gap:7px;font-size:12px;padding:4px 0;border-bottom:0.5px solid #f5f5f3;}
+.tv-row:last-child{border-bottom:none;}
+.tv-amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;}
+
 @media(max-width:600px){
   .match-table-wrap{display:none;}
   .match-cards{display:block;}
@@ -296,6 +329,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   .tracker-tabs{flex-wrap:wrap;}
   .tracker-tab{flex:1;padding:8px 6px;font-size:11px;text-align:center;white-space:nowrap;}
   .tracker-tabs-refresh{width:100%;margin-left:0!important;border-top:0.5px solid #f0f0f0;padding:8px 0 4px;justify-content:flex-end;}
+  .stats-tiles{grid-template-columns:1fr 1fr;}
+  .stats-supers{grid-template-columns:1fr;}
+  .flow-rows{grid-template-columns:1fr;}
+  .team-value-grid{grid-template-columns:1fr;}
+  .sankey-swipe{display:block;}
 }
 </style>
 <link rel="stylesheet" href="site.css">
@@ -501,6 +539,7 @@ let trackerRefreshing = false;
 let autoRefreshInterval = null;
 let autoRefreshMs = null;
 let lbSort = 'net'; // 'net' | 'draft'
+let sankeyMode = 'net'; // 'net' | 'gross' — stats tab cash-flow diagram
 let matchSections = { completed: false, tomorrow: true, upcoming: true };
 const WC_GROUPS_MAP = {
   'Mexico':'A','South Africa':'A','South Korea':'A','Czechia':'A',
@@ -967,6 +1006,187 @@ function computeFinancials(matches, teamOwners, participants) {
 }
 function fmtMoney(n){return n===0?'$0':(n>0?'+$':'-$')+Math.abs(n).toLocaleString();}
 
+// ── Cash-flow graph (who pays whom) ────────────────────────────────
+// Mirrors computeFinancials exactly, but tracks money as directed
+// payer→payee flows instead of per-owner nets. Also attributes each
+// dollar to the team that produced it, and finds the biggest match.
+const POT_KEY = '__POT__';
+function computeCashFlows(matches, teamOwners, participants) {
+  const n = participants.length;
+  const flow = {}; // payer → payee → gross $
+  const add = (from, to, amt) => {
+    if (!amt || from === to) return;
+    (flow[from] = flow[from] || {})[to] = (flow[from][to] || 0) + amt;
+  };
+  const teamNet = {}; // team → net $ it has generated for its owner
+  const tAdd = (t, amt) => { if (t) teamNet[t] = (teamNet[t] || 0) + amt; };
+  let biggest = null; // {m, moved}
+  let grossTotal = 0, goalDollars = 0, resultDollars = 0, decidedCount = 0;
+  Object.values(matches||{}).filter(m=>m.status==='final'||m.status==='live').forEach(m => {
+    const ho = teamOwners[m.homeTeam], ao = teamOwners[m.awayTeam];
+    const hs = m.homeScore||0, as = m.awayScore||0;
+    let moved = 0;
+    // Goals: every other owner pays $1/goal (final + live, matching leaderboard)
+    if (ho !== undefined && hs > 0) {
+      participants.forEach(p => { if (p !== ho) add(p, ho, hs); });
+      tAdd(m.homeTeam, hs*(n-1)); moved += hs*(n-1); goalDollars += hs*(n-1);
+    }
+    if (ao !== undefined && as > 0) {
+      participants.forEach(p => { if (p !== ao) add(p, ao, as); });
+      tAdd(m.awayTeam, as*(n-1)); moved += as*(n-1); goalDollars += as*(n-1);
+    }
+    // Result money + tie pot: settled matches only
+    if (m.status !== 'live') {
+      const isTie = (m.stage==='group'&&hs===as)||(m.stage!=='group'&&m.isPenaltyShootout);
+      if (isTie) {
+        if (ho !== undefined) { add(ho, POT_KEY, 10); tAdd(m.homeTeam, -10); moved += 10; }
+        if (ao !== undefined) { add(ao, POT_KEY, 10); tAdd(m.awayTeam, -10); moved += 10; }
+      } else if (ho !== undefined && ao !== undefined) {
+        const homeWon = hs > as;
+        const wTeam = homeWon ? m.homeTeam : m.awayTeam, lTeam = homeWon ? m.awayTeam : m.homeTeam;
+        tAdd(wTeam, 10); tAdd(lTeam, -10);
+        if (ho !== ao) { add(homeWon?ao:ho, homeWon?ho:ao, 10); moved += 10; decidedCount++; }
+      }
+    }
+    grossTotal += moved;
+    if (moved > 0 && (!biggest || moved > biggest.moved)) biggest = { m, moved };
+  });
+  return { flow, teamNet, biggest, grossTotal, goalDollars, resultDollars: decidedCount*10, decidedCount };
+}
+
+// Collapse A→B vs B→A gross flows into single net directed links
+function netFlows(flow) {
+  const links = [], seen = new Set();
+  Object.keys(flow).forEach(a => Object.keys(flow[a]).forEach(b => {
+    const key = [a,b].sort().join('|');
+    if (seen.has(key)) return;
+    seen.add(key);
+    const net = (flow[a]?.[b]||0) - (flow[b]?.[a]||0);
+    if (net > 0) links.push({ from:a, to:b, value:net });
+    else if (net < 0) links.push({ from:b, to:a, value:-net });
+  }));
+  return links.sort((x,y) => y.value - x.value);
+}
+
+// Hand-rolled two-column sankey. links: [{from,to,value}], nodeColor/nodeLabel: fn(key)
+function sankeySvg(links, nodeColor, nodeLabel, unit = 'net') {
+  if (!links.length) return '';
+  const total = links.reduce((s,l) => s+l.value, 0);
+  const outSum = {}, inSum = {};
+  links.forEach(l => { outSum[l.from]=(outSum[l.from]||0)+l.value; inSum[l.to]=(inSum[l.to]||0)+l.value; });
+  const left = Object.keys(outSum).sort((a,b)=>outSum[b]-outSum[a]);
+  const right = Object.keys(inSum).sort((a,b)=>inSum[b]-inSum[a]);
+  const W = 680, GAP = 14, NW = 14, LX = 148, RX = W-148-NW, PADT = 26;
+  const H = Math.max(280, Math.min(560, Math.max(left.length,right.length)*44 + 80));
+  const plotH = H - PADT - 12;
+  const scale = Math.min(
+    (plotH - (left.length-1)*GAP) / total,
+    (plotH - (right.length-1)*GAP) / total
+  );
+  const nodeY = (keys, sums) => {
+    const pos = {}; let y = PADT;
+    keys.forEach(k => { const h = sums[k]*scale; pos[k] = { y, h }; y += h + GAP; });
+    return pos;
+  };
+  const lPos = nodeY(left, outSum), rPos = nodeY(right, inSum);
+  const rIdx = {}, lIdx = {};
+  right.forEach((k,i)=>rIdx[k]=i); left.forEach((k,i)=>lIdx[k]=i);
+  // Slice offsets: each node's ribbons ordered by counterpart position to reduce crossings
+  const srcOff = {}, tgtOff = {};
+  const bySrc = [...links].sort((a,b)=>(lIdx[a.from]-lIdx[b.from])||(rIdx[a.to]-rIdx[b.to]));
+  const byTgt = [...links].sort((a,b)=>(rIdx[a.to]-rIdx[b.to])||(lIdx[a.from]-lIdx[b.from]));
+  const geom = new Map();
+  bySrc.forEach(l => {
+    const o = srcOff[l.from]||0;
+    geom.set(l, { sy: lPos[l.from].y + o });
+    srcOff[l.from] = o + l.value*scale;
+  });
+  byTgt.forEach(l => {
+    const o = tgtOff[l.to]||0;
+    geom.get(l).ty = rPos[l.to].y + o;
+    tgtOff[l.to] = o + l.value*scale;
+  });
+  const defs = [], paths = [];
+  links.forEach((l,i) => {
+    const { sy, ty } = geom.get(l), h = l.value*scale;
+    const x0 = LX+NW, x1 = RX, mx = (x0+x1)/2;
+    defs.push(`<linearGradient id="skg${i}" gradientUnits="userSpaceOnUse" x1="${x0}" x2="${x1}" y1="0" y2="0">
+      <stop offset="0" stop-color="${nodeColor(l.from)}"/><stop offset="1" stop-color="${nodeColor(l.to)}"/></linearGradient>`);
+    paths.push(`<path class="sk-link" fill="url(#skg${i})" d="M${x0},${sy.toFixed(1)} C${mx},${sy.toFixed(1)} ${mx},${ty.toFixed(1)} ${x1},${ty.toFixed(1)} L${x1},${(ty+h).toFixed(1)} C${mx},${(ty+h).toFixed(1)} ${mx},${(sy+h).toFixed(1)} ${x0},${(sy+h).toFixed(1)} Z">
+      <title>${nodeLabel(l.from)} → ${nodeLabel(l.to)} · $${l.value.toLocaleString()} ${unit}</title></path>`);
+  });
+  const nodesSvg = (keys, pos, sums, isLeft) => keys.map(k => {
+    const { y, h } = pos[k];
+    const cx = isLeft ? LX : RX, tx = isLeft ? LX-8 : RX+NW+8, anchor = isLeft ? 'end' : 'start';
+    const cy = y + h/2, amt = `${isLeft?'−':'+'}$${sums[k].toLocaleString()}`;
+    const rect = `<rect x="${cx}" y="${y.toFixed(1)}" width="${NW}" height="${Math.max(h,2).toFixed(1)}" rx="3" fill="${nodeColor(k)}"><title>${nodeLabel(k)} · ${isLeft?'pays':'collects'} $${sums[k].toLocaleString()} ${unit}</title></rect>`;
+    // Short nodes get one line so adjacent labels can't collide
+    if (h < 30) return rect + `<text x="${tx}" y="${(cy+4).toFixed(1)}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="#1a1a1a">${nodeLabel(k)} <tspan font-size="10" font-weight="600" fill="#999">${amt}</tspan></text>`;
+    return rect + `<text x="${tx}" y="${(cy-1).toFixed(1)}" text-anchor="${anchor}" font-size="12" font-weight="700" fill="#1a1a1a">${nodeLabel(k)}</text>
+      <text x="${tx}" y="${(cy+11).toFixed(1)}" text-anchor="${anchor}" font-size="10" font-weight="600" fill="#999">${amt}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Net cash flow between owners">
+    <text x="${LX+NW}" y="14" text-anchor="end" font-size="9" font-weight="800" letter-spacing="1" fill="#bbb">PAYS</text>
+    <text x="${RX}" y="14" font-size="9" font-weight="800" letter-spacing="1" fill="#bbb">COLLECTS</text>
+    <defs>${defs.join('')}</defs>${paths.join('')}
+    ${nodesSvg(left, lPos, outSum, true)}${nodesSvg(right, rPos, inSum, false)}
+  </svg>`;
+}
+
+// Three-column tie-pot sankey: contributors → pot → 50/50 recipients.
+// contribs: [{name,value,color}] sorted desc · most/least: {label,color,clinched,kind}
+function tiePotSvg(contribs, potTotal, most, least) {
+  if (!potTotal || !contribs.length) return '';
+  const half = potTotal / 2;
+  const W = 680, NW = 14, GAP = 12, PADT = 24, LX = 148, MX = W/2 - NW/2, RX = W - 148 - NW;
+  const H = Math.max(200, Math.min(420, contribs.length * 36 + 70));
+  const plotH = H - PADT - 14;
+  const scale = Math.min((plotH - (contribs.length-1)*GAP) / potTotal, (plotH - GAP*2) / potTotal);
+  let y = PADT;
+  const lpos = contribs.map(c => { const h = c.value*scale, p = {...c, y, h}; y += h + GAP; return p; });
+  const potH = potTotal*scale, potY = PADT + (plotH - potH)/2;
+  const rH = half*scale, rGap = GAP*2, rY0 = PADT + (plotH - (rH*2 + rGap))/2, rY1 = rY0 + rH + rGap;
+  const GOLD = '#b8860b';
+  const defs = [], paths = [];
+  const ribbon = (x0, sy, x1, ty, h, fill, op, title) => {
+    const mx = (x0+x1)/2;
+    return `<path class="sk-link" style="opacity:${op}" fill="${fill}" d="M${x0},${sy.toFixed(1)} C${mx},${sy.toFixed(1)} ${mx},${ty.toFixed(1)} ${x1},${ty.toFixed(1)} L${x1},${(ty+h).toFixed(1)} C${mx},${(ty+h).toFixed(1)} ${mx},${(sy+h).toFixed(1)} ${x0},${(sy+h).toFixed(1)} Z"><title>${title}</title></path>`;
+  };
+  // contributors → pot (stacked into pot in the same order)
+  let off = potY;
+  lpos.forEach((c,i) => {
+    defs.push(`<linearGradient id="tpg${i}" gradientUnits="userSpaceOnUse" x1="${LX+NW}" x2="${MX}" y1="0" y2="0"><stop offset="0" stop-color="${c.color}"/><stop offset="1" stop-color="${GOLD}"/></linearGradient>`);
+    paths.push(ribbon(LX+NW, c.y, MX, off, c.h, `url(#tpg${i})`, .45, `${c.name} → Tie Pot · $${c.value.toLocaleString()}`));
+    off += c.h;
+  });
+  // pot halves → recipients
+  [[most, potY, rY0, 'tpo0'], [least, potY + potH/2, rY1, 'tpo1']].forEach(([r, sy, ty, id]) => {
+    defs.push(`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${MX+NW}" x2="${RX}" y1="0" y2="0"><stop offset="0" stop-color="${GOLD}"/><stop offset="1" stop-color="${r.color}"/></linearGradient>`);
+    paths.push(ribbon(MX+NW, sy, RX, ty, potH/2, `url(#${id})`, r.clinched ? .45 : .18,
+      `Tie Pot → ${r.label} · $${half.toLocaleString()} (${r.clinched ? 'clinched' : 'projected — ' + r.kind + ' ties leader'})`));
+  });
+  // left labels
+  const lLabels = lpos.map(c => {
+    const cy = c.y + c.h/2;
+    return `<text x="${LX-8}" y="${(cy+4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" fill="#1a1a1a">${c.name} <tspan font-size="10" font-weight="600" fill="#999">−$${c.value.toLocaleString()}</tspan></text>`;
+  }).join('');
+  // right labels
+  const rLabel = (r, ny) => `<text x="${RX+NW+8}" y="${(ny + rH/2 - 1).toFixed(1)}" font-size="12" font-weight="700" fill="#1a1a1a">${r.label}</text>
+    <text x="${RX+NW+8}" y="${(ny + rH/2 + 11).toFixed(1)}" font-size="10" font-weight="600" fill="#999">${r.kind} ties · ${r.clinched ? '✓' : '~'}$${half.toLocaleString()}</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tie pot contributions and payouts">
+    <text x="${LX+NW}" y="14" text-anchor="end" font-size="9" font-weight="800" letter-spacing="1" fill="#bbb">PAYS IN</text>
+    <text x="${MX+NW/2}" y="${(potY-8).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="${GOLD}">POT $${potTotal.toLocaleString()}</text>
+    <text x="${RX}" y="14" font-size="9" font-weight="800" letter-spacing="1" fill="#bbb">SPLITS 50/50</text>
+    <defs>${defs.join('')}</defs>${paths.join('')}
+    ${lpos.map(c => `<rect x="${LX}" y="${c.y.toFixed(1)}" width="${NW}" height="${Math.max(c.h,2).toFixed(1)}" rx="3" fill="${c.color}"><title>${c.name} · paid $${c.value.toLocaleString()} into the pot</title></rect>`).join('')}
+    <rect x="${MX}" y="${potY.toFixed(1)}" width="${NW}" height="${potH.toFixed(1)}" rx="3" fill="${GOLD}"><title>Tie Pot · $${potTotal.toLocaleString()} total</title></rect>
+    <line x1="${MX-6}" x2="${MX+NW+6}" y1="${(potY+potH/2).toFixed(1)}" y2="${(potY+potH/2).toFixed(1)}" stroke="#fff" stroke-width="2" stroke-dasharray="4 3"/>
+    <rect x="${RX}" y="${rY0.toFixed(1)}" width="${NW}" height="${Math.max(rH,2).toFixed(1)}" rx="3" fill="${most.color}" ${most.clinched?'':'opacity=".45"'}></rect>
+    <rect x="${RX}" y="${rY1.toFixed(1)}" width="${NW}" height="${Math.max(rH,2).toFixed(1)}" rx="3" fill="${least.color}" ${least.clinched?'':'opacity=".45"'}></rect>
+    ${lLabels}${rLabel(most, rY0)}${rLabel(least, rY1)}
+  </svg>`;
+}
+
 // ── SCENARIO ENGINE ─────────────────────────────────────────────────
 // Pure function: given the matches map, returns per-group, per-team verdicts.
 // status ∈ 'clinched' | 'advanced' | 'eliminated' | 'third' | 'contention'
@@ -1429,6 +1649,24 @@ function renderTracker() {
 
   // Tie pot
   const tpSorted=[...participants].sort((a,b)=>(fin.tieCount[b]||0)-(fin.tieCount[a]||0));
+  // Pot flow diagram: contributors → pot → 50/50 recipients (clinched solid, projected faded)
+  const mkRecip=(arr,clinched,tbLeaders,kind)=>{
+    if(!arr.length) return {label:'TBD',color:'#9aa0a8',clinched:false,kind};
+    if(arr.length===1) return {label:arr[0],color:color(arr[0]),clinched,kind};
+    if(tbLeaders.length===1) return {label:tbLeaders[0],color:color(tbLeaders[0]),clinched:false,kind};
+    return {label:`${arr.length} tied`,color:'#9aa0a8',clinched:false,kind};
+  };
+  const potContribs=participants.filter(p=>(fin.tiePotPaid[p]||0)>0)
+    .map(p=>({name:p,value:fin.tiePotPaid[p],color:color(p)}))
+    .sort((a,b)=>b.value-a.value);
+  const potFlowSvg=tiePotSvg(potContribs,fin.tiePotTotal,
+    mkRecip(mostTied,mostClinched,mostTbLeaders,'most'),
+    mkRecip(leastTied,leastClinched,leastTbLeaders,'fewest'));
+  const potFlowHtml=potFlowSvg?`
+    <div style="border-top:0.5px solid #f0f0f0;">
+      <div class="sankey-swipe">swipe to see payouts →</div>
+      <div class="sankey-scroll" style="padding-top:4px;">${potFlowSvg}</div>
+    </div>`:'';
   const tiepotHtml = `<div class="tiepot-card">
     <div class="tiepot-head">
       <div>
@@ -1467,6 +1705,7 @@ function renderTracker() {
       ${mostTied.length>1&&leastTied.length>1?'<br>':''}
       ${leastTied.length>1?`* Tiebreaker (Fewest): Most games played — ${leastTbLeaders.map(p=>`${p} (${fin.gamesPlayed[p]||0})`).join(', ')} leading`:''}
     </div>`:''}
+    ${potFlowHtml}
   </div>`;
 
   // Match tab — three sections: Today / Completed / Upcoming
@@ -1641,6 +1880,125 @@ function renderTracker() {
     </div>`;
   }).join('')}</div>`;
 
+  // ── Stats tab ─────────────────────────────────────────────────────
+  const cf = computeCashFlows(matches, teamOwners, participants);
+  // Clinched tie-pot payouts flow back out of the pot
+  participants.forEach(p=>{
+    const c=tiePotCreditFor(p);
+    if(c){(cf.flow[POT_KEY]=cf.flow[POT_KEY]||{})[p]=(cf.flow[POT_KEY][p]||0)+c;}
+  });
+  const netLinks = netFlows(cf.flow);
+  const grossLinks = [];
+  Object.keys(cf.flow).forEach(a=>Object.keys(cf.flow[a]).forEach(b=>grossLinks.push({from:a,to:b,value:cf.flow[a][b]})));
+  grossLinks.sort((x,y)=>y.value-x.value);
+  const flowLinks = sankeyMode==='gross' ? grossLinks : netLinks;
+  const nodeLabel = k=>k===POT_KEY?'Tie Pot':k;
+  const nodeColor = k=>k===POT_KEY?'#b8860b':color(k);
+  const totalGoals = participants.reduce((s,p)=>s+(fin.goalsByOwner[p]||0),0);
+  const settledCount = Object.values(matches).filter(m=>m.status==='final').length;
+  const TSHORT={'Bosnia-Herzegovina':'Bosnia','United States':'USA','Saudi Arabia':'S. Arabia','New Zealand':'N. Zealand','South Africa':'S. Africa','South Korea':'S. Korea','Congo DR':'Congo'};
+  let statsHtml;
+  if(!grossLinks.length){
+    statsHtml=`<div style="text-align:center;padding:60px 20px;color:#888;">
+      <div style="font-size:32px;margin-bottom:12px;">💸</div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No money has moved yet</div>
+      <div style="font-size:13px;color:#aaa;">Stats and the cash-flow diagram will appear once matches settle.</div>
+    </div>`;
+  } else {
+    const SL2={group:'Group Stage',r32:'Round of 32',r16:'Round of 16',qf:'Quarterfinal',sf:'Semifinal',third:'3rd Place',final:'Final'};
+    const tilesHtml=`<div class="stats-tiles">
+      <div class="stat-tile"><div class="stat-tile-label">💸 Cash in Motion</div><div class="stat-tile-val">$${cf.grossTotal.toLocaleString()}</div><div class="stat-tile-sub">gross $ changed hands · ${settledCount} matches settled</div></div>
+      <div class="stat-tile"><div class="stat-tile-label">⚽ Goal Money</div><div class="stat-tile-val">$${cf.goalDollars.toLocaleString()}</div><div class="stat-tile-sub">${totalGoals} goals · each moves $${participants.length-1}</div></div>
+      <div class="stat-tile"><div class="stat-tile-label">🏆 Result Money</div><div class="stat-tile-val">$${cf.resultDollars.toLocaleString()}</div><div class="stat-tile-sub">${cf.decidedCount} decided ${cf.decidedCount===1?'match':'matches'} · $10 each</div></div>
+      <div class="stat-tile"><div class="stat-tile-label">🏦 Tie Pot</div><div class="stat-tile-val">$${fin.tiePotTotal.toLocaleString()}</div><div class="stat-tile-sub">${fin.tiePotTotal/10} tie payments · $10 each</div></div>
+    </div>`;
+    const teamNetArr=Object.entries(cf.teamNet).filter(([t])=>teamOwners[t]!==undefined).sort((a,b)=>b[1]-a[1]);
+    const topTeam=teamNetArr[0], worstTeam=teamNetArr[teamNetArr.length-1];
+    const topFlow=netLinks.find(l=>l.from!==POT_KEY&&l.to!==POT_KEY);
+    const big=cf.biggest;
+    const superCard=(icon,label,main,sub)=>`<div class="super-card"><div class="super-icon">${icon}</div><div style="min-width:0;">
+      <div class="super-label">${label}</div><div class="super-main">${main}</div><div class="super-sub">${sub}</div></div></div>`;
+    const supersHtml=`<div class="stats-supers">
+      ${topTeam&&topTeam[1]>0?superCard('🐄','Cash Cow',`${flagImg(WC_FLAGS[topTeam[0]])} ${topTeam[0]}`,`${fmtMoney(topTeam[1])} for <span style="font-weight:700;color:${color(teamOwners[topTeam[0]])}">${teamOwners[topTeam[0]]}</span>`):''}
+      ${worstTeam&&worstTeam[1]<0?superCard('🕳️','Money Pit',`${flagImg(WC_FLAGS[worstTeam[0]])} ${worstTeam[0]}`,`${fmtMoney(worstTeam[1])} for <span style="font-weight:700;color:${color(teamOwners[worstTeam[0]])}">${teamOwners[worstTeam[0]]}</span>`):''}
+      ${big?superCard('💥','Biggest Match',`${big.m.homeTeam} ${big.m.homeScore??0}–${big.m.awayScore??0} ${big.m.awayTeam}${big.m.status==='live'?' <span style="font-size:9px;font-weight:800;color:#e65100;">● LIVE</span>':''}`,`$${big.moved.toLocaleString()} changed hands · ${SL2[big.m.stage]||big.m.stage||''}`):''}
+      ${topFlow?superCard('⚔️','One-Way Street',`<span style="color:${color(topFlow.from)}">${topFlow.from}</span> → <span style="color:${color(topFlow.to)}">${topFlow.to}</span>`,`$${topFlow.value.toLocaleString()} net — the biggest transfer in the pool`):''}
+    </div>`;
+    const potNote=(mostClinched||leastClinched)
+      ?`<div style="padding:0 16px 12px;font-size:10px;color:#aaa;">Includes clinched Tie Pot payouts: ${[mostClinched?`$${halfPot} → ${mostTied[0]} (most ties)`:'',leastClinched?`$${halfPot} → ${leastTied[0]} (fewest ties)`:''].filter(Boolean).join(' · ')}</div>`:'';
+    const isGross=sankeyMode==='gross';
+    const sankeyHtml=`<div class="sankey-card">
+      <div class="sankey-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div><div class="sankey-title">Cash Flow</div>
+        <div class="sankey-sub">${isGross
+          ?'Gross dollars, payer → collector · every flow shown separately, both directions · ribbon thickness = $'
+          :'Net dollars owed, payer → collector · pairwise flows netted against each other · ribbon thickness = $'}</div></div>
+        <div style="display:flex;gap:0;border:0.5px solid #e0e0e0;border-radius:8px;overflow:hidden;flex-shrink:0;">
+          <button onclick="window.setSankeyMode('net')" style="padding:5px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:${!isGross?'#1a1a1a':'#fff'};color:${!isGross?'#fff':'#888'};">Net</button>
+          <button onclick="window.setSankeyMode('gross')" style="padding:5px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;border-left:0.5px solid #e0e0e0;background:${isGross?'#1a1a1a':'#fff'};color:${isGross?'#fff':'#888'};">Gross</button>
+        </div>
+      </div>
+      <div class="sankey-swipe">swipe to see collectors →</div>
+      <div class="sankey-scroll">${sankeySvg(flowLinks,nodeColor,nodeLabel,isGross?'gross':'net')}</div>
+      ${potNote}
+      <details class="flow-table"><summary>All ${flowLinks.length} ${isGross?'gross':'net'} flows</summary>
+        <div class="flow-rows">${flowLinks.map(l=>`<div class="flow-row">
+          <span class="owner-dot" style="background:${nodeColor(l.from)}"></span><span>${nodeLabel(l.from)}</span>
+          <span style="color:#bbb;">→</span>
+          <span class="owner-dot" style="background:${nodeColor(l.to)}"></span><span>${nodeLabel(l.to)}</span>
+          <span class="flow-amt">$${l.value.toLocaleString()}</span></div>`).join('')}</div>
+      </details>
+    </div>`;
+    const tvRow=([t,v])=>`<div class="tv-row">
+      <span class="team-flag">${flagImg(WC_FLAGS[t])}</span><span>${TSHORT[t]||t}</span>
+      <span class="owner-dot" style="background:${color(teamOwners[t])}" title="${teamOwners[t]}"></span>
+      <span style="font-size:10px;color:#999;">${teamOwners[t]}</span>
+      <span class="tv-amt ${cls(v)}" style="color:${v>0?'#2e7d32':v<0?'#c62828':'#888'};">${fmtMoney(v)}</span></div>`;
+    const earners=teamNetArr.filter(([,v])=>v>0).slice(0,6);
+    const drains=[...teamNetArr].reverse().filter(([,v])=>v<0).slice(0,6);
+    const teamValueHtml=(earners.length||drains.length)?`<div class="team-value-grid">
+      <div class="tv-card"><div class="tv-title">💰 Top Earning Teams</div>${earners.map(tvRow).join('')||'<div style="font-size:12px;color:#aaa;">None yet</div>'}</div>
+      <div class="tv-card"><div class="tv-title">📉 Costliest Teams</div>${drains.map(tvRow).join('')||'<div style="font-size:12px;color:#aaa;">None yet</div>'}</div>
+    </div>`:'';
+    // Draft value: net $ generated vs a best-fit expectation for each draft slot.
+    // Pick numbers rebuilt from pickSequence + each owner's picks array (in draft order).
+    const pickNoByTeam={};
+    {
+      const seqD=draft?.pickSequence||[], idxByOwner={};
+      seqD.forEach((s,i)=>{
+        const arr=(draft?.picks||{})[s.owner]||[], j=idxByOwner[s.owner]||0, t=arr[j];
+        if(t&&t.name)pickNoByTeam[t.name]=i+1;
+        idxByOwner[s.owner]=j+1;
+      });
+    }
+    let draftValueHtml='';
+    const dvTeams=Object.keys(teamOwners).filter(t=>pickNoByTeam[t]);
+    if(dvTeams.length>=8){
+      const netOf=t=>cf.teamNet[t]||0;
+      const nT=dvTeams.length;
+      const mx=dvTeams.reduce((s,t)=>s+pickNoByTeam[t],0)/nT, my=dvTeams.reduce((s,t)=>s+netOf(t),0)/nT;
+      let sxy=0,sxx=0;
+      dvTeams.forEach(t=>{const dx=pickNoByTeam[t]-mx;sxy+=dx*(netOf(t)-my);sxx+=dx*dx;});
+      const slope=sxx?sxy/sxx:0, icept=my-slope*mx;
+      const rankOf={};
+      dvTeams.forEach(t=>{rankOf[t]=1+dvTeams.filter(o=>netOf(o)>netOf(t)).length;});
+      const dvRows=dvTeams.map(t=>({t,pick:pickNoByTeam[t],net:netOf(t),rank:rankOf[t],resid:Math.round(netOf(t)-(icept+slope*pickNoByTeam[t]))}));
+      const steals=[...dvRows].sort((a,b)=>b.resid-a.resid).filter(r=>r.resid>0).slice(0,5);
+      const busts=[...dvRows].sort((a,b)=>a.resid-b.resid).filter(r=>r.resid<0).slice(0,5);
+      const dvRow=r=>`<div class="tv-row" title="${r.t}: picked #${r.pick} overall, ranks #${r.rank} of ${nT} by net $ (${fmtMoney(r.net)}) — ${r.resid>0?'+':'−'}$${Math.abs(r.resid)} vs the expected value of that slot">
+        <span class="team-flag">${flagImg(WC_FLAGS[r.t])}</span><span>${TSHORT[r.t]||r.t}</span>
+        <span class="owner-dot" style="background:${color(teamOwners[r.t])}" title="${teamOwners[r.t]}"></span>
+        <span style="font-size:10px;color:#999;white-space:nowrap;">Pk ${r.pick} → #${r.rank} by $</span>
+        <span class="tv-amt" style="color:${r.resid>0?'#2e7d32':'#c62828'};">${r.resid>0?'+':'−'}$${Math.abs(r.resid)}</span></div>`;
+      if(steals.length||busts.length)draftValueHtml=`<div class="team-value-grid" style="margin-bottom:8px;">
+        <div class="tv-card"><div class="tv-title">📈 Draft Steals</div>${steals.map(dvRow).join('')||'<div style="font-size:12px;color:#aaa;">None yet</div>'}</div>
+        <div class="tv-card"><div class="tv-title">🚨 Draft Busts</div>${busts.map(dvRow).join('')||'<div style="font-size:12px;color:#aaa;">None yet</div>'}</div>
+      </div>
+      <div style="font-size:10px;color:#aaa;line-height:1.6;margin-bottom:24px;padding:0 4px;">Steal/bust $ = net $ a team has generated vs the expected value of its draft slot (best-fit line across all ${nT} picks). “Pk 9 → #3 by $” = drafted 9th overall, currently the #3 earner.</div>`;
+    }
+    statsHtml=tilesHtml+supersHtml+sankeyHtml+teamValueHtml+draftValueHtml;
+  }
+
   // ── Groups tab ────────────────────────────────────────────────────
   // Build group→teams from WC_GROUPS_MAP
   const GRP_TEAMS={};
@@ -1800,6 +2158,7 @@ function renderTracker() {
     <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches${liveTabBadge}</div>
     <div class="tracker-tab ${trackerTab==='groups'?'active':''}" onclick="switchTrackerTab('groups')">Groups</div>
     <div class="tracker-tab ${trackerTab==='bracket'?'active':''}" onclick="switchTrackerTab('bracket')">Bracket</div>
+    <div class="tracker-tab ${trackerTab==='stats'?'active':''}" onclick="switchTrackerTab('stats')">Stats</div>
     <div class="tracker-tabs-refresh" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:2px;">
       ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
       <button class="refresh-btn" onclick="refreshScores()" style="background:#f5f5f3;color:#666;border:0.5px solid #ddd;">
@@ -1813,6 +2172,7 @@ function renderTracker() {
   else if(trackerTab==='teams')content=teamsHtml;
   else if(trackerTab==='groups')content=groupsTabHtml;
   else if(trackerTab==='bracket')content=renderBracketTab(teamAdvanced);
+  else if(trackerTab==='stats')content=statsHtml;
 
   // Live banner — shown when at least one game is in progress
   const liveBannerHtml = liveMatches.length ? `
@@ -1840,6 +2200,7 @@ function renderTracker() {
 window.switchTrackerTab = function(t){trackerTab=t;localStorage.setItem('wc_tab',t);renderScreen();};
 window.openRulesModal = function(){ document.getElementById('rules-modal-body').innerHTML = rulesHtml(); document.getElementById('rules-modal').style.display='flex'; };
 window.setLbSort = function(s){lbSort=s;renderScreen();};
+window.setSankeyMode = function(m){sankeyMode=m;renderScreen();};
 window.toggleMatchSection = function(k){matchSections[k]=!matchSections[k];renderScreen();};
 
 function rulesHtml() {
