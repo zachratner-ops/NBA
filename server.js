@@ -1401,10 +1401,11 @@ function computeWCTiePotClinch(matches, teamOwners, participants, fin) {
   // remaining group match can be a tie, and an alive KO team can reach PKs in
   // every round it could still play — counted by stage math so unfilled
   // placeholder fixtures (e.g. "Winner R16 #5") are included.
-  const STAGE_POT = { r32: 5, r16: 4, qf: 3, sf: 2, final: 1, '3rd': 1 };
+  const STAGE_POT = { r32: 5, r16: 4, qf: 3, sf: 2, final: 1, third: 1, '3rd': 1 };
   const allMatches = Object.values(matches || {});
   const groupDone = allMatches.filter(function(m) { return m.stage === 'group'; }).every(function(m) { return m.status === 'final'; });
-  const koLost = new Set();
+  const thirdDone = allMatches.some(function(m) { return (m.stage === 'third' || m.stage === '3rd') && m.status === 'final'; });
+  const koLost = new Set(), sfLost = new Set();
   const teamTiePot = {};
   Object.keys(teamOwners).forEach(function(t) { teamTiePot[t] = 0; });
   allMatches.filter(function(m) { return m.stage === 'group' && m.status !== 'final'; }).forEach(function(m) {
@@ -1427,7 +1428,7 @@ function computeWCTiePotClinch(matches, teamOwners, participants, fin) {
         else if (m.awayAdvanced === true) { w = m.awayTeam; l = m.homeTeam; }
       } else if ((m.homeScore || 0) > (m.awayScore || 0)) { w = m.homeTeam; l = m.awayTeam; }
       else if ((m.awayScore || 0) > (m.homeScore || 0)) { w = m.awayTeam; l = m.homeTeam; }
-      if (l) koLost.add(l);
+      if (l) { if (m.stage === 'sf') sfLost.add(l); else koLost.add(l); } // SF losers still play the 3rd place game
       if (w && teamOwners[w] !== undefined) {
         const after = (STAGE_POT[m.stage] || 1) - 1;
         if (!(w in wonAfter) || after < wonAfter[w]) wonAfter[w] = after;
@@ -1436,6 +1437,7 @@ function computeWCTiePotClinch(matches, teamOwners, participants, fin) {
   });
   Object.keys(teamOwners).forEach(function(t) {
     if (koLost.has(t)) return;
+    if (sfLost.has(t)) { if (!thirdDone) teamTiePot[t] += 1; return; }
     if (t in pendingKO) teamTiePot[t] += pendingKO[t];
     else if (t in wonAfter) teamTiePot[t] += wonAfter[t];
     else if (!koSeen.has(t) && !groupDone) teamTiePot[t] += 5; // group ongoing: could still reach R32
