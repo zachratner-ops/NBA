@@ -986,6 +986,7 @@ function renderDraft() {
         <button class="btn btn-sm btn-outline" onclick="window.doRedo()" style="color:#1a1a1a;border-color:#ccc;">↪ Redo</button>
         ${isComm ? `<button class="btn btn-sm btn-red" onclick="document.getElementById('reset-modal').style.display='flex'">Reset Draft</button>` : ''}
         ${isComm ? `<button class="btn btn-sm btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.importOdds()">↻ Import Odds</button>` : ''}
+        ${isComm ? `<button class="btn btn-sm btn-outline" style="color:#1a1a1a;border-color:#ccc;" onclick="window.restartClock()">⏱ Restart Clock</button>` : ''}
       </div>
       ${makeupOwners.length ? `<div class="makeup-notice">⚠️ <strong>${makeupOwners.join(', ')}</strong> ${makeupOwners.length===1?'has':'have'} a pending makeup pick. Click "Make Pick" on their roster card.</div>` : ''}
       <div class="timer-bar">
@@ -2106,6 +2107,17 @@ function buildSparklines(lbData) {
 }
 
 // ── Score refresh ──────────────────────────────────────────────────
+window.restartClock = async function() {
+  if (!confirm('Restart the pick clock at the full duration for the current pick?')) return;
+  try {
+    const data = await proxyApi('/timer-reset', 'POST');
+    if (data.error) { showToast('Clock reset error: ' + data.error); return; }
+    showToast('✓ Clock restarted at ' + formatTime(data.timerDuration || 14400));
+  } catch(e) {
+    showToast('Clock reset failed: ' + e.message);
+  }
+};
+
 window.forcePoll = async function() {
   const btn = document.getElementById('force-poll-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching…'; }
