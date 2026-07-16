@@ -488,7 +488,10 @@ onValue(liveRef(), snap => {
       const histArr = Array.isArray(live.scoreHistory) ? live.scoreHistory : Object.values(live.scoreHistory);
       const sorted = histArr.filter(Boolean).sort((a,b) => new Date(a.ts) - new Date(b.ts));
       const newHistory = sorted.map(s => ({ ts: new Date(s.ts).getTime(), scores: s.scores || {} }));
-      if (newHistory.length !== scoreHistory.length) {
+      // Adopt when the length OR the latest timestamp changes (server-side
+      // trimming can add+delete in one cycle, leaving the length unchanged)
+      if (newHistory.length !== scoreHistory.length ||
+          (newHistory.length > 0 && newHistory[newHistory.length - 1].ts !== scoreHistory[scoreHistory.length - 1]?.ts)) {
         scoreHistory = newHistory;
       }
     }
@@ -1345,9 +1348,9 @@ window.goLive = async function() {
 function renderLive(isFinal) {
   if (!live) { document.getElementById('screen').innerHTML = '<div class="main"><p style="color:#888;padding:40px;text-align:center;">Loading live data…</p></div>'; return; }
 
-  // Poll scores every 5 min and write a scoreHistory snapshot for the trend chart
+  // Poll scores every 5 min (the Golf-Proxy server owns chart snapshots)
   if (!scoreRefreshInterval) {
-    scoreRefreshInterval = setInterval(() => window.refreshScores(null, true), 5 * 60 * 1000);
+    scoreRefreshInterval = setInterval(() => window.refreshScores(), 5 * 60 * 1000);
   }
 
   const pot = live.pot || (owners().length * 25);
@@ -2132,7 +2135,7 @@ window.forcePoll = async function() {
   }
 };
 
-window.refreshScores = async function(explicitId, writeSnapshot) {
+window.refreshScores = async function(explicitId) {
   const eventId = explicitId || live?.espnEventId;
   if (!eventId) return;
   try {
@@ -2146,27 +2149,8 @@ window.refreshScores = async function(explicitId, writeSnapshot) {
     Object.entries(matched).forEach(([k,v]) => { scoreUpdates[`scores/${k}`] = v; });
     scoreUpdates['lastUpdated'] = new Date().toISOString();
     await update(liveRef(), scoreUpdates);
-
-    // Snapshot write — only from the 5-min interval, not manual refresh
-    if (writeSnapshot) {
-      const mergedScores = { ...(live?.scores || {}), ...matched };
-      const subs = Array.isArray(live?.subs) ? live.subs : Object.values(live?.subs || {});
-      const snapScores = {};
-      owners().forEach(owner => {
-        const picks = draft?.picks?.[owner] || { golfers: [], alternate: null };
-        const ownerSub = subs.find(s => s.owner === owner);
-        const names = picks.golfers.map(g => ownerSub && g.name === ownerSub.from ? ownerSub.to : g.name);
-        const cutCount = names.filter(n => scoreFor(n, mergedScores)?.cut).length;
-        if (cutCount >= 2) return;
-        const active = names.map(n => scoreFor(n, mergedScores)).filter(s => s && !s.cut && s.score !== undefined);
-        const top3 = [...active].sort((a, b) => a.score - b.score).slice(0, 3);
-        if (top3.length > 0) snapScores[owner] = top3.reduce((sum, s) => sum + s.score, 0);
-      });
-      if (Object.keys(snapScores).length > 0) {
-        const existingArr = Array.isArray(live?.scoreHistory) ? live.scoreHistory : Object.values(live?.scoreHistory || {});
-        await update(liveRef(), { scoreHistory: [...existingArr, { ts: new Date().toISOString(), scores: snapScores }] });
-      }
-    }
+    // Chart snapshots (scoreHistory) are written only by the Golf-Proxy
+    // server poller, gated to the day's play window — never from clients.
   } catch(e) { if (isComm) alert('Error: ' + e.message); }
 };
 
