@@ -11,18 +11,17 @@
   /* Menu metadata per homepage card id (index.html CARDS). Cards without
      a page yet are simply absent — add an entry when the page exists. */
   const MENU_CARDS = {
-    'wc2026': { href: 'wc-draft.html?slug=wc2026', label: 'World Cup 2026', icon: '⚽' },
     'oneoff-bets': { href: 'bets.html', label: 'One-Off Bets', icon: '🤝' },
     'bernie-bet': { href: 'bernie.html', label: 'The Bernie Bet', icon: '☠️' },
     'dunlap-2026': { href: 'dunlap.html', label: "Matt's 2026 Goals", icon: '🦌' },
-    'open-26': { href: 'golf-live.html?slug=open-26', label: '2026 Open Championship', icon: '⛳' },
   };
   const HISTORY = [
     { href: 'nba-history.html', label: 'NBA Playoff History', icon: '🏀' },
     { href: 'golf.html', label: 'Golf Major History', icon: '⛳' },
+    { href: 'wc-draft.html?slug=wc2026', label: 'World Cup 2026', icon: '⚽' },
   ];
   /* Same fallback the homepage uses when Firebase is unreachable. */
-  const DEFAULT_ACTIVE = ['wc2026', 'oneoff-bets', 'bernie-bet'];
+  const DEFAULT_ACTIVE = ['oneoff-bets', 'bernie-bet'];
 
   let menu = null;
 

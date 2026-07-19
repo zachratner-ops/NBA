@@ -540,7 +540,7 @@ let autoRefreshInterval = null;
 let autoRefreshMs = null;
 let lbSort = 'net'; // 'net' | 'draft'
 let sankeyMode = 'net'; // 'net' | 'gross' — stats tab cash-flow diagram
-let matchSections = { completed: false, tomorrow: true, upcoming: true };
+let matchSections = { completed: true, tomorrow: true, upcoming: true };
 const WC_GROUPS_MAP = {
   'Mexico':'A','South Africa':'A','South Korea':'A','Czechia':'A',
   'Canada':'B','Bosnia-Herzegovina':'B','Qatar':'B','Switzerland':'B',
@@ -1821,12 +1821,10 @@ function renderTracker() {
     if(!count||!open)return `<div style="margin-bottom:12px;">${hdr}</div>`;
     return `<div style="margin-bottom:12px;">${hdr}<div class="match-cards">${list.map(mkCard).join('')}</div></div>`;
   }
-  const todayList=Object.values(matches).filter(m=>isToday(m.date)&&m.status!=='final').sort((a,b)=>new Date(a.date)-new Date(b.date));
   const completedList=Object.values(matches).filter(m=>m.status==='final').sort((a,b)=>new Date(b.date)-new Date(a.date));
   const tomorrowList=Object.values(matches).filter(m=>m.status==='scheduled'&&isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const upcomingList=Object.values(matches).filter(m=>m.status==='scheduled'&&!isToday(m.date)&&!isTomorrow(m.date)).sort((a,b)=>new Date(a.date)-new Date(b.date));
   const matchSectionDefs=[
-    {title:"Today's Games",list:todayList,key:null},
     ...(tomorrowList.length?[{title:"Tomorrow's Games",list:tomorrowList,key:'tomorrow'}]:[]),
     {title:'Completed',list:completedList,key:'completed'},
     ...(upcomingList.length?[{title:'Upcoming',list:upcomingList,key:'upcoming'}]:[]),
@@ -2156,11 +2154,11 @@ function renderTracker() {
   if(trackerTab==='rules'){trackerTab='leaderboard';localStorage.setItem('wc_tab','leaderboard');}
   const tabsHtml=`<div class="tracker-tabs">
     <div class="tracker-tab ${trackerTab==='leaderboard'?'active':''}" onclick="switchTrackerTab('leaderboard')">Leaderboard</div>
+    <div class="tracker-tab ${trackerTab==='stats'?'active':''}" onclick="switchTrackerTab('stats')">Stats</div>
     <div class="tracker-tab ${trackerTab==='teams'?'active':''}" onclick="switchTrackerTab('teams')">Teams</div>
     <div class="tracker-tab ${trackerTab==='matches'?'active':''}" onclick="switchTrackerTab('matches')">Matches${liveTabBadge}</div>
     <div class="tracker-tab ${trackerTab==='groups'?'active':''}" onclick="switchTrackerTab('groups')">Groups</div>
     <div class="tracker-tab ${trackerTab==='bracket'?'active':''}" onclick="switchTrackerTab('bracket')">Bracket</div>
-    <div class="tracker-tab ${trackerTab==='stats'?'active':''}" onclick="switchTrackerTab('stats')">Stats</div>
     <div class="tracker-tabs-refresh" style="margin-left:auto;display:flex;align-items:center;gap:8px;padding-bottom:2px;">
       ${updatedAgo?`<span style="font-size:11px;color:#aaa;">Updated ${updatedAgo}</span>`:''}
       <button class="refresh-btn" onclick="refreshScores()" style="background:#f5f5f3;color:#666;border:0.5px solid #ddd;">

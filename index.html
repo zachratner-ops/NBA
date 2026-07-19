@@ -190,6 +190,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       </div>
     </a>
 
+    <a class="bet-card" href="wc-draft.html?slug=wc2026">
+      <div class="card-stripe" style="background:#006847;"></div>
+      <div class="card-body">
+        <div class="card-sport">⚽ World Cup</div>
+        <div class="card-name">FIFA WC 2026</div>
+        <div class="card-desc">Snake draft of all 48 teams. $1/goal, $10/match, tie side-pot. Spain won it; Jared won the pool.</div>
+        <div class="card-footer">
+          <span class="card-status status-archive">📚 Archive</span>
+          <div><div class="card-leader"><span>Winner:</span> Jared (+$276)</div></div>
+        </div>
+      </div>
+    </a>
+
   </div>
 
   <div class="section-label">Coming Soon</div>
@@ -6728,26 +6741,14 @@ const CARDS = [
     leaderElemId: 'oneoff-leader',
   },
   {
-    id: 'wc2026',
-    sport: '⚽ World Cup',
-    color: '#006847',
-    name: 'FIFA WC 2026',
-    desc: 'Snake draft of all 48 teams. $1/goal from each other participant, $10/match, tie side-pot. Starts June 11.',
-    href: 'wc-draft.html?slug=wc2026',
-    activeLabel: '🟢 Active',
-    staticFooter: 'Live Draft + Tracker →',
-  },
-  {
-    id: 'open-26',
+    id: 'masters-27',
     sport: '⛳ Golf',
     color: '#2E7D32',
-    name: '2026 The Open Championship',
-    desc: 'Snake draft of the 2026 Open Championship field. Lowest combined score to par wins.',
-    href: 'golf-live.html?slug=open-26',
-    comingSoonLabel: '🔜 Coming Soon',
+    name: '2027 Masters',
+    desc: 'Snake draft of the 2027 Masters field. Lowest combined score to par wins.',
+    href: null,
+    comingSoonLabel: '🔜 Spring 2027',
     activeLabel: '🟢 Live',
-    loadLeader: true,
-    leaderElemId: 'leader-open-26',
   },
   {
     id: 'nba-ous',
@@ -6982,7 +6983,7 @@ fetch(`${FIREBASE_BASE}/site_config.json`)
     cardStates = cfg.cards || {};
     cardOrder = Array.isArray(cfg.cardOrder) ? cfg.cardOrder : [];
     // Set defaults for active bets if not already set
-    const defaultActive = ['bernie-bet', 'oneoff-bets', 'wc2026'];
+    const defaultActive = ['bernie-bet', 'oneoff-bets'];
     defaultActive.forEach(id => {
       if (!(id in cardStates)) cardStates[id] = true;
     });
@@ -6993,7 +6994,6 @@ fetch(`${FIREBASE_BASE}/site_config.json`)
     cardStates = {
       'bernie-bet': true,
       'oneoff-bets': true,
-      'wc2026': true,
     };
     cardOrder = [];
     renderAllCards();
