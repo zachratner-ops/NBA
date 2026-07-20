@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sunday Bets · Giesener, Are You In?</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
+
+.hero{max-width:900px;margin:0 auto;padding:28px 20px 4px;}
+.hero-title{font-size:24px;font-weight:800;letter-spacing:-.02em;}
+.hero-sub{font-size:13px;color:#888;margin-top:4px;line-height:1.5;}
+.main{max-width:900px;margin:0 auto;padding:20px;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:28px 0 10px;}
+.section-label:first-child{margin-top:0;}
+
+.rules-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;margin-top:14px;}
+.rules-card summary{padding:10px 16px;font-size:12px;font-weight:700;color:#666;cursor:pointer;}
+.rules-body{padding:0 16px 14px;font-size:13px;line-height:2;color:#444;}
+
+/* Week card */
+.week-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;margin-bottom:14px;}
+.week-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:0.5px solid #f0f0f0;}
+.week-title{font-size:15px;font-weight:800;}
+.week-date{font-size:12px;color:#999;}
+.house-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#f5f5f3;}
+.status-chip{margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.status-open{background:#e8f5e9;color:#2e7d32;}
+.status-locked{background:#fff3cd;color:#996c00;}
+.status-final{background:#f5f5f3;color:#888;}
+
+.bet-row{display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-bottom:0.5px solid #f5f5f3;}
+.bet-row:last-of-type{border-bottom:none;}
+.bet-row.pickable{cursor:pointer;transition:background .1s;}
+.bet-row.pickable:hover{background:#fafaf8;}
+.bet-row.selected{background:#e8f5e9;}
+.bet-row.selected:hover{background:#def0e0;}
+.bet-num{width:22px;height:22px;border-radius:50%;background:#f0f0ee;color:#888;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.bet-row.selected .bet-num{background:#2e7d32;color:#fff;}
+.bet-text{flex:1;min-width:0;font-size:13px;font-weight:500;line-height:1.45;}
+.bet-result{font-size:11px;font-weight:800;flex-shrink:0;padding:2px 8px;border-radius:12px;margin-top:1px;}
+.res-win{background:#e8f5e9;color:#2e7d32;}
+.res-loss{background:#fdecea;color:#c62828;}
+.res-push{background:#f0f0ee;color:#888;}
+.bet-takers{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
+.taker-chip{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;color:#fff;}
+
+/* Claim bar */
+.claim-bar{padding:12px 16px;border-top:0.5px solid #f0f0f0;background:#fafaf8;}
+.claim-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.claim-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;}
+.name-chip{font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid #ddd;background:#fff;cursor:pointer;transition:all .1s;}
+.name-chip.active{color:#fff;border-color:transparent;}
+.claim-status{font-size:12px;color:#888;margin-top:10px;}
+.claim-actions{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+.btn{background:#1a1a1a;color:#fff;border:none;font-size:13px;font-weight:600;padding:8px 16px;border-radius:7px;cursor:pointer;}
+.btn:hover{background:#333;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-sm{font-size:12px;padding:5px 12px;border-radius:6px;}
+.btn-outline{background:transparent;color:#1a1a1a;border:1px solid #ccc;}
+.btn-outline:hover{background:#f0f0ee;}
+.btn-green{background:#2e7d32;}
+.btn-green:hover{background:#1b5e20;}
+.btn-red{background:#c62828;}
+.btn-red:hover{background:#b71c1c;}
+.btn-amber{background:#e65100;}
+.btn-amber:hover{background:#bf360c;}
+
+/* Week results footer */
+.week-money{padding:12px 16px;border-top:0.5px solid #f0f0f0;display:flex;flex-direction:column;gap:5px;}
+.wm-row{display:flex;align-items:center;gap:8px;font-size:12px;}
+.wm-name{font-weight:700;width:90px;}
+.wm-detail{color:#999;flex:1;}
+.wm-net{font-weight:800;margin-left:auto;font-variant-numeric:tabular-nums;}
+.pos{color:#2e7d32;}
+.neg{color:#c62828;}
+.zero{color:#888;}
+
+/* Standings */
+.stand-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;}
+.stand-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid #f5f5f3;font-size:13px;}
+.stand-row:last-child{border-bottom:none;}
+.stand-rank{width:20px;font-size:11px;font-weight:800;color:#bbb;}
+.stand-stripe{width:4px;height:26px;border-radius:2px;flex-shrink:0;}
+.stand-name{font-weight:700;width:90px;}
+.stand-rec{font-size:11px;color:#999;flex:1;}
+.stand-net{font-weight:800;margin-left:auto;font-variant-numeric:tabular-nums;font-size:14px;}
+
+/* Settle up */
+.settle-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;padding:6px 16px;}
+.settle-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #f5f5f3;font-size:13px;}
+.settle-row:last-child{border-bottom:none;}
+.settle-amt{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* Comm */
+.comm-panel{background:#fffbeb;border:1px solid #f9a825;border-radius:12px;padding:12px 16px;margin-bottom:16px;}
+.comm-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#996c00;margin-bottom:8px;}
+.comm-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.grade-seg{display:inline-flex;border:0.5px solid #ddd;border-radius:6px;overflow:hidden;flex-shrink:0;}
+.grade-seg button{border:none;background:#fff;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer;color:#999;}
+.grade-seg button:not(:last-child){border-right:0.5px solid #eee;}
+.grade-seg button.g-win.on{background:#2e7d32;color:#fff;}
+.grade-seg button.g-loss.on{background:#c62828;color:#fff;}
+.grade-seg button.g-push.on{background:#888;color:#fff;}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:480px;margin-top:30px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h2{font-size:17px;font-weight:800;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:5px;}
+.field input,.field select{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;background:#fff;}
+.field input:focus,.field select:focus{outline:none;border-color:#1a1a1a;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+
+.empty{text-align:center;padding:44px 20px;color:#999;}
+.empty-icon{font-size:30px;margin-bottom:10px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:24px;transition:transform .25s;z-index:1200;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* Tabs */
+.sb-tabs{display:flex;gap:0;border-bottom:1px solid #e8e8e8;margin-bottom:18px;}
+.sb-tab{padding:9px 20px;font-size:13px;font-weight:700;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px;}
+.sb-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#2e7d32;display:inline-block;}
+
+/* House matchups */
+.house-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;margin-bottom:12px;}
+.house-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:0.5px solid #f0f0f0;flex-wrap:wrap;}
+.house-title{font-size:14px;font-weight:800;}
+.house-sub{font-size:11px;color:#999;}
+.house-net{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;}
+
+/* Sheets-style results grid */
+.grid-wrap{overflow-x:auto;padding:12px 14px;}
+table.sheet{border-collapse:collapse;font-size:12px;min-width:540px;width:100%;}
+.sheet th,.sheet td{border:1px solid #d4d4d0;padding:5px 9px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.sheet th{background:#ececea;font-weight:800;font-size:11px;}
+.sheet th.bet-col{text-align:left;}
+.sheet td.bet-name{text-align:left;font-weight:600;white-space:normal;min-width:180px;line-height:1.35;}
+.sheet td.cw{background:#43a047;color:#fff;font-weight:800;}
+.sheet td.cl{background:#e53935;color:#fff;font-weight:800;}
+.sheet td.cp{background:#9e9e9e;color:#fff;font-weight:800;}
+.sheet td.cq{color:#bbb;}
+.sheet tr.subrow td{font-weight:800;border-top:2.5px solid #1a1a1a;background:#fafaf8;}
+.sheet tr.seasonrow td{font-weight:800;background:#f0f0ee;}
+.sheet th.housecol,.sheet td.housecol{border-left:2.5px solid #1a1a1a;}
+
+/* Collapsible history cards */
+.week-head.clickable{cursor:pointer;}
+.week-head.clickable:hover{background:#fafaf8;}
+.chev{color:#bbb;font-size:11px;display:inline-block;transition:transform .15s;}
+.chev.open{transform:rotate(90deg);}
+
+/* Site password gate (matches bets.html) */
+.pw-gate{display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;align-items:center;justify-content:center;}
+.pw-gate.show{display:flex;}
+.pw-box{text-align:center;padding:40px 20px;max-width:340px;width:100%;}
+.pw-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
+.pw-sub{font-size:14px;color:#666;margin-bottom:32px;}
+.pw-input{width:100%;background:#2a2a2a;border:1px solid #333;border-radius:10px;padding:13px 16px;font-size:16px;color:#fff;font-family:inherit;text-align:center;letter-spacing:.08em;transition:border-color .15s;}
+.pw-input:focus{outline:none;border-color:#555;}
+.pw-input::placeholder{color:#555;letter-spacing:0;}
+.pw-btn{margin-top:12px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s;}
+.pw-btn:hover{background:#ddd;}
+.pw-error{font-size:12px;color:#e57373;margin-top:10px;min-height:16px;}
+
+@media(max-width:600px){
+  .wm-name,.stand-name{width:72px;}
+  .stand-rec{font-size:10px;}
+  .sb-tab{flex:1;justify-content:center;padding:9px 6px;font-size:12px;}
+}
+</style>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+
+<!-- Site password gate -->
+<div class="pw-gate" id="pw-gate">
+  <div class="pw-box">
+    <div class="pw-title">Giesener...<br>Are you In?</div>
+    <div class="pw-sub">Enter the password to continue</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')pwCheck()">
+    <button class="pw-btn" onclick="pwCheck()">Enter →</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
+
+<header class="sitebar">
+  <a class="sb-home" href="index.html" aria-label="Home">🏠</a>
+  <div class="sb-title">🏈 Sunday Bets</div>
+  <div class="sb-actions">
+    <button class="sb-btn" id="comm-toggle" onclick="toggleComm()" aria-label="Commissioner mode">⚙</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-title">NFL Sunday Bets 🏈</div>
+  <div class="hero-sub">One person is the house and throws out a slate of 5 bets. Take any odd number — 1, 3, or 5 — at $20 each, you get the side as written. Take all 5 and there's a $20 kicker to whoever wins the majority.</div>
+  <details class="rules-card">
+    <summary>📖 Full rules</summary>
+    <div class="rules-body">
+      🏠 Each week one member is the <strong>house</strong> and posts 5 bets<br>
+      💵 Every bet is <strong>$20</strong>, head-to-head against the house — you get the side as written, the house has the fade<br>
+      🔢 You must take an <strong>odd number</strong> of bets: 1, 3, or 5 (no ties with the house)<br>
+      🎰 Take <strong>all 5</strong> → $20 kicker to whoever wins the majority of the graded bets<br>
+      🤝 A <strong>push</strong> is no action: $0 both ways and it doesn't count toward the majority — if pushes leave the kicker tied, the kicker is void<br>
+      💰 Everything settles through the season ledger below
+    </div>
+  </details>
+</div>
+
+<div class="main">
+  <div id="comm-panel" style="display:none;" class="comm-panel">
+    <div class="comm-label">⚙ Commissioner Controls</div>
+    <div class="comm-actions">
+      <button class="btn btn-sm btn-amber" onclick="openNewWeek()">+ New Week</button>
+    </div>
+  </div>
+
+  <div id="content"><div class="empty"><div class="empty-icon">🏈</div>Loading…</div></div>
+</div>
+
+<!-- New week modal -->
+<div class="overlay" id="new-week-modal">
+  <div class="modal">
+    <h2>🏈 New Sunday Slate</h2>
+    <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
+    <div class="field"><label>Date</label><input id="nw-date" type="date"></div>
+    <div class="field"><label>House (who's posting the slate)</label><select id="nw-house"></select></div>
+    <div class="field"><label>The 5 bets (as the taker's side)</label>
+      <input id="nw-b1" type="text" placeholder="1. e.g. Bills -3 vs Jets" style="margin-bottom:6px;">
+      <input id="nw-b2" type="text" placeholder="2." style="margin-bottom:6px;">
+      <input id="nw-b3" type="text" placeholder="3." style="margin-bottom:6px;">
+      <input id="nw-b4" type="text" placeholder="4." style="margin-bottom:6px;">
+      <input id="nw-b5" type="text" placeholder="5.">
+    </div>
+    <div id="nw-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('new-week-modal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveNewWeek()">Post Slate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comm password modal -->
+<div class="overlay" id="comm-pw-modal">
+  <div class="modal" style="max-width:340px;">
+    <h2>Commissioner Mode</h2>
+    <div class="field"><input id="comm-pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')checkCommPw()"></div>
+    <div id="comm-pw-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('comm-pw-modal')">Cancel</button>
+      <button class="btn" onclick="checkCommPw()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
+  authDomain: "giesener-bets.firebaseapp.com",
+  databaseURL: "https://giesener-bets-default-rtdb.firebaseio.com",
+  projectId: "giesener-bets",
+  storageBucket: "giesener-bets.firebasestorage.app",
+  messagingSenderId: "728665249382",
+  appId: "1:728665249382:web:ec1635941b04d3aba7ffa7"
+};
+
+const MEMBERS = ['Adam','Andrew','Ben','Jared','Marc','Mark','Matt','Max','Mike','Zach'];
+const COLORS = {
+  Adam:'#455A64', Andrew:'#E65100', Ben:'#C62828', Jared:'#2E7D32',
+  Marc:'#F9A825', Mark:'#7B1FA2', Matt:'#AD1457', Max:'#4E342E', Mike:'#0277BD', Zach:'#1565C0'
+};
+const BET_AMT = 20, KICKER = 20;
+const COMM_PW = 'golf';
+const SEASON = '2026';
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const weeksRef = ref(db, `sunday_bets/${SEASON}/weeks`);
+
+let weeks = {};
+let isComm = false;
+let tab = localStorage.getItem('sb_tab') || 'week'; // 'week' | 'standings' | 'history'
+let expandedWeeks = new Set(); // history cards the user has opened
+// Local claim UI state: who I am + my in-progress selections per week
+let myName = localStorage.getItem('sb_name') || null;
+let draftPicks = {}; // weekId → Set of bet ids (uncommitted edits)
+
+onValue(weeksRef, snap => { weeks = snap.val() || {}; render(); });
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtMoney = n => n === 0 ? '$0' : (n > 0 ? '+$' : '-$') + Math.abs(n).toLocaleString();
+const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
+const color = m => COLORS[m] || '#555';
+const BET_IDS = ['b1','b2','b3','b4','b5'];
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Money math ─────────────────────────────────────────────────────
+// result is stored from the TAKER's perspective: 'win' | 'loss' | 'push' | null
+function computeWeek(w) {
+  const perMember = {}; // name → {net, wins, losses, pushes, kicker, count}
+  let houseNet = 0;
+  const picks = w.picks || {};
+  Object.entries(picks).forEach(([name, betIds]) => {
+    if (name === w.house || !Array.isArray(betIds)) return;
+    let net = 0, wins = 0, losses = 0, pushes = 0, kicker = 0;
+    betIds.forEach(id => {
+      const r = w.bets?.[id]?.result;
+      if (r === 'win') { net += BET_AMT; wins++; }
+      else if (r === 'loss') { net -= BET_AMT; losses++; }
+      else if (r === 'push') pushes++;
+    });
+    if (betIds.length === 5) {
+      if (wins > losses) kicker = KICKER;
+      else if (losses > wins) kicker = -KICKER;
+    }
+    net += kicker;
+    perMember[name] = { net, wins, losses, pushes, kicker, count: betIds.length };
+    houseNet -= net;
+  });
+  return { perMember, houseNet };
+}
+
+// ── Rendering ──────────────────────────────────────────────────────
+function render() {
+  const el = document.getElementById('content');
+  const entries = Object.entries(weeks).map(([id, w]) => ({ id, ...w }))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || 0) - (a.created || 0));
+  const activeWeeks = entries.filter(w => w.status !== 'final');
+  const finalWeeks = entries.filter(w => w.status === 'final');
+
+  const tabsBar = `<div class="sb-tabs">
+    <div class="sb-tab ${tab === 'week' ? 'active' : ''}" onclick="switchTab('week')">This Week${activeWeeks.some(w => w.status === 'open') ? ' <span class="live-dot"></span>' : ''}</div>
+    <div class="sb-tab ${tab === 'standings' ? 'active' : ''}" onclick="switchTab('standings')">Standings</div>
+    <div class="sb-tab ${tab === 'history' ? 'active' : ''}" onclick="switchTab('history')">History${finalWeeks.length ? ` <span style="font-size:10px;color:#bbb;">${finalWeeks.length}</span>` : ''}</div>
+  </div>`;
+
+  let body = '';
+  if (tab === 'week') {
+    body = activeWeeks.length ? activeWeeks.map(w => weekCard(w)).join('')
+      : `<div class="empty"><div class="empty-icon">🏈</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No open slate</div>
+          <div style="font-size:13px;">${finalWeeks.length ? 'Nothing on the board right now — check Standings or History.' : 'The first Sunday slate will show up here when the season kicks off.'}</div></div>`;
+  } else if (tab === 'standings') {
+    body = finalWeeks.length ? seasonStandingsHtml(finalWeeks) + houseMatchupsHtml(finalWeeks) + settleHtml(finalWeeks)
+      : `<div class="empty"><div class="empty-icon">📊</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Nothing on the books yet</div>
+          <div style="font-size:13px;">Standings appear once the first week is finalized.</div></div>`;
+  } else {
+    body = finalWeeks.length ? finalWeeks.map(w => weekCard(w, !expandedWeeks.has(w.id))).join('')
+      : `<div class="empty"><div class="empty-icon">📚</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No finished weeks yet</div>
+          <div style="font-size:13px;">Finalized slates land here with full results.</div></div>`;
+  }
+  el.innerHTML = tabsBar + body;
+}
+
+window.switchTab = function(t) {
+  tab = t;
+  localStorage.setItem('sb_tab', t);
+  render();
+};
+
+window.toggleWeekExpand = function(id) {
+  expandedWeeks.has(id) ? expandedWeeks.delete(id) : expandedWeeks.add(id);
+  render();
+};
+
+// Season net per person through a given week (final weeks up to and
+// including it; a locked week contributes its partial results).
+function seasonTotalsThrough(w) {
+  const key = x => (x.date || '') + '|' + (x.created || 0);
+  const tot = {};
+  Object.entries(weeks).map(([id, x]) => ({ id, ...x }))
+    .filter(x => (x.status === 'final' && key(x) <= key(w)) || x.id === w.id)
+    .forEach(x => {
+      const fin = computeWeek(x);
+      Object.entries(fin.perMember).forEach(([n, r]) => tot[n] = (tot[n] || 0) + r.net);
+      tot[x.house] = (tot[x.house] || 0) + fin.houseNet;
+    });
+  return tot;
+}
+
+// Sheets-style grid: bets down the side, takers across, W/L/P cells,
+// house column on the right with per-row house $, subtotal + season rows.
+function weekGridHtml(w) {
+  const picks = w.picks || {};
+  const takers = MEMBERS.filter(m => m !== w.house && Array.isArray(picks[m]) && picks[m].length);
+  if (!takers.length) return '';
+  const fin = computeWeek(w);
+  const season = seasonTotalsThrough(w);
+
+  const betRowsHtml = BET_IDS.map((id, i) => {
+    const b = w.bets?.[id];
+    if (!b) return '';
+    const r = b.result;
+    let houseNet = 0;
+    const cells = takers.map(m => {
+      if (!picks[m].includes(id)) return '<td></td>';
+      if (r === 'win') { houseNet -= BET_AMT; return '<td class="cw">W</td>'; }
+      if (r === 'loss') { houseNet += BET_AMT; return '<td class="cl">L</td>'; }
+      if (r === 'push') return '<td class="cp">P</td>';
+      return '<td class="cq">·</td>';
+    }).join('');
+    return `<tr><td class="bet-name">${i + 1}. ${esc(b.text)}</td>${cells}
+      <td class="housecol ${cls(houseNet)}">${r ? fmtMoney(houseNet) : ''}</td></tr>`;
+  }).join('');
+
+  // Pick 5 Bonus row (only when someone took all 5)
+  let kickerRow = '';
+  if (takers.some(m => picks[m].length === 5)) {
+    let kHouse = 0;
+    const cells = takers.map(m => {
+      if (picks[m].length !== 5) return '<td></td>';
+      const k = fin.perMember[m]?.kicker || 0;
+      kHouse -= k;
+      if (k > 0) return '<td class="cw">W</td>';
+      if (k < 0) return '<td class="cl">L</td>';
+      return w.status === 'final' ? '<td class="cp">P</td>' : '<td class="cq">·</td>';
+    }).join('');
+    kickerRow = `<tr><td class="bet-name">Pick 5 Bonus 🎰</td>${cells}<td class="housecol">${kHouse ? fmtMoney(kHouse) : ''}</td></tr>`;
+  }
+
+  const subLabel = (w.title || 'Week').toUpperCase() + ' SUBTOTAL';
+  const subRow = `<tr class="subrow"><td class="bet-name">${esc(subLabel)}</td>
+    ${takers.map(m => { const n = fin.perMember[m]?.net || 0; return `<td class="${cls(n)}">${fmtMoney(n)}</td>`; }).join('')}
+    <td class="housecol ${cls(fin.houseNet)}">${fmtMoney(fin.houseNet)}</td></tr>`;
+
+  const seasonRow = `<tr class="seasonrow"><td class="bet-name">SEASON TOTAL${w.status !== 'final' ? '*' : ''}</td>
+    ${takers.map(m => { const n = season[m] || 0; return `<td class="${cls(n)}">${fmtMoney(n)}</td>`; }).join('')}
+    <td class="housecol ${cls(season[w.house] || 0)}">${fmtMoney(season[w.house] || 0)}</td></tr>`;
+
+  return `<div class="grid-wrap"><table class="sheet">
+    <tr><th class="bet-col">Bet (house fades)</th>
+      ${takers.map(m => `<th style="color:${color(m)}">${esc(m)}</th>`).join('')}
+      <th class="housecol" style="color:${color(w.house)}">🏠 ${esc(w.house)}</th></tr>
+    ${betRowsHtml}${kickerRow}${subRow}${seasonRow}
+  </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div>`;
+}
+
+function weekCard(w, collapsed = false) {
+  const open = w.status === 'open';
+  const isHistory = w.status === 'final';
+  const graded = BET_IDS.filter(id => w.bets?.[id]?.result).length;
+  const fin = computeWeek(w);
+  const picks = w.picks || {};
+  const iAmHouse = myName && myName === w.house;
+  const myCommitted = Array.isArray(picks[myName]) ? picks[myName] : null;
+  const sel = draftPicks[w.id] || new Set(myCommitted || []);
+  const selCount = sel.size;
+  const validCount = [1,3,5].includes(selCount);
+  const dirty = !myCommitted ? selCount > 0
+    : (selCount !== myCommitted.length || [...sel].some(id => !myCommitted.includes(id)));
+
+  const statusChip = w.status === 'open' ? `<span class="status-chip status-open">🟢 Open for picks</span>`
+    : w.status === 'locked' ? `<span class="status-chip status-locked">🔒 Locked${graded ? ` · ${graded}/5 graded` : ''}</span>`
+    : `<span class="status-chip status-final">🏁 Final</span>`;
+
+  const betRows = BET_IDS.map((id, i) => {
+    const b = w.bets?.[id];
+    if (!b) return '';
+    const takers = Object.entries(picks).filter(([n, arr]) => Array.isArray(arr) && arr.includes(id));
+    const pickable = open && myName && !iAmHouse;
+    const isSel = sel.has(id);
+    const res = b.result;
+    const resChip = res === 'win' ? `<span class="bet-result res-win">✓ HIT</span>`
+      : res === 'loss' ? `<span class="bet-result res-loss">✗ MISS</span>`
+      : res === 'push' ? `<span class="bet-result res-push">PUSH</span>` : '';
+    const gradeSeg = isComm && w.status !== 'open' ? `<span class="grade-seg" onclick="event.stopPropagation()">
+        <button class="g-win ${res==='win'?'on':''}" onclick="gradeBet('${w.id}','${id}','win')">HIT</button>
+        <button class="g-loss ${res==='loss'?'on':''}" onclick="gradeBet('${w.id}','${id}','loss')">MISS</button>
+        <button class="g-push ${res==='push'?'on':''}" onclick="gradeBet('${w.id}','${id}','push')">PUSH</button>
+      </span>` : '';
+    return `<div class="bet-row ${pickable ? 'pickable' : ''} ${pickable && isSel ? 'selected' : ''}"
+        ${pickable ? `onclick="togglePick('${w.id}','${id}')"` : ''}>
+      <div class="bet-num">${pickable && isSel ? '✓' : i + 1}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="bet-text">${esc(b.text)}</div>
+        ${takers.length ? `<div class="bet-takers">${takers.map(([n]) =>
+          `<span class="taker-chip" style="background:${color(n)}">${esc(n)}</span>`).join('')}</div>` : ''}
+      </div>
+      ${resChip}${gradeSeg}
+    </div>`;
+  }).join('');
+
+  // Claim bar (open weeks only)
+  let claimBar = '';
+  if (open) {
+    const nameChips = MEMBERS.map(m => {
+      const active = myName === m;
+      const isHouse = m === w.house;
+      return `<button class="name-chip ${active ? 'active' : ''}" ${isHouse ? 'disabled style="opacity:.35;cursor:not-allowed;"' : ''}
+        ${active ? `style="background:${color(m)}"` : ''} onclick="setMyName('${m}')">${m}${isHouse ? ' 🏠' : ''}</button>`;
+    }).join('');
+    let status = '';
+    if (!myName) status = 'Pick your name, then tap the bets you\'re taking.';
+    else if (iAmHouse) status = 'You\'re the house this week — you have the fade on every bet taken.';
+    else if (selCount === 0 && !myCommitted) status = 'Tap bets to select — take 1, 3, or all 5.';
+    else if (!validCount) status = `<span style="color:#c62828;font-weight:700;">${selCount} selected — must be an odd number (1, 3, or 5).</span>`;
+    else status = `${selCount} selected ($${selCount * BET_AMT} in action)${selCount === 5 ? ' + $20 majority kicker 🎰' : ''}${dirty ? '' : ' — saved ✓'}`;
+    claimBar = `<div class="claim-bar">
+      <div class="claim-row"><span class="claim-label">I am</span>${nameChips}</div>
+      <div class="claim-status">${status}</div>
+      ${myName && !iAmHouse ? `<div class="claim-actions">
+        <button class="btn btn-sm btn-green" ${validCount && dirty ? '' : 'disabled'} onclick="savePicks('${w.id}')">Save my picks</button>
+        ${myCommitted ? `<button class="btn btn-sm btn-outline" onclick="clearPicks('${w.id}')">Drop out</button>` : ''}
+      </div>` : ''}
+    </div>`;
+  }
+
+  // Money footer (locked with grades, or final)
+  let moneyFooter = '';
+  const names = Object.keys(fin.perMember);
+  if (w.status !== 'open' && (names.length || graded)) {
+    const partial = w.status !== 'final';
+    moneyFooter = `<div class="week-money">
+      ${names.sort((a, b) => fin.perMember[b].net - fin.perMember[a].net).map(n => {
+        const r = fin.perMember[n];
+        return `<div class="wm-row">
+          <span class="dot" style="background:${color(n)}"></span>
+          <span class="wm-name">${esc(n)}</span>
+          <span class="wm-detail">${r.count} bet${r.count > 1 ? 's' : ''} · ${r.wins}-${r.losses}${r.pushes ? `-${r.pushes}p` : ''}${r.kicker ? ` · kicker ${fmtMoney(r.kicker)}` : ''}</span>
+          <span class="wm-net ${cls(r.net)}">${fmtMoney(r.net)}</span>
+        </div>`;
+      }).join('')}
+      <div class="wm-row" style="border-top:0.5px solid #f0f0f0;padding-top:7px;margin-top:2px;">
+        <span class="dot" style="background:${color(w.house)}"></span>
+        <span class="wm-name">${esc(w.house)}</span>
+        <span class="wm-detail">the house${partial ? ' · thru ' + graded + '/5' : ''}</span>
+        <span class="wm-net ${cls(fin.houseNet)}">${fmtMoney(fin.houseNet)}</span>
+      </div>
+    </div>`;
+  }
+
+  // Comm controls per week
+  let commBar = '';
+  if (isComm) {
+    const allGraded = graded === 5;
+    commBar = `<div class="claim-bar" style="background:#fffbeb;">
+      <div class="claim-actions" style="margin-top:0;">
+        ${w.status === 'open' ? `<button class="btn btn-sm btn-amber" onclick="setWeekStatus('${w.id}','locked')">🔒 Lock picks</button>` : ''}
+        ${w.status === 'locked' ? `<button class="btn btn-sm btn-outline" onclick="setWeekStatus('${w.id}','open')">Reopen picks</button>` : ''}
+        ${w.status === 'locked' ? `<button class="btn btn-sm btn-green" ${allGraded ? '' : 'disabled'} onclick="setWeekStatus('${w.id}','final')">${allGraded ? '🏁 Finalize week' : `Grade all 5 to finalize (${graded}/5)`}</button>` : ''}
+        ${w.status === 'final' ? `<button class="btn btn-sm btn-outline" onclick="setWeekStatus('${w.id}','locked')">Unfinalize</button>` : ''}
+        <button class="btn btn-sm btn-red" onclick="deleteWeek('${w.id}')" style="margin-left:auto;">🗑 Delete</button>
+      </div>
+    </div>`;
+  }
+
+  const head = `<div class="week-head ${isHistory ? 'clickable' : ''}" ${isHistory ? `onclick="toggleWeekExpand('${w.id}')"` : ''}>
+      ${isHistory ? `<span class="chev ${collapsed ? '' : 'open'}">▶</span>` : ''}
+      <span class="week-title">${esc(w.title || 'Week')}</span>
+      <span class="week-date">${w.date ? new Date(w.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+      <span class="house-chip" style="color:${color(w.house)}">🏠 House: ${esc(w.house)}</span>
+      ${statusChip}
+    </div>`;
+  if (collapsed) return `<div class="week-card">${head}${moneyFooter}</div>`;
+  // Locked/final weeks show the sheets-style grid; the bet-row list stays
+  // for open weeks (claiming) and for the commissioner (grading buttons).
+  const grid = w.status !== 'open' ? weekGridHtml(w) : '';
+  const showBetRows = open || isComm || !grid;
+  return `<div class="week-card">${head}${showBetRows ? betRows : ''}${claimBar}${grid || moneyFooter}${commBar}</div>`;
+}
+
+function seasonStandingsHtml(finalWeeks) {
+  const tot = {}; // name → {net, w, l, p, taken, houseWeeks, houseNet}
+  MEMBERS.forEach(m => tot[m] = { net: 0, w: 0, l: 0, p: 0, taken: 0, houseWeeks: 0, houseNet: 0 });
+  finalWeeks.forEach(w => {
+    const fin = computeWeek(w);
+    Object.entries(fin.perMember).forEach(([n, r]) => {
+      if (!tot[n]) tot[n] = { net: 0, w: 0, l: 0, p: 0, taken: 0, houseWeeks: 0, houseNet: 0 };
+      tot[n].net += r.net; tot[n].w += r.wins; tot[n].l += r.losses; tot[n].p += r.pushes; tot[n].taken += r.count;
+    });
+    if (tot[w.house]) { tot[w.house].net += fin.houseNet; tot[w.house].houseWeeks++; tot[w.house].houseNet += fin.houseNet; }
+  });
+  const ranked = Object.entries(tot).filter(([, r]) => r.taken > 0 || r.houseWeeks > 0)
+    .sort((a, b) => b[1].net - a[1].net);
+  if (!ranked.length) return '';
+  return `<div class="section-label">Season Standings</div>
+    <div class="stand-card">${ranked.map(([n, r], i) => `<div class="stand-row">
+      <span class="stand-rank">#${i + 1}</span>
+      <span class="stand-stripe" style="background:${color(n)}"></span>
+      <span class="stand-name">${esc(n)}</span>
+      <span class="stand-rec">${r.taken ? `${r.w}-${r.l}${r.p ? `-${r.p}p` : ''} on ${r.taken} bets` : ''}${r.taken && r.houseWeeks ? ' · ' : ''}${r.houseWeeks ? `house ×${r.houseWeeks} (${fmtMoney(r.houseNet)})` : ''}</span>
+      <span class="stand-net ${cls(r.net)}">${fmtMoney(r.net)}</span>
+    </div>`).join('')}</div>`;
+}
+
+// One card per person who has played house: their overall house record and
+// how each taker trends against their slates (taker's perspective per row).
+function houseMatchupsHtml(finalWeeks) {
+  const houses = {}; // house → {weeks, net, vs: {taker: {w,l,p,count,net,kickers}}}
+  finalWeeks.forEach(w => {
+    const fin = computeWeek(w);
+    const h = houses[w.house] = houses[w.house] || { weeks: 0, net: 0, vs: {} };
+    h.weeks++; h.net += fin.houseNet;
+    Object.entries(fin.perMember).forEach(([n, r]) => {
+      const v = h.vs[n] = h.vs[n] || { w: 0, l: 0, p: 0, count: 0, net: 0, kickers: 0 };
+      v.w += r.wins; v.l += r.losses; v.p += r.pushes; v.count += r.count; v.net += r.net;
+      if (r.kicker > 0) v.kickers++;
+    });
+  });
+  const ordered = Object.entries(houses).sort((a, b) => b[1].weeks - a[1].weeks || b[1].net - a[1].net);
+  if (!ordered.length) return '';
+  return `<div class="section-label">vs The House</div>` + ordered.map(([house, h]) => {
+    const rows = Object.entries(h.vs).sort((a, b) => b[1].net - a[1].net);
+    return `<div class="house-card">
+      <div class="house-head">
+        <span class="stand-stripe" style="background:${color(house)}"></span>
+        <span class="house-title">🏠 ${esc(house)}'s slates</span>
+        <span class="house-sub">${h.weeks} week${h.weeks > 1 ? 's' : ''} as house</span>
+        <span class="house-net ${cls(h.net)}">${fmtMoney(h.net)}</span>
+      </div>
+      ${rows.length ? rows.map(([n, v]) => `<div class="stand-row">
+        <span class="dot" style="background:${color(n)}"></span>
+        <span class="stand-name">${esc(n)}</span>
+        <span class="stand-rec">${v.w}-${v.l}${v.p ? `-${v.p}p` : ''} on ${v.count} bet${v.count > 1 ? 's' : ''}${v.kickers ? ` · ${v.kickers} kicker${v.kickers > 1 ? 's' : ''} 🎰` : ''}</span>
+        <span class="stand-net ${cls(v.net)}" style="font-size:13px;">${fmtMoney(v.net)}</span>
+      </div>`).join('') : `<div style="padding:12px 16px;font-size:12px;color:#aaa;">Nobody took a bet against this slate.</div>`}
+    </div>`;
+  }).join('');
+}
+
+function settleHtml(finalWeeks) {
+  const pair = {}; // 'A|B' (A<B) → net for A
+  finalWeeks.forEach(w => {
+    const fin = computeWeek(w);
+    Object.entries(fin.perMember).forEach(([n, r]) => {
+      const key = n < w.house ? `${n}|${w.house}` : `${w.house}|${n}`;
+      pair[key] = (pair[key] || 0) + (n < w.house ? r.net : -r.net);
+    });
+  });
+  const settleRows = Object.entries(pair).filter(([, v]) => v !== 0).map(([key, v]) => {
+    const [a, b] = key.split('|');
+    const from = v > 0 ? b : a, to = v > 0 ? a : b;
+    return { from, to, amt: Math.abs(v) };
+  }).sort((x, y) => y.amt - x.amt).map(({ from, to, amt }) => `<div class="settle-row">
+    <span class="dot" style="background:${color(from)}"></span>${esc(from)}
+    <span style="color:#bbb;">→</span>
+    <span class="dot" style="background:${color(to)}"></span>${esc(to)}
+    <span class="settle-amt">$${amt}</span>
+  </div>`).join('');
+  return settleRows ? `<div class="section-label">Settle Up</div><div class="settle-card">${settleRows}</div>` : '';
+}
+
+// ── Claim actions ──────────────────────────────────────────────────
+window.setMyName = function(name) {
+  myName = name;
+  localStorage.setItem('sb_name', name);
+  draftPicks = {};
+  render();
+};
+
+window.togglePick = function(weekId, betId) {
+  const w = weeks[weekId];
+  if (!w || w.status !== 'open' || !myName || myName === w.house) return;
+  if (!draftPicks[weekId]) {
+    const committed = Array.isArray(w.picks?.[myName]) ? w.picks[myName] : [];
+    draftPicks[weekId] = new Set(committed);
+  }
+  const s = draftPicks[weekId];
+  s.has(betId) ? s.delete(betId) : s.add(betId);
+  render();
+};
+
+window.savePicks = async function(weekId) {
+  const w = weeks[weekId];
+  const s = draftPicks[weekId];
+  if (!w || !myName || !s || ![1,3,5].includes(s.size)) return;
+  await set(ref(db, `sunday_bets/${SEASON}/weeks/${weekId}/picks/${myName}`), [...s].sort());
+  delete draftPicks[weekId];
+  showToast(`✓ ${myName}: ${s.size} bet${s.size > 1 ? 's' : ''} locked in`);
+};
+
+window.clearPicks = async function(weekId) {
+  if (!myName) return;
+  if (!confirm(`Drop all of ${myName}'s picks for this week?`)) return;
+  await remove(ref(db, `sunday_bets/${SEASON}/weeks/${weekId}/picks/${myName}`));
+  delete draftPicks[weekId];
+  showToast('Picks cleared');
+};
+
+// ── Commissioner ───────────────────────────────────────────────────
+window.toggleComm = function() {
+  if (isComm) {
+    isComm = false;
+    document.getElementById('comm-toggle').classList.remove('active');
+    document.getElementById('comm-panel').style.display = 'none';
+    render();
+  } else {
+    document.getElementById('comm-pw-modal').classList.add('open');
+    setTimeout(() => document.getElementById('comm-pw-input').focus(), 50);
+  }
+};
+
+window.checkCommPw = function() {
+  const val = document.getElementById('comm-pw-input').value.trim().toLowerCase();
+  if (val === COMM_PW) {
+    isComm = true;
+    document.getElementById('comm-toggle').classList.add('active');
+    document.getElementById('comm-panel').style.display = '';
+    closeModal('comm-pw-modal');
+    document.getElementById('comm-pw-input').value = '';
+    render();
+  } else {
+    document.getElementById('comm-pw-error').textContent = 'Wrong password.';
+    setTimeout(() => document.getElementById('comm-pw-error').textContent = '', 2000);
+  }
+};
+
+window.openNewWeek = function() {
+  const sel = document.getElementById('nw-house');
+  sel.innerHTML = MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
+  const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
+  document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
+  // Default to the coming Sunday
+  const d = new Date();
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  document.getElementById('nw-date').value = d.toISOString().slice(0, 10);
+  document.getElementById('new-week-modal').classList.add('open');
+};
+
+window.saveNewWeek = async function() {
+  const title = document.getElementById('nw-title').value.trim();
+  const date = document.getElementById('nw-date').value;
+  const house = document.getElementById('nw-house').value;
+  const betTexts = BET_IDS.map((_, i) => document.getElementById(`nw-b${i + 1}`).value.trim());
+  if (!title || !house || betTexts.some(t => !t)) {
+    document.getElementById('nw-error').textContent = 'Need a title, a house, and all 5 bets.';
+    return;
+  }
+  const bets = {};
+  BET_IDS.forEach((id, i) => bets[id] = { text: betTexts[i], result: null });
+  await push(weeksRef, { title, date, house, status: 'open', bets, picks: {}, created: Date.now() });
+  BET_IDS.forEach((_, i) => document.getElementById(`nw-b${i + 1}`).value = '');
+  document.getElementById('nw-error').textContent = '';
+  closeModal('new-week-modal');
+  showToast(`🏈 ${title} posted — picks are open`);
+};
+
+window.gradeBet = async function(weekId, betId, result) {
+  const cur = weeks[weekId]?.bets?.[betId]?.result;
+  await set(ref(db, `sunday_bets/${SEASON}/weeks/${weekId}/bets/${betId}/result`), cur === result ? null : result);
+};
+
+window.setWeekStatus = async function(weekId, status) {
+  if (status === 'final') {
+    const w = weeks[weekId];
+    const badPicks = Object.entries(w.picks || {}).filter(([n, arr]) => Array.isArray(arr) && ![1,3,5].includes(arr.length));
+    if (badPicks.length && !confirm(`Heads up: ${badPicks.map(([n]) => n).join(', ')} ha${badPicks.length > 1 ? 've' : 's'} an even number of picks. Finalize anyway?`)) return;
+  }
+  await set(ref(db, `sunday_bets/${SEASON}/weeks/${weekId}/status`), status);
+};
+
+window.deleteWeek = async function(weekId) {
+  const w = weeks[weekId];
+  if (!confirm(`Delete "${w?.title}" and all its picks? This can't be undone.`)) return;
+  await remove(ref(db, `sunday_bets/${SEASON}/weeks/${weekId}`));
+  showToast('Week deleted');
+};
+
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+// ── Site password gate (same as bets.html) ─────────────────────────
+const PW_KEY = 'srb_auth';
+const PW_CORRECT = 'rudy';
+(function() {
+  if (sessionStorage.getItem(PW_KEY) !== 'ok') {
+    document.getElementById('pw-gate').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('pw-input').focus(), 50);
+  }
+})();
+window.pwCheck = function() {
+  const val = document.getElementById('pw-input').value.trim().toLowerCase();
+  if (val === PW_CORRECT) {
+    sessionStorage.setItem(PW_KEY, 'ok');
+    document.getElementById('pw-gate').classList.remove('show');
+    document.body.style.overflow = '';
+  } else {
+    const err = document.getElementById('pw-error');
+    err.textContent = 'Wrong password — try again.';
+    document.getElementById('pw-input').value = '';
+    setTimeout(() => err.textContent = '', 2000);
+  }
+};
+</script>
+</body>
+</html>

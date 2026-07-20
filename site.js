@@ -14,6 +14,7 @@
     'oneoff-bets': { href: 'bets.html', label: 'One-Off Bets', icon: '🤝' },
     'bernie-bet': { href: 'bernie.html', label: 'The Bernie Bet', icon: '☠️' },
     'dunlap-2026': { href: 'dunlap.html', label: "Matt's 2026 Goals", icon: '🦌' },
+    'sunday-bets': { href: 'sunday-bets.html', label: 'Sunday Bets', icon: '🏈' },
   };
   const HISTORY = [
     { href: 'nba-history.html', label: 'NBA Playoff History', icon: '🏀' },
