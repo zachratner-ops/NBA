@@ -6686,6 +6686,47 @@ function pwCheck() {
   </div>
 </div>
 
+<!-- Card edit modal (commissioner) -->
+<div class="modal-bg" id="card-edit-modal" style="display:none;">
+  <div class="modal" style="max-width:460px;">
+    <h3 id="ce-title">Edit Card</h3>
+    <div class="modal-sub">Changes are saved to Firebase and show for everyone. Reset restores the built-in card.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label class="ce-label">Sport tag</label>
+          <input class="ce-input" id="ce-sport" type="text" placeholder="⚽ World Cup"></div>
+        <div style="width:110px;"><label class="ce-label">Stripe color</label>
+          <input class="ce-input" id="ce-color" type="color" style="padding:3px;height:37px;"></div>
+      </div>
+      <div><label class="ce-label">Name</label>
+        <input class="ce-input" id="ce-name" type="text"></div>
+      <div><label class="ce-label">Description</label>
+        <textarea class="ce-input" id="ce-desc" rows="3" style="resize:vertical;"></textarea></div>
+      <div><label class="ce-label">Link (blank = not clickable)</label>
+        <input class="ce-input" id="ce-href" type="text" placeholder="e.g. wc-draft.html?slug=wc2026"></div>
+      <div style="display:flex;gap:8px;">
+        <div style="flex:1;"><label class="ce-label">Active badge</label>
+          <input class="ce-input" id="ce-active-label" type="text" placeholder="🟢 Active"></div>
+        <div style="flex:1;"><label class="ce-label">Coming-soon badge</label>
+          <input class="ce-input" id="ce-soon-label" type="text" placeholder="🔜 Coming Soon"></div>
+      </div>
+      <div><label class="ce-label">Footer text (optional, HTML ok)</label>
+        <input class="ce-input" id="ce-footer" type="text" placeholder="e.g. Live Draft + Tracker →"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;align-items:center;">
+      <button class="btn btn-green" onclick="saveCardEdit()">Save</button>
+      <button class="btn btn-outline" style="color:#555;border-color:#ccc;" onclick="document.getElementById('card-edit-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-outline" id="ce-reset" style="margin-left:auto;color:#c62828;border-color:#c62828;" onclick="resetCardEdit()">↺ Reset to default</button>
+    </div>
+    <div id="ce-error" style="font-size:12px;color:#e53935;margin-top:8px;min-height:16px;"></div>
+  </div>
+</div>
+<style>
+.ce-label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:4px;}
+.ce-input{width:100%;border:1px solid #ddd;border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;color:#1a1a1a;background:#fff;}
+.ce-input:focus{outline:none;border-color:#1a1a1a;}
+</style>
+
 <!-- Commissioner panel (shown when in comm mode) -->
 <div id="comm-panel" style="display:none;">
   <div class="main" style="padding-bottom:0;padding-top:0;">
@@ -6789,6 +6830,7 @@ const FIREBASE_BASE = 'https://giesener-bets-default-rtdb.firebaseio.com';
 let isComm = false;
 let cardStates = {};
 let cardOrder = [];
+let cardEdits = {}; // id → field overrides saved by the commissioner
 
 // Return CARDS sorted by the saved order; any card not in the saved
 // order (e.g. newly added in code) is appended in its array position.
@@ -6800,7 +6842,8 @@ function orderedCards() {
     if (byId[id] && !seen.has(id)) { result.push(byId[id]); seen.add(id); }
   });
   CARDS.forEach(c => { if (!seen.has(c.id)) result.push(c); });
-  return result;
+  // Apply commissioner content overrides on top of the built-in defaults
+  return result.map(c => cardEdits[c.id] ? { ...c, ...cardEdits[c.id] } : c);
 }
 
 function setWcCardVisibility(visible) {
@@ -6866,6 +6909,7 @@ function renderCommPanel() {
           <div class="comm-card-status">${active ? '✅ Active' : '🔒 Coming Soon'}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button class="btn btn-outline" onclick="openCardEdit('${card.id}')">✏️ Edit${cardEdits[card.id] ? ' •' : ''}</button>
           <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''};" onclick="setCardActive('${card.id}',true)">Activate</button>
           <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'};" onclick="setCardActive('${card.id}',false)">Deactivate</button>
         </div>
@@ -6897,6 +6941,62 @@ async function moveCard(cardId, dir) {
     body: JSON.stringify(order),
     headers: { 'Content-Type': 'application/json' }
   });
+}
+
+// ── Card content editing (commissioner) ──────────────────────────
+let editingCardId = null;
+
+function openCardEdit(cardId) {
+  const card = orderedCards().find(c => c.id === cardId);
+  if (!card) return;
+  editingCardId = cardId;
+  document.getElementById('ce-title').textContent = `Edit: ${card.name}`;
+  document.getElementById('ce-sport').value = card.sport || '';
+  document.getElementById('ce-name').value = card.name || '';
+  document.getElementById('ce-desc').value = card.desc || '';
+  document.getElementById('ce-href').value = card.href || '';
+  document.getElementById('ce-color').value = /^#[0-9a-fA-F]{6}$/.test(card.color || '') ? card.color : '#1a1a1a';
+  document.getElementById('ce-active-label').value = card.activeLabel || '';
+  document.getElementById('ce-soon-label').value = card.comingSoonLabel || '';
+  document.getElementById('ce-footer').value = card.staticFooter || '';
+  document.getElementById('ce-reset').style.display = cardEdits[cardId] ? '' : 'none';
+  document.getElementById('ce-error').textContent = '';
+  document.getElementById('card-edit-modal').style.display = 'flex';
+}
+
+async function saveCardEdit() {
+  if (!editingCardId) return;
+  const val = id => document.getElementById(id).value.trim();
+  const name = val('ce-name');
+  if (!name) { document.getElementById('ce-error').textContent = 'Name can\'t be empty.'; return; }
+  const edit = {
+    sport: val('ce-sport'),
+    name,
+    desc: val('ce-desc'),
+    href: val('ce-href') || null,
+    color: val('ce-color'),
+    activeLabel: val('ce-active-label') || '🟢 Active',
+    comingSoonLabel: val('ce-soon-label') || '🔜 Coming Soon',
+    staticFooter: val('ce-footer') || null,
+  };
+  await fetch(`${FIREBASE_BASE}/site_config/cardEdits/${editingCardId}.json`, {
+    method: 'PUT',
+    body: JSON.stringify(edit),
+    headers: { 'Content-Type': 'application/json' }
+  });
+  cardEdits[editingCardId] = edit;
+  document.getElementById('card-edit-modal').style.display = 'none';
+  renderAllCards();
+  renderCommPanel();
+}
+
+async function resetCardEdit() {
+  if (!editingCardId || !confirm('Restore this card to its built-in content?')) return;
+  await fetch(`${FIREBASE_BASE}/site_config/cardEdits/${editingCardId}.json`, { method: 'DELETE' });
+  delete cardEdits[editingCardId];
+  document.getElementById('card-edit-modal').style.display = 'none';
+  renderAllCards();
+  renderCommPanel();
 }
 
 async function setCardActive(cardId, active) {
@@ -6993,6 +7093,7 @@ fetch(`${FIREBASE_BASE}/site_config.json`)
     cfg = cfg || {};
     cardStates = cfg.cards || {};
     cardOrder = Array.isArray(cfg.cardOrder) ? cfg.cardOrder : [];
+    cardEdits = cfg.cardEdits || {};
     // Set defaults for active bets if not already set
     const defaultActive = ['bernie-bet', 'oneoff-bets'];
     defaultActive.forEach(id => {
