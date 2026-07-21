@@ -6841,18 +6841,29 @@ const FIREBASE_BASE = 'https://giesener-bets-default-rtdb.firebaseio.com';
 let isComm = false;
 let cardStates = {};
 let cardOrder = [];
-let cardEdits = {}; // id → field overrides saved by the commissioner
+let cardEdits = {};   // id → field overrides saved by the commissioner
+let customCards = {}; // id → full card objects added by the commissioner
+let cardHidden = {};  // id → true (card shown nowhere on the page)
+let cardDeleted = {}; // id → true (built-in card tombstones)
 
 // Return CARDS sorted by the saved order; any card not in the saved
 // order (e.g. newly added in code) is appended in its array position.
+function baseCards() {
+  return [
+    ...CARDS.filter(c => !cardDeleted[c.id]),
+    ...Object.entries(customCards).filter(([id]) => !cardDeleted[id]).map(([id, c]) => ({ id, ...c, custom: true })),
+  ];
+}
+
 function orderedCards() {
+  const base = baseCards();
   const byId = {};
-  CARDS.forEach(c => { byId[c.id] = c; });
+  base.forEach(c => { byId[c.id] = c; });
   const result = [], seen = new Set();
   cardOrder.forEach(id => {
     if (byId[id] && !seen.has(id)) { result.push(byId[id]); seen.add(id); }
   });
-  CARDS.forEach(c => { if (!seen.has(c.id)) result.push(c); });
+  base.forEach(c => { if (!seen.has(c.id)) result.push(c); });
   // Apply commissioner content overrides on top of the built-in defaults
   return result.map(c => cardEdits[c.id] ? { ...c, ...cardEdits[c.id] } : c);
 }
@@ -6896,18 +6907,26 @@ function checkCommPw() {
   }
 }
 
+const cardSection = c => cardHidden[c.id] ? 'hidden' : (cardStates[c.id] === true ? 'active' : 'soon');
+
 function renderCommPanel() {
   const actions = document.getElementById('comm-actions');
   const ordered = orderedCards();
   const groups = [
-    { label: 'Active Bets', cards: ordered.filter(c => cardStates[c.id] === true) },
-    { label: 'Coming Soon', cards: ordered.filter(c => cardStates[c.id] !== true) },
-  ];
+    { label: 'Active Bets', key: 'active' },
+    { label: 'Coming Soon', key: 'soon' },
+    { label: 'Hidden', key: 'hidden' },
+  ].map(g => ({ ...g, cards: ordered.filter(c => cardSection(c) === g.key) }));
 
-  actions.innerHTML = groups.map(g => {
+  const addBtn = `<div style="margin-bottom:10px;">
+    <button class="btn btn-green" onclick="openCardAdd()">+ Add Card</button>
+  </div>`;
+
+  actions.innerHTML = addBtn + groups.map(g => {
     if (!g.cards.length) return '';
     const rows = g.cards.map((card, i) => {
       const active = cardStates[card.id] === true;
+      const hidden = !!cardHidden[card.id];
       const upDis = i === 0 ? 'disabled' : '';
       const downDis = i === g.cards.length - 1 ? 'disabled' : '';
       return `<div class="comm-card-row">
@@ -6916,13 +6935,18 @@ function renderCommPanel() {
           <button class="comm-arrow" ${downDis} onclick="moveCard('${card.id}','down')" title="Move down">▼</button>
         </div>
         <div class="comm-card-info">
-          <div class="comm-card-name">${card.name}</div>
-          <div class="comm-card-status">${active ? '✅ Active' : '🔒 Coming Soon'}</div>
+          <div class="comm-card-name">${card.name}${card.custom ? ' <span style="font-size:10px;color:#f9a825;">CUSTOM</span>' : ''}</div>
+          <div class="comm-card-status">${hidden ? '🙈 Hidden' : active ? '✅ Active' : '🔒 Coming Soon'}</div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button class="btn btn-outline" onclick="openCardEdit('${card.id}')">✏️ Edit${cardEdits[card.id] ? ' •' : ''}</button>
-          <button class="btn btn-green" id="btn-activate-${card.id}" style="display:${active?'none':''};" onclick="setCardActive('${card.id}',true)">Activate</button>
-          <button class="btn btn-amber" id="btn-deactivate-${card.id}" style="display:${active?'':'none'};" onclick="setCardActive('${card.id}',false)">Deactivate</button>
+        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+          <button class="btn btn-outline" onclick="openCardEdit('${card.id}')">✏️${cardEdits[card.id] ? ' •' : ''}</button>
+          ${hidden
+            ? `<button class="btn btn-outline" onclick="toggleCardHidden('${card.id}',false)">👁 Show</button>`
+            : `<button class="btn btn-outline" onclick="toggleCardHidden('${card.id}',true)">🙈 Hide</button>`}
+          ${!hidden ? (active
+            ? `<button class="btn btn-amber" onclick="setCardActive('${card.id}',false)">Deactivate</button>`
+            : `<button class="btn btn-green" onclick="setCardActive('${card.id}',true)">Activate</button>`) : ''}
+          <button class="btn btn-outline" style="color:#e57373;border-color:#7a3b3b;" onclick="deleteCard('${card.id}')">🗑</button>
         </div>
       </div>`;
     }).join('');
@@ -6933,8 +6957,8 @@ function renderCommPanel() {
 // Move a card up/down within its own section (Active or Coming Soon).
 async function moveCard(cardId, dir) {
   const ordered = orderedCards();
-  const isActive = cardStates[cardId] === true;
-  const group = ordered.filter(c => (cardStates[c.id] === true) === isActive);
+  const section = cardSection(ordered.find(c => c.id === cardId) || { id: cardId });
+  const group = ordered.filter(c => cardSection(c) === section);
   const gi = group.findIndex(c => c.id === cardId);
   const target = dir === 'up' ? gi - 1 : gi + 1;
   if (target < 0 || target >= group.length) return;
@@ -6954,12 +6978,70 @@ async function moveCard(cardId, dir) {
   });
 }
 
-// ── Card content editing (commissioner) ──────────────────────────
+// ── Card content editing / adding / hiding / deleting ────────────
 let editingCardId = null;
+let addingCard = false;
+
+async function toggleCardHidden(cardId, hidden) {
+  if (hidden) {
+    await fetch(`${FIREBASE_BASE}/site_config/cardHidden/${cardId}.json`, {
+      method: 'PUT', body: 'true', headers: { 'Content-Type': 'application/json' }
+    });
+    cardHidden[cardId] = true;
+  } else {
+    await fetch(`${FIREBASE_BASE}/site_config/cardHidden/${cardId}.json`, { method: 'DELETE' });
+    delete cardHidden[cardId];
+  }
+  renderAllCards();
+  renderCommPanel();
+}
+
+async function deleteCard(cardId) {
+  const card = orderedCards().find(c => c.id === cardId);
+  if (!card) return;
+  const note = card.custom
+    ? `Delete "${card.name}" permanently?`
+    : `Delete "${card.name}"? It's a built-in card — it stays gone until you clear site_config/cardDeleted in Firebase.`;
+  if (!confirm(note)) return;
+  if (card.custom) {
+    await fetch(`${FIREBASE_BASE}/site_config/customCards/${cardId}.json`, { method: 'DELETE' });
+    delete customCards[cardId];
+  } else {
+    await fetch(`${FIREBASE_BASE}/site_config/cardDeleted/${cardId}.json`, {
+      method: 'PUT', body: 'true', headers: { 'Content-Type': 'application/json' }
+    });
+    cardDeleted[cardId] = true;
+  }
+  // Clean up satellite records either way
+  await fetch(`${FIREBASE_BASE}/site_config/cardEdits/${cardId}.json`, { method: 'DELETE' });
+  await fetch(`${FIREBASE_BASE}/site_config/cardHidden/${cardId}.json`, { method: 'DELETE' });
+  delete cardEdits[cardId];
+  delete cardHidden[cardId];
+  renderAllCards();
+  renderCommPanel();
+}
+
+function openCardAdd() {
+  addingCard = true;
+  editingCardId = null;
+  document.getElementById('ce-title').textContent = 'Add Card';
+  document.getElementById('ce-sport').value = '';
+  document.getElementById('ce-name').value = '';
+  document.getElementById('ce-desc').value = '';
+  document.getElementById('ce-href').value = '';
+  document.getElementById('ce-color').value = '#1565C0';
+  document.getElementById('ce-active-label').value = '🟢 Active';
+  document.getElementById('ce-soon-label').value = '🔜 Coming Soon';
+  document.getElementById('ce-footer').value = '';
+  document.getElementById('ce-reset').style.display = 'none';
+  document.getElementById('ce-error').textContent = '';
+  document.getElementById('card-edit-modal').style.display = 'flex';
+}
 
 function openCardEdit(cardId) {
   const card = orderedCards().find(c => c.id === cardId);
   if (!card) return;
+  addingCard = false;
   editingCardId = cardId;
   document.getElementById('ce-title').textContent = `Edit: ${card.name}`;
   document.getElementById('ce-sport').value = card.sport || '';
@@ -6976,7 +7058,7 @@ function openCardEdit(cardId) {
 }
 
 async function saveCardEdit() {
-  if (!editingCardId) return;
+  if (!editingCardId && !addingCard) return;
   const val = id => document.getElementById(id).value.trim();
   const name = val('ce-name');
   if (!name) { document.getElementById('ce-error').textContent = 'Name can\'t be empty.'; return; }
@@ -6990,12 +7072,23 @@ async function saveCardEdit() {
     comingSoonLabel: val('ce-soon-label') || '🔜 Coming Soon',
     staticFooter: val('ce-footer') || null,
   };
-  await fetch(`${FIREBASE_BASE}/site_config/cardEdits/${editingCardId}.json`, {
-    method: 'PUT',
-    body: JSON.stringify(edit),
-    headers: { 'Content-Type': 'application/json' }
-  });
-  cardEdits[editingCardId] = edit;
+  if (addingCard) {
+    const id = 'custom-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) + '-' + Date.now().toString(36);
+    await fetch(`${FIREBASE_BASE}/site_config/customCards/${id}.json`, {
+      method: 'PUT',
+      body: JSON.stringify(edit),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    customCards[id] = edit;
+    addingCard = false;
+  } else {
+    await fetch(`${FIREBASE_BASE}/site_config/cardEdits/${editingCardId}.json`, {
+      method: 'PUT',
+      body: JSON.stringify(edit),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    cardEdits[editingCardId] = edit;
+  }
   document.getElementById('card-edit-modal').style.display = 'none';
   renderAllCards();
   renderCommPanel();
@@ -7031,6 +7124,7 @@ function renderAllCards() {
   comingSoonGrid.innerHTML = '';
 
   orderedCards().forEach(card => {
+    if (cardHidden[card.id]) return;
     const active = cardStates[card.id] === true;
     const wrapper = document.createElement('div');
     wrapper.setAttribute('data-card-id', card.id);
@@ -7105,6 +7199,9 @@ fetch(`${FIREBASE_BASE}/site_config.json`)
     cardStates = cfg.cards || {};
     cardOrder = Array.isArray(cfg.cardOrder) ? cfg.cardOrder : [];
     cardEdits = cfg.cardEdits || {};
+    customCards = cfg.customCards || {};
+    cardHidden = cfg.cardHidden || {};
+    cardDeleted = cfg.cardDeleted || {};
     // Set defaults for active bets if not already set
     const defaultActive = ['bernie-bet', 'oneoff-bets'];
     defaultActive.forEach(id => {

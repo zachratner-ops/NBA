@@ -51,10 +51,11 @@
       .then(cfg => {
         cfg = cfg || {};
         const states = cfg.cards || {};
+        const hidden = cfg.cardHidden || {};
         DEFAULT_ACTIVE.forEach(id => { if (!(id in states)) states[id] = true; });
         const order = Array.isArray(cfg.cardOrder) ? cfg.cardOrder : [];
         const ids = Object.keys(MENU_CARDS)
-          .filter(id => states[id] === true)
+          .filter(id => states[id] === true && !hidden[id])
           .sort((a, b) => ((order.indexOf(a) + 1) || 999) - ((order.indexOf(b) + 1) || 999));
         setMenu(ids);
       })
