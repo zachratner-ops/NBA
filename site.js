@@ -15,6 +15,7 @@
     'bernie-bet': { href: 'bernie.html', label: 'The Bernie Bet', icon: '☠️' },
     'dunlap-2026': { href: 'dunlap.html', label: "Matt's 2026 Goals", icon: '🦌' },
     'sunday-bets': { href: 'sunday-bets.html', label: 'Sunday Bets', icon: '🏈' },
+    'sunday-lines': { href: 'sunday-lines.html', label: 'BBQC Sunday Lines', icon: '🔥' },
   };
   const HISTORY = [
     { href: 'nba-history.html', label: 'NBA Playoff History', icon: '🏀' },

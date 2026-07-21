@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BBQC Sunday Lines · Giesener, Are You In?</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
+
+.hero{max-width:920px;margin:0 auto;padding:28px 20px 4px;}
+.hero-title{font-size:24px;font-weight:800;letter-spacing:-.02em;}
+.hero-sub{font-size:13px;color:#888;margin-top:4px;line-height:1.5;}
+.main{max-width:920px;margin:0 auto;padding:20px;}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:28px 0 10px;}
+.section-label:first-child{margin-top:0;}
+
+.rules-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;margin-top:14px;}
+.rules-card summary{padding:10px 16px;font-size:12px;font-weight:700;color:#666;cursor:pointer;}
+.rules-body{padding:0 16px 14px;font-size:13px;line-height:2;color:#444;}
+
+/* Tabs */
+.sb-tabs{display:flex;gap:0;border-bottom:1px solid #e8e8e8;margin-bottom:18px;}
+.sb-tab{padding:9px 20px;font-size:13px;font-weight:700;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px;}
+.sb-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#2e7d32;display:inline-block;}
+
+/* Week card */
+.week-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;margin-bottom:14px;}
+.week-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:0.5px solid #f0f0f0;}
+.week-head.clickable{cursor:pointer;}
+.week-head.clickable:hover{background:#fafaf8;}
+.chev{color:#bbb;font-size:11px;display:inline-block;transition:transform .15s;}
+.chev.open{transform:rotate(90deg);}
+.week-title{font-size:15px;font-weight:800;}
+.week-date{font-size:12px;color:#999;}
+.poster-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#f5f5f3;color:#7B1FA2;}
+.status-chip{margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.status-open{background:#e8f5e9;color:#2e7d32;}
+.status-locked{background:#fff3cd;color:#996c00;}
+.status-final{background:#f5f5f3;color:#888;}
+
+/* Line rows (picking UI) */
+.line-row{padding:11px 16px;border-bottom:0.5px solid #f5f5f3;}
+.line-row:last-of-type{border-bottom:none;}
+.line-top{display:flex;align-items:center;gap:10px;}
+.line-num{width:22px;height:22px;border-radius:50%;background:#f0f0ee;color:#888;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.side-btns{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap;}
+.side-btn{border:1.5px solid #ddd;background:#fff;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600;cursor:pointer;transition:all .1s;color:#1a1a1a;}
+.side-btn:hover{border-color:#999;}
+.side-btn.on{background:#2e7d32;border-color:#2e7d32;color:#fff;}
+.side-btn.readonly{cursor:default;}
+.side-btn.readonly:hover{border-color:#ddd;}
+.vs-txt{font-size:10px;font-weight:800;color:#bbb;letter-spacing:.05em;}
+.press-btn{border:1.5px solid #eee;background:#fafaf8;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;color:#bbb;flex-shrink:0;}
+.press-btn.on{background:#e65100;border-color:#e65100;color:#fff;}
+.line-result{font-size:11px;font-weight:800;flex-shrink:0;padding:2px 8px;border-radius:12px;}
+.res-a,.res-b{background:#e8f5e9;color:#2e7d32;}
+.res-push{background:#f0f0ee;color:#888;}
+
+/* Claim bar */
+.claim-bar{padding:12px 16px;border-top:0.5px solid #f0f0f0;background:#fafaf8;}
+.claim-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.claim-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;}
+.name-chip{font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid #ddd;background:#fff;cursor:pointer;transition:all .1s;}
+.name-chip.active{color:#fff;border-color:transparent;}
+.claim-status{font-size:12px;color:#888;margin-top:10px;line-height:1.6;}
+.claim-actions{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+.locked-in{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+.locked-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;color:#fff;}
+
+.btn{background:#1a1a1a;color:#fff;border:none;font-size:13px;font-weight:600;padding:8px 16px;border-radius:7px;cursor:pointer;}
+.btn:hover{background:#333;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-sm{font-size:12px;padding:5px 12px;border-radius:6px;}
+.btn-outline{background:transparent;color:#1a1a1a;border:1px solid #ccc;}
+.btn-outline:hover{background:#f0f0ee;}
+.btn-green{background:#2e7d32;}
+.btn-green:hover{background:#1b5e20;}
+.btn-red{background:#c62828;}
+.btn-red:hover{background:#b71c1c;}
+.btn-amber{background:#e65100;}
+.btn-amber:hover{background:#bf360c;}
+
+/* Money footer (collapsed history) */
+.week-money{padding:12px 16px;border-top:0.5px solid #f0f0f0;display:flex;flex-direction:column;gap:5px;}
+.wm-row{display:flex;align-items:center;gap:8px;font-size:12px;}
+.wm-name{font-weight:700;width:90px;}
+.wm-detail{color:#999;flex:1;}
+.wm-net{font-weight:800;margin-left:auto;font-variant-numeric:tabular-nums;}
+.pos{color:#2e7d32;}
+.neg{color:#c62828;}
+.zero{color:#888;}
+
+/* Sheets-style grid */
+.grid-wrap{overflow-x:auto;padding:12px 14px;}
+table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
+.sheet th,.sheet td{border:1px solid #d4d4d0;padding:5px 9px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.sheet th{background:#ececea;font-weight:800;font-size:11px;}
+.sheet th.bet-col{text-align:left;}
+.sheet td.bet-name{text-align:left;font-weight:600;white-space:normal;min-width:190px;line-height:1.35;}
+.sheet td.cw{background:#43a047;color:#fff;font-weight:800;}
+.sheet td.cl{background:#e53935;color:#fff;font-weight:800;}
+.sheet td.cp{background:#9e9e9e;color:#fff;font-weight:800;}
+.sheet td.cq{color:#555;font-weight:600;font-size:11px;background:#fafaf8;}
+.sheet td.pick-cell{position:relative;padding-left:16px;padding-right:16px;}
+.sheet td.pick-cell .press-mark{position:absolute;top:1px;right:2px;font-size:9px;line-height:1;}
+.sheet tr.subrow td{font-weight:800;border-top:2.5px solid #1a1a1a;background:#fafaf8;}
+.sheet tr.seasonrow td{font-weight:800;background:#f0f0ee;}
+.sheet th.movecol,.sheet td.movecol{border-left:2.5px solid #1a1a1a;color:#666;}
+
+/* Standings / settle */
+.stand-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;}
+.stand-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid #f5f5f3;font-size:13px;}
+.stand-row:last-child{border-bottom:none;}
+.stand-rank{width:20px;font-size:11px;font-weight:800;color:#bbb;}
+.stand-stripe{width:4px;height:26px;border-radius:2px;flex-shrink:0;}
+.stand-name{font-weight:700;width:90px;}
+.stand-rec{font-size:11px;color:#999;flex:1;}
+.stand-net{font-weight:800;margin-left:auto;font-variant-numeric:tabular-nums;font-size:14px;}
+.settle-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;padding:6px 16px;}
+.settle-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid #f5f5f3;font-size:13px;}
+.settle-row:last-child{border-bottom:none;}
+.settle-amt{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* Comm */
+.comm-panel{background:#fffbeb;border:1px solid #f9a825;border-radius:12px;padding:12px 16px;margin-bottom:16px;}
+.comm-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#996c00;margin-bottom:8px;}
+.comm-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.grade-seg{display:inline-flex;border:0.5px solid #ddd;border-radius:6px;overflow:hidden;flex-shrink:0;}
+.grade-seg button{border:none;background:#fff;font-size:10px;font-weight:700;padding:3px 8px;cursor:pointer;color:#999;max-width:110px;overflow:hidden;text-overflow:ellipsis;}
+.grade-seg button:not(:last-child){border-right:0.5px solid #eee;}
+.grade-seg button.g-a.on,.grade-seg button.g-b.on{background:#2e7d32;color:#fff;}
+.grade-seg button.g-push.on{background:#888;color:#fff;}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:520px;margin-top:30px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h2{font-size:17px;font-weight:800;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:5px;}
+.field input,.field select{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;background:#fff;}
+.field input:focus,.field select:focus{outline:none;border-color:#1a1a1a;}
+.line-pair{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.line-pair input{flex:1;border:1px solid #ddd;border-radius:8px;padding:8px 11px;font-size:13px;font-family:inherit;}
+.line-pair .vs-txt{flex-shrink:0;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+
+.empty{text-align:center;padding:44px 20px;color:#999;}
+.empty-icon{font-size:30px;margin-bottom:10px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:24px;transition:transform .25s;z-index:1200;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* Site password gate */
+.pw-gate{display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;align-items:center;justify-content:center;}
+.pw-gate.show{display:flex;}
+.pw-box{text-align:center;padding:40px 20px;max-width:340px;width:100%;}
+.pw-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
+.pw-sub{font-size:14px;color:#666;margin-bottom:32px;}
+.pw-input{width:100%;background:#2a2a2a;border:1px solid #333;border-radius:10px;padding:13px 16px;font-size:16px;color:#fff;font-family:inherit;text-align:center;letter-spacing:.08em;}
+.pw-input:focus{outline:none;border-color:#555;}
+.pw-input::placeholder{color:#555;letter-spacing:0;}
+.pw-btn{margin-top:12px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;}
+.pw-btn:hover{background:#ddd;}
+.pw-error{font-size:12px;color:#e57373;margin-top:10px;min-height:16px;}
+
+@media(max-width:600px){
+  .wm-name,.stand-name{width:72px;}
+  .stand-rec{font-size:10px;}
+  .sb-tab{flex:1;justify-content:center;padding:9px 6px;font-size:12px;}
+  .side-btn{font-size:12px;padding:6px 10px;}
+}
+</style>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+
+<div class="pw-gate" id="pw-gate">
+  <div class="pw-box">
+    <div class="pw-title">Giesener...<br>Are you In?</div>
+    <div class="pw-sub">Enter the password to continue</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')pwCheck()">
+    <button class="pw-btn" onclick="pwCheck()">Enter →</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
+
+<header class="sitebar">
+  <a class="sb-home" href="index.html" aria-label="Home">🏠</a>
+  <div class="sb-title">🔥 BBQC Sunday Lines</div>
+  <div class="sb-actions">
+    <button class="sb-btn" id="comm-toggle" onclick="toggleComm()" aria-label="Commissioner mode">⚙</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-title">BBQC Sunday Lines 🔥</div>
+  <div class="hero-sub">BBQC posts 5 lines. Everyone picks a side on 1, 3, or 5 of them — blind. Opposite sides pair off at $10 a head, a press doubles your stakes on one pick, and a 5-for-5 sweep taxes the whole table.</div>
+  <details class="rules-card">
+    <summary>📖 Full rules</summary>
+    <div class="rules-body">
+      🏠 <strong>BBQC posts the 5 lines</strong> each week (standard public lines) — they set the slate, they're not bets themselves<br>
+      🎯 Each participant independently <strong>picks a side on 1, 3, or 5</strong> of the lines<br>
+      👀 Picks are <strong>blind</strong> — revealed simultaneously when the board locks<br>
+      💵 Each line is a <strong>flat $10 head-to-head</strong> between every pair of people on opposite sides<br>
+      🔥 <strong>Press one pick</strong> per week (optional, chosen blind): your matchups on that line go to $20 — $40 if both sides pressed<br>
+      🎰 <strong>Sweep bonus:</strong> go 5-for-5 and collect $10 from every other participant who bet that week<br>
+      🤝 <strong>Pushes</strong> = no action, $0 — and a push knocks you out of sweep contention<br>
+      💰 Everything settles through the season ledger
+    </div>
+  </details>
+</div>
+
+<div class="main">
+  <div id="comm-panel" style="display:none;" class="comm-panel">
+    <div class="comm-label">⚙ Commissioner Controls</div>
+    <div class="comm-actions">
+      <button class="btn btn-sm btn-amber" onclick="openNewWeek()">+ New Board</button>
+    </div>
+  </div>
+
+  <div id="content"><div class="empty"><div class="empty-icon">🔥</div>Loading…</div></div>
+</div>
+
+<!-- New board modal -->
+<div class="overlay" id="new-week-modal">
+  <div class="modal">
+    <h2>🔥 New Sunday Board</h2>
+    <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
+    <div class="field"><label>Date</label><input id="nw-date" type="date"></div>
+    <div class="field"><label>Posted by</label><input id="nw-poster" type="text" value="BBQC"></div>
+    <div class="field"><label>The 5 lines — two sides each</label>
+      <div class="line-pair"><input id="nw-l1a" placeholder="1. Bills -3"><span class="vs-txt">VS</span><input id="nw-l1b" placeholder="Jets +3"></div>
+      <div class="line-pair"><input id="nw-l2a" placeholder="2."><span class="vs-txt">VS</span><input id="nw-l2b" placeholder=""></div>
+      <div class="line-pair"><input id="nw-l3a" placeholder="3."><span class="vs-txt">VS</span><input id="nw-l3b" placeholder=""></div>
+      <div class="line-pair"><input id="nw-l4a" placeholder="4."><span class="vs-txt">VS</span><input id="nw-l4b" placeholder=""></div>
+      <div class="line-pair"><input id="nw-l5a" placeholder="5."><span class="vs-txt">VS</span><input id="nw-l5b" placeholder=""></div>
+    </div>
+    <div id="nw-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('new-week-modal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveNewWeek()">Post Board</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seal picks modal -->
+<div class="overlay" id="seal-modal">
+  <div class="modal" style="max-width:420px;">
+    <h2>🔒 Lock In &amp; Seal</h2>
+    <div id="seal-recap" style="background:#f5f5f3;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.9;margin-bottom:14px;"></div>
+    <div style="font-size:12px;color:#888;line-height:1.5;margin-bottom:12px;">
+      Once sealed, nobody — including you — can see or change these picks until the board locks.
+      Set an optional 4-digit PIN if you want to be able to peek at your own card later.
+    </div>
+    <div class="field"><label>PIN (optional)</label>
+      <input id="seal-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="4 digits or leave blank" autocomplete="off"></div>
+    <div id="seal-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('seal-modal')">Back</button>
+      <button class="btn btn-green" onclick="confirmSeal()">Seal my picks 🔒</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comm password modal -->
+<div class="overlay" id="comm-pw-modal">
+  <div class="modal" style="max-width:340px;">
+    <h2>Commissioner Mode</h2>
+    <div class="field"><input id="comm-pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')checkCommPw()"></div>
+    <div id="comm-pw-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('comm-pw-modal')">Cancel</button>
+      <button class="btn" onclick="checkCommPw()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
+  authDomain: "giesener-bets.firebaseapp.com",
+  databaseURL: "https://giesener-bets-default-rtdb.firebaseio.com",
+  projectId: "giesener-bets",
+  storageBucket: "giesener-bets.firebasestorage.app",
+  messagingSenderId: "728665249382",
+  appId: "1:728665249382:web:ec1635941b04d3aba7ffa7"
+};
+
+const MEMBERS = ['Adam','Andrew','Ben','Jared','Marc','Mark','Matt','Max','Mike','Zach'];
+const COLORS = {
+  Adam:'#455A64', Andrew:'#E65100', Ben:'#C62828', Jared:'#2E7D32',
+  Marc:'#F9A825', Mark:'#7B1FA2', Matt:'#AD1457', Max:'#4E342E', Mike:'#0277BD', Zach:'#1565C0'
+};
+const BASE = 10, SWEEP = 10;
+const COMM_PW = 'golf';
+const SEASON = '2026';
+const LINE_IDS = ['l1','l2','l3','l4','l5'];
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const weeksRef = ref(db, `bbqc/${SEASON}/weeks`);
+
+let weeks = {};
+let isComm = false;
+let tab = localStorage.getItem('bbqc_tab') || 'week';
+let expandedWeeks = new Set();
+let myName = localStorage.getItem('bbqc_name') || null;
+// Uncommitted claim edits per week: { sides: {lineId:'a'|'b'}, press: lineId|null }
+let drafts = {};
+
+onValue(weeksRef, snap => { weeks = snap.val() || {}; render(); });
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtMoney = n => n === 0 ? '$0' : (n > 0 ? '+$' : '-$') + Math.abs(n).toLocaleString();
+const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
+const color = m => COLORS[m] || '#555';
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Sealed-pick storage ────────────────────────────────────────────
+// Picks are stored scrambled so casual database browsing shows gibberish.
+// This is a deterrent, not cryptography — the group threat model is
+// "someone taps the wrong name chip," not "someone reverses XOR."
+const OBF_KEY = 'bbqc-seal-v1';
+function obf(str, salt) {
+  const k = salt + OBF_KEY;
+  let out = '';
+  for (let i = 0; i < str.length; i++) out += String.fromCharCode(str.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+  return btoa(out);
+}
+function deobf(b64, salt) {
+  try {
+    const s = atob(b64), k = salt + OBF_KEY;
+    let out = '';
+    for (let i = 0; i < s.length; i++) out += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    return JSON.parse(out);
+  } catch { return null; }
+}
+async function sha256hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// Decode every sealed entry for scoring/reveal (legacy plain entries pass through)
+function decodedPicks(w) {
+  const out = {};
+  Object.entries(w.picks || {}).forEach(([n, e]) => {
+    if (!e) return;
+    if (e.sides) { out[n] = { sides: e.sides, press: e.press || null }; return; }
+    const d = e.seal ? deobf(e.seal, e.salt || '') : null;
+    if (d && d.sides) out[n] = { sides: d.sides, press: d.press || null };
+  });
+  return out;
+}
+
+// ── Money math ─────────────────────────────────────────────────────
+// Peer-to-peer: every pair on opposite sides of a graded line owes
+// $10 × 2^(presses on that line among the pair). Sweep = 5 picks, 5 wins.
+function computeWeek(w) {
+  const picks = decodedPicks(w);
+  const players = MEMBERS.filter(m => picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
+  const per = {}; // name → {net, wins, losses, pushes, count, press, sweep}
+  const pair = {}; // 'A|B' (A<B) → net for A
+  const pairAdd = (a, b, amt) => { // a gains amt from b
+    const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+    pair[key] = (pair[key] || 0) + (a < b ? amt : -amt);
+  };
+  players.forEach(m => per[m] = { net: 0, wins: 0, losses: 0, pushes: 0, count: Object.keys(picks[m].sides).length, press: picks[m].press || null, sweep: false });
+
+  LINE_IDS.forEach(id => {
+    const r = w.lines?.[id]?.result;
+    if (!r) return;
+    const onLine = players.filter(m => picks[m].sides[id]);
+    if (r === 'push') { onLine.forEach(m => per[m].pushes++); return; }
+    const winners = onLine.filter(m => picks[m].sides[id] === r);
+    const losers = onLine.filter(m => picks[m].sides[id] !== r);
+    winners.forEach(m => per[m].wins++);
+    losers.forEach(m => per[m].losses++);
+    winners.forEach(wn => losers.forEach(ls => {
+      const stake = BASE * (picks[wn].press === id ? 2 : 1) * (picks[ls].press === id ? 2 : 1);
+      per[wn].net += stake; per[ls].net -= stake;
+      pairAdd(wn, ls, stake);
+    }));
+  });
+
+  // Sweep bonus: 5 picks, 5 wins (a push already breaks wins===5)
+  const sweepers = players.filter(m => per[m].count === 5 && per[m].wins === 5);
+  sweepers.forEach(s => {
+    per[s].sweep = true;
+    players.forEach(p => {
+      if (p === s) return;
+      per[s].net += SWEEP; per[p].net -= SWEEP;
+      pairAdd(s, p, SWEEP);
+    });
+  });
+  return { per, pair, players };
+}
+
+// ── Rendering ──────────────────────────────────────────────────────
+function render() {
+  const el = document.getElementById('content');
+  const entries = Object.entries(weeks).map(([id, w]) => ({ id, ...w }))
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.created || 0) - (a.created || 0));
+  const activeWeeks = entries.filter(w => w.status !== 'final');
+  const finalWeeks = entries.filter(w => w.status === 'final');
+
+  const tabsBar = `<div class="sb-tabs">
+    <div class="sb-tab ${tab === 'week' ? 'active' : ''}" onclick="switchTab('week')">This Week${activeWeeks.some(w => w.status === 'open') ? ' <span class="live-dot"></span>' : ''}</div>
+    <div class="sb-tab ${tab === 'standings' ? 'active' : ''}" onclick="switchTab('standings')">Standings</div>
+    <div class="sb-tab ${tab === 'history' ? 'active' : ''}" onclick="switchTab('history')">History${finalWeeks.length ? ` <span style="font-size:10px;color:#bbb;">${finalWeeks.length}</span>` : ''}</div>
+  </div>`;
+
+  let body = '';
+  if (tab === 'week') {
+    body = activeWeeks.length ? activeWeeks.map(w => weekCard(w)).join('')
+      : `<div class="empty"><div class="empty-icon">🔥</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No board up</div>
+          <div style="font-size:13px;">${finalWeeks.length ? 'Nothing to pick right now — check Standings or History.' : 'The first BBQC board will show up here when the season kicks off.'}</div></div>`;
+  } else if (tab === 'standings') {
+    body = finalWeeks.length ? seasonStandingsHtml(finalWeeks) + settleHtml(finalWeeks)
+      : `<div class="empty"><div class="empty-icon">📊</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Nothing on the books yet</div>
+          <div style="font-size:13px;">Standings appear once the first board is finalized.</div></div>`;
+  } else {
+    body = finalWeeks.length ? finalWeeks.map(w => weekCard(w, !expandedWeeks.has(w.id))).join('')
+      : `<div class="empty"><div class="empty-icon">📚</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No finished weeks yet</div>
+          <div style="font-size:13px;">Finalized boards land here with full results.</div></div>`;
+  }
+  el.innerHTML = tabsBar + body;
+}
+
+window.switchTab = function(t) { tab = t; localStorage.setItem('bbqc_tab', t); render(); };
+window.toggleWeekExpand = function(id) { expandedWeeks.has(id) ? expandedWeeks.delete(id) : expandedWeeks.add(id); render(); };
+
+// Season net per person through a given week
+function seasonTotalsThrough(w) {
+  const key = x => (x.date || '') + '|' + (x.created || 0);
+  const tot = {};
+  Object.entries(weeks).map(([id, x]) => ({ id, ...x }))
+    .filter(x => (x.status === 'final' && key(x) <= key(w)) || x.id === w.id)
+    .forEach(x => {
+      const fin = computeWeek(x);
+      Object.entries(fin.per).forEach(([n, r]) => tot[n] = (tot[n] || 0) + r.net);
+    });
+  return tot;
+}
+
+// Shortest distinguishing label for a side: words up through the first
+// one that differs from the other side ("Bills -3" vs "Jets +3" → "Bills";
+// "Mahomes o2.5 pass TD" vs "Mahomes u2.5 pass TD" → "Mahomes o2.5").
+function shortSide(mine, other) {
+  const a = String(mine).split(/\s+/), b = String(other).split(/\s+/);
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  return a.slice(0, Math.min(i + 1, a.length)).join(' ');
+}
+
+// Sheets-style grid for locked/final weeks: lines down, players across.
+// Cell = picked side while ungraded, W/L/P once graded; 🔥 marks a press.
+function weekGridHtml(w) {
+  const picks = decodedPicks(w);
+  const players = MEMBERS.filter(m => picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
+  if (!players.length) return '';
+  const fin = computeWeek(w);
+  const season = seasonTotalsThrough(w);
+
+  const lineRows = LINE_IDS.map((id, i) => {
+    const ln = w.lines?.[id];
+    if (!ln) return '';
+    const r = ln.result;
+    let moved = 0;
+    const cells = players.map(m => {
+      const side = picks[m].sides[id];
+      if (!side) return '<td></td>';
+      const fire = picks[m].press === id ? '<span class="press-mark">🔥</span>' : '';
+      if (!r) return `<td class="cq pick-cell" title="${esc(side === 'a' ? ln.a : ln.b)}">${esc(side === 'a' ? shortSide(ln.a, ln.b) : shortSide(ln.b, ln.a))}${fire}</td>`;
+      if (r === 'push') return `<td class="cp pick-cell">P${fire}</td>`;
+      return side === r ? `<td class="cw pick-cell">W${fire}</td>` : `<td class="cl pick-cell">L${fire}</td>`;
+    }).join('');
+    if (r && r !== 'push') {
+      const winners = players.filter(m => picks[m].sides[id] === r);
+      const losers = players.filter(m => picks[m].sides[id] && picks[m].sides[id] !== r);
+      winners.forEach(wn => losers.forEach(ls => {
+        moved += BASE * (picks[wn].press === id ? 2 : 1) * (picks[ls].press === id ? 2 : 1);
+      }));
+    }
+    const label = `${i + 1}. ${esc(ln.a)} <span style="color:#bbb;font-size:10px;">vs</span> ${esc(ln.b)}`;
+    const resTxt = r === 'push' ? 'PUSH' : r ? esc(r === 'a' ? ln.a : ln.b) + ' ✓' : '';
+    return `<tr><td class="bet-name">${label}${resTxt ? `<div style="font-size:10px;color:#2e7d32;font-weight:700;">${resTxt}</div>` : ''}</td>${cells}
+      <td class="movecol">${r && r !== 'push' ? '$' + moved : r === 'push' ? '$0' : ''}</td></tr>`;
+  }).join('');
+
+  // Sweep row
+  let sweepRow = '';
+  const sweepers = players.filter(m => fin.per[m].sweep);
+  if (w.status === 'final' && sweepers.length) {
+    let moved = 0;
+    const cells = players.map(m => {
+      if (fin.per[m].sweep) { const amt = SWEEP * (players.length - 1); moved += amt; return `<td class="cw">+$${amt}</td>`; }
+      return `<td class="cl">-$${SWEEP * sweepers.filter(s => s !== m).length}</td>`;
+    }).join('');
+    sweepRow = `<tr><td class="bet-name">Sweep Bonus 🎰</td>${cells}<td class="movecol">$${moved}</td></tr>`;
+  }
+
+  const subRow = `<tr class="subrow"><td class="bet-name">${esc((w.title || 'Week').toUpperCase())} SUBTOTAL</td>
+    ${players.map(m => `<td class="${cls(fin.per[m].net)}">${fmtMoney(fin.per[m].net)}</td>`).join('')}<td class="movecol"></td></tr>`;
+  const seasonRow = `<tr class="seasonrow"><td class="bet-name">SEASON TOTAL${w.status !== 'final' ? '*' : ''}</td>
+    ${players.map(m => { const n = season[m] || 0; return `<td class="${cls(n)}">${fmtMoney(n)}</td>`; }).join('')}<td class="movecol"></td></tr>`;
+
+  return `<div class="grid-wrap"><table class="sheet">
+    <tr><th class="bet-col">Line</th>
+      ${players.map(m => `<th style="color:${color(m)}">${esc(m)}</th>`).join('')}
+      <th class="movecol">$ Moved</th></tr>
+    ${lineRows}${sweepRow}${subRow}${seasonRow}
+  </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div>`;
+}
+
+function weekCard(w, collapsed = false) {
+  const open = w.status === 'open';
+  const isHistory = w.status === 'final';
+  const graded = LINE_IDS.filter(id => w.lines?.[id]?.result).length;
+  const fin = computeWeek(w);
+  const sealed = w.picks || {}; // raw sealed entries — contents never rendered while open
+  const iAmSealed = !!(myName && sealed[myName]);
+  const canPick = open && myName && !iAmSealed;
+  const draft = canPick ? (drafts[w.id] || { sides: {}, press: null }) : { sides: {}, press: null };
+  const selCount = Object.keys(draft.sides).length;
+  const validCount = [1, 3, 5].includes(selCount);
+
+  const statusChip = w.status === 'open' ? `<span class="status-chip status-open">🟢 Picks open · blind</span>`
+    : w.status === 'locked' ? `<span class="status-chip status-locked">🔒 Revealed${graded ? ` · ${graded}/5 graded` : ''}</span>`
+    : `<span class="status-chip status-final">🏁 Final</span>`;
+
+  const head = `<div class="week-head ${isHistory ? 'clickable' : ''}" ${isHistory ? `onclick="toggleWeekExpand('${w.id}')"` : ''}>
+      ${isHistory ? `<span class="chev ${collapsed ? '' : 'open'}">▶</span>` : ''}
+      <span class="week-title">${esc(w.title || 'Week')}</span>
+      <span class="week-date">${w.date ? new Date(w.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+      <span class="poster-chip">📋 ${esc(w.poster || 'BBQC')}</span>
+      ${statusChip}
+    </div>`;
+
+  // Collapsed history: header + compact money summary
+  if (collapsed) {
+    const names = fin.players.sort((a, b) => fin.per[b].net - fin.per[a].net);
+    const moneyFooter = names.length ? `<div class="week-money">${names.map(n => {
+      const r = fin.per[n];
+      return `<div class="wm-row"><span class="dot" style="background:${color(n)}"></span>
+        <span class="wm-name">${esc(n)}</span>
+        <span class="wm-detail">${r.count} pick${r.count > 1 ? 's' : ''} · ${r.wins}-${r.losses}${r.pushes ? `-${r.pushes}p` : ''}${r.press ? ' · 🔥' : ''}${r.sweep ? ' · SWEEP 🎰' : ''}</span>
+        <span class="wm-net ${cls(r.net)}">${fmtMoney(r.net)}</span></div>`;
+    }).join('')}</div>` : '';
+    return `<div class="week-card">${head}${moneyFooter}</div>`;
+  }
+
+  // Line rows — pick UI while open (only my unsealed draft visible), read-only after
+  const lineRows = LINE_IDS.map((id, i) => {
+    const ln = w.lines?.[id];
+    if (!ln) return '';
+    const mySide = draft.sides[id];
+    const pressed = draft.press === id;
+    const r = ln.result;
+    const sideBtn = (side, label) => canPick
+      ? `<button class="side-btn ${mySide === side ? 'on' : ''}" onclick="pickSide('${w.id}','${id}','${side}')">${esc(label)}</button>`
+      : `<button class="side-btn readonly ${r === side ? 'on' : ''}">${esc(label)}${r === side ? ' ✓' : ''}</button>`;
+    const pressBtn = canPick && mySide
+      ? `<button class="press-btn ${pressed ? 'on' : ''}" onclick="togglePress('${w.id}','${id}')">🔥 ${pressed ? 'PRESSED' : 'Press'}</button>` : '';
+    const resChip = !canPick && r === 'push' ? `<span class="line-result res-push">PUSH</span>` : '';
+    const gradeSeg = isComm && w.status !== 'open' ? `<span class="grade-seg">
+        <button class="g-a ${r === 'a' ? 'on' : ''}" onclick="gradeLine('${w.id}','${id}','a')">${esc(ln.a)}</button>
+        <button class="g-b ${r === 'b' ? 'on' : ''}" onclick="gradeLine('${w.id}','${id}','b')">${esc(ln.b)}</button>
+        <button class="g-push ${r === 'push' ? 'on' : ''}" onclick="gradeLine('${w.id}','${id}','push')">PUSH</button>
+      </span>` : '';
+    return `<div class="line-row"><div class="line-top">
+      <div class="line-num">${i + 1}</div>
+      <div class="side-btns">${sideBtn('a', ln.a)}<span class="vs-txt">VS</span>${sideBtn('b', ln.b)}${resChip}</div>
+      ${pressBtn}${gradeSeg}
+    </div></div>`;
+  }).join('');
+
+  // Claim bar
+  let claimBar = '';
+  if (open) {
+    const nameChips = MEMBERS.map(m => {
+      const isSealed = !!sealed[m];
+      const active = myName === m;
+      return `<button class="name-chip ${active ? 'active' : ''}"
+        style="${active ? `background:${isSealed ? '#9aa0a8' : color(m)};` : ''}${isSealed && !active ? 'opacity:.55;' : ''}"
+        onclick="setMyName('${m}')">${m}${isSealed ? ' 🔒' : ''}</button>`;
+    }).join('');
+    let status = '';
+    if (!myName) status = 'Pick your name, then choose a side on 1, 3, or 5 lines. Picks are sealed the moment you lock in.';
+    else if (iAmSealed) status = `🔒 <strong>${esc(myName)} is locked in.</strong> Sealed until the board locks — nobody can see or change these picks. Need a re-do? Ask the commissioner to unlock you.`;
+    else if (selCount === 0) status = 'Choose a side on 1, 3, or 5 lines. Press one 🔥 if you\'re feeling it.';
+    else if (!validCount) status = `<span style="color:#c62828;font-weight:700;">${selCount} picked — must be an odd number (1, 3, or 5).</span>`;
+    else status = `${selCount} pick${selCount > 1 ? 's' : ''}${draft.press ? ' · 1 pressed 🔥' : ''}${selCount === 5 ? ' · sweep all 5 to tax the table 🎰' : ''}`;
+    const sealedNames = MEMBERS.filter(m => sealed[m]);
+    claimBar = `<div class="claim-bar">
+      <div class="claim-row"><span class="claim-label">I am</span>${nameChips}</div>
+      <div class="claim-status">${status}</div>
+      ${canPick ? `<div class="claim-actions">
+        <button class="btn btn-sm btn-green" ${validCount ? '' : 'disabled'} onclick="openSealModal('${w.id}')">Lock in my picks 🔒</button>
+        ${selCount ? `<button class="btn btn-sm btn-outline" onclick="clearDraft('${w.id}')">Clear</button>` : ''}
+      </div>` : ''}
+      ${iAmSealed && sealed[myName].pinHash ? `<div class="claim-actions">
+        <button class="btn btn-sm btn-outline" onclick="viewSealed('${w.id}')">👁 View my sealed picks (PIN)</button>
+      </div>` : ''}
+      ${sealedNames.length ? `<div class="locked-in"><span class="claim-label">Locked in:</span>
+        ${sealedNames.map(m => `<span class="locked-chip" style="background:${color(m)}">🔒 ${esc(m)}</span>`).join('')}
+        <span style="font-size:10px;color:#bbb;">everything sealed until the board locks 👀</span></div>` : ''}
+    </div>`;
+  }
+
+  const grid = w.status !== 'open' ? weekGridHtml(w) : '';
+
+  let commBar = '';
+  if (isComm) {
+    const allGraded = graded === 5;
+    const sealedNames = MEMBERS.filter(m => sealed[m]);
+    commBar = `<div class="claim-bar" style="background:#fffbeb;">
+      ${w.status === 'open' && sealedNames.length ? `<div class="claim-actions" style="margin-top:0;margin-bottom:8px;">
+        <span class="claim-label">Unlock (wipes their picks):</span>
+        ${sealedNames.map(m => `<button class="btn btn-sm btn-outline" onclick="unlockMember('${w.id}','${m}')">🔓 ${esc(m)}</button>`).join('')}
+      </div>` : ''}
+      <div class="claim-actions" style="margin-top:0;">
+        ${w.status === 'open' ? `<button class="btn btn-sm btn-amber" onclick="setWeekStatus('${w.id}','locked')">🔒 Lock board &amp; reveal</button>` : ''}
+        ${w.status === 'locked' ? `<button class="btn btn-sm btn-outline" onclick="setWeekStatus('${w.id}','open')">Reopen picks</button>` : ''}
+        ${w.status === 'locked' ? `<button class="btn btn-sm btn-green" ${allGraded ? '' : 'disabled'} onclick="setWeekStatus('${w.id}','final')">${allGraded ? '🏁 Finalize week' : `Grade all 5 to finalize (${graded}/5)`}</button>` : ''}
+        ${w.status === 'final' ? `<button class="btn btn-sm btn-outline" onclick="setWeekStatus('${w.id}','locked')">Unfinalize</button>` : ''}
+        <button class="btn btn-sm btn-red" onclick="deleteWeek('${w.id}')" style="margin-left:auto;">🗑 Delete</button>
+      </div>
+    </div>`;
+  }
+
+  const showLines = open || (isComm && w.status !== 'open');
+  return `<div class="week-card">${head}${showLines ? lineRows : ''}${claimBar}${grid}${commBar}</div>`;
+}
+
+function seasonStandingsHtml(finalWeeks) {
+  const tot = {};
+  MEMBERS.forEach(m => tot[m] = { net: 0, w: 0, l: 0, p: 0, picks: 0, weeks: 0, sweeps: 0, presses: 0 });
+  finalWeeks.forEach(w => {
+    const fin = computeWeek(w);
+    Object.entries(fin.per).forEach(([n, r]) => {
+      tot[n].net += r.net; tot[n].w += r.wins; tot[n].l += r.losses; tot[n].p += r.pushes;
+      tot[n].picks += r.count; tot[n].weeks++;
+      if (r.sweep) tot[n].sweeps++;
+      if (r.press) tot[n].presses++;
+    });
+  });
+  const ranked = Object.entries(tot).filter(([, r]) => r.weeks > 0).sort((a, b) => b[1].net - a[1].net);
+  if (!ranked.length) return '';
+  return `<div class="section-label">Season Standings</div>
+    <div class="stand-card">${ranked.map(([n, r], i) => `<div class="stand-row">
+      <span class="stand-rank">#${i + 1}</span>
+      <span class="stand-stripe" style="background:${color(n)}"></span>
+      <span class="stand-name">${esc(n)}</span>
+      <span class="stand-rec">${r.w}-${r.l}${r.p ? `-${r.p}p` : ''} on ${r.picks} pick${r.picks > 1 ? 's' : ''} · ${r.weeks} wk${r.weeks > 1 ? 's' : ''}${r.presses ? ` · ${r.presses}🔥` : ''}${r.sweeps ? ` · ${r.sweeps} sweep${r.sweeps > 1 ? 's' : ''} 🎰` : ''}</span>
+      <span class="stand-net ${cls(r.net)}">${fmtMoney(r.net)}</span>
+    </div>`).join('')}</div>`;
+}
+
+function settleHtml(finalWeeks) {
+  const pair = {};
+  finalWeeks.forEach(w => {
+    const fin = computeWeek(w);
+    Object.entries(fin.pair).forEach(([k, v]) => pair[k] = (pair[k] || 0) + v);
+  });
+  const rows = Object.entries(pair).filter(([, v]) => v !== 0).map(([key, v]) => {
+    const [a, b] = key.split('|');
+    const from = v > 0 ? b : a, to = v > 0 ? a : b;
+    return { from, to, amt: Math.abs(v) };
+  }).sort((x, y) => y.amt - x.amt).map(({ from, to, amt }) => `<div class="settle-row">
+    <span class="dot" style="background:${color(from)}"></span>${esc(from)}
+    <span style="color:#bbb;">→</span>
+    <span class="dot" style="background:${color(to)}"></span>${esc(to)}
+    <span class="settle-amt">$${amt}</span></div>`).join('');
+  return rows ? `<div class="section-label">Settle Up</div><div class="settle-card">${rows}</div>` : '';
+}
+
+// ── Claim actions ──────────────────────────────────────────────────
+// Drafts never preload from storage: sealed entries stay sealed.
+function ensureDraft(weekId) {
+  if (!drafts[weekId]) drafts[weekId] = { sides: {}, press: null };
+  return drafts[weekId];
+}
+const canEditPicks = weekId => {
+  const w = weeks[weekId];
+  return w && w.status === 'open' && myName && !(w.picks && w.picks[myName]);
+};
+
+window.setMyName = function(name) {
+  myName = name;
+  localStorage.setItem('bbqc_name', name);
+  drafts = {};
+  render();
+};
+
+window.pickSide = function(weekId, lineId, side) {
+  if (!canEditPicks(weekId)) return;
+  const d = ensureDraft(weekId);
+  if (d.sides[lineId] === side) {
+    delete d.sides[lineId];
+    if (d.press === lineId) d.press = null;
+  } else {
+    d.sides[lineId] = side;
+  }
+  render();
+};
+
+window.togglePress = function(weekId, lineId) {
+  if (!canEditPicks(weekId)) return;
+  const d = ensureDraft(weekId);
+  if (!d.sides[lineId]) return;
+  d.press = d.press === lineId ? null : lineId;
+  render();
+};
+
+window.clearDraft = function(weekId) {
+  delete drafts[weekId];
+  render();
+};
+
+let sealingWeekId = null;
+window.openSealModal = function(weekId) {
+  const d = drafts[weekId];
+  const w = weeks[weekId];
+  if (!canEditPicks(weekId) || !d || ![1, 3, 5].includes(Object.keys(d.sides).length)) return;
+  sealingWeekId = weekId;
+  const recap = Object.entries(d.sides).sort().map(([id, side]) => {
+    const ln = w.lines[id];
+    return `<div>${LINE_IDS.indexOf(id) + 1}. <strong>${esc(side === 'a' ? ln.a : ln.b)}</strong>${d.press === id ? ' 🔥 <span style="color:#e65100;font-weight:700;">PRESSED</span>' : ''}</div>`;
+  }).join('');
+  document.getElementById('seal-recap').innerHTML = `<div style="font-weight:800;margin-bottom:4px;">${esc(myName)} — ${Object.keys(d.sides).length} pick${Object.keys(d.sides).length > 1 ? 's' : ''}:</div>${recap}`;
+  document.getElementById('seal-pin').value = '';
+  document.getElementById('seal-error').textContent = '';
+  document.getElementById('seal-modal').classList.add('open');
+};
+
+window.confirmSeal = async function() {
+  const weekId = sealingWeekId;
+  const d = drafts[weekId];
+  if (!canEditPicks(weekId) || !d) { closeModal('seal-modal'); return; }
+  const pin = document.getElementById('seal-pin').value.trim();
+  if (pin && !/^\d{4}$/.test(pin)) {
+    document.getElementById('seal-error').textContent = 'PIN must be exactly 4 digits (or leave it blank).';
+    return;
+  }
+  if (d.press && !d.sides[d.press]) d.press = null;
+  const salt = Math.random().toString(36).slice(2, 8);
+  const entry = { seal: obf(JSON.stringify({ sides: d.sides, press: d.press || null }), salt), salt, ts: Date.now() };
+  if (pin) entry.pinHash = await sha256hex(pin + salt);
+  await set(ref(db, `bbqc/${SEASON}/weeks/${weekId}/picks/${myName}`), entry);
+  delete drafts[weekId];
+  closeModal('seal-modal');
+  showToast(`🔒 ${myName} sealed — see you at the reveal`);
+};
+
+window.viewSealed = async function(weekId) {
+  const entry = weeks[weekId]?.picks?.[myName];
+  if (!entry || !entry.pinHash) return;
+  const pin = prompt('Enter your 4-digit PIN:');
+  if (!pin) return;
+  if (await sha256hex(pin.trim() + (entry.salt || '')) !== entry.pinHash) { alert('Wrong PIN.'); return; }
+  const d = deobf(entry.seal, entry.salt || '');
+  if (!d) { alert('Could not decode picks.'); return; }
+  const w = weeks[weekId];
+  const lines = Object.entries(d.sides).sort().map(([id, side]) => {
+    const ln = w.lines[id];
+    return `${LINE_IDS.indexOf(id) + 1}. ${side === 'a' ? ln.a : ln.b}${d.press === id ? ' 🔥PRESSED' : ''}`;
+  }).join('\n');
+  alert(`${myName} — sealed picks (view only):\n\n${lines}`);
+};
+
+window.unlockMember = async function(weekId, name) {
+  if (!isComm) return;
+  if (!confirm(`Unlock ${name}? Their sealed picks are WIPED and they pick again from scratch.`)) return;
+  await remove(ref(db, `bbqc/${SEASON}/weeks/${weekId}/picks/${name}`));
+  showToast(`🔓 ${name} unlocked — picks wiped`);
+};
+
+// ── Commissioner ───────────────────────────────────────────────────
+window.toggleComm = function() {
+  if (isComm) {
+    isComm = false;
+    document.getElementById('comm-toggle').classList.remove('active');
+    document.getElementById('comm-panel').style.display = 'none';
+    render();
+  } else {
+    document.getElementById('comm-pw-modal').classList.add('open');
+    setTimeout(() => document.getElementById('comm-pw-input').focus(), 50);
+  }
+};
+
+window.checkCommPw = function() {
+  const val = document.getElementById('comm-pw-input').value.trim().toLowerCase();
+  if (val === COMM_PW) {
+    isComm = true;
+    document.getElementById('comm-toggle').classList.add('active');
+    document.getElementById('comm-panel').style.display = '';
+    closeModal('comm-pw-modal');
+    document.getElementById('comm-pw-input').value = '';
+    render();
+  } else {
+    document.getElementById('comm-pw-error').textContent = 'Wrong password.';
+    setTimeout(() => document.getElementById('comm-pw-error').textContent = '', 2000);
+  }
+};
+
+window.openNewWeek = function() {
+  const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
+  document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
+  const d = new Date();
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  document.getElementById('nw-date').value = d.toISOString().slice(0, 10);
+  document.getElementById('new-week-modal').classList.add('open');
+};
+
+window.saveNewWeek = async function() {
+  const title = document.getElementById('nw-title').value.trim();
+  const date = document.getElementById('nw-date').value;
+  const poster = document.getElementById('nw-poster').value.trim() || 'BBQC';
+  const lines = {};
+  for (let i = 1; i <= 5; i++) {
+    const a = document.getElementById(`nw-l${i}a`).value.trim();
+    const b = document.getElementById(`nw-l${i}b`).value.trim();
+    if (!a || !b) { document.getElementById('nw-error').textContent = 'Every line needs both sides.'; return; }
+    lines[`l${i}`] = { a, b, result: null };
+  }
+  if (!title) { document.getElementById('nw-error').textContent = 'Need a week label.'; return; }
+  await push(weeksRef, { title, date, poster, status: 'open', lines, picks: {}, created: Date.now() });
+  for (let i = 1; i <= 5; i++) { document.getElementById(`nw-l${i}a`).value = ''; document.getElementById(`nw-l${i}b`).value = ''; }
+  document.getElementById('nw-error').textContent = '';
+  closeModal('new-week-modal');
+  showToast(`🔥 ${title} board is up — picks are open`);
+};
+
+window.gradeLine = async function(weekId, lineId, result) {
+  const cur = weeks[weekId]?.lines?.[lineId]?.result;
+  await set(ref(db, `bbqc/${SEASON}/weeks/${weekId}/lines/${lineId}/result`), cur === result ? null : result);
+};
+
+window.setWeekStatus = async function(weekId, status) {
+  if (status === 'final') {
+    const w = weeks[weekId];
+    const bad = Object.entries(w.picks || {}).filter(([, p]) => p && p.sides && ![1, 3, 5].includes(Object.keys(p.sides).length));
+    if (bad.length && !confirm(`Heads up: ${bad.map(([n]) => n).join(', ')} ha${bad.length > 1 ? 've' : 's'} an even number of picks. Finalize anyway?`)) return;
+  }
+  await set(ref(db, `bbqc/${SEASON}/weeks/${weekId}/status`), status);
+};
+
+window.deleteWeek = async function(weekId) {
+  const w = weeks[weekId];
+  if (!confirm(`Delete "${w?.title}" and all its picks? This can't be undone.`)) return;
+  await remove(ref(db, `bbqc/${SEASON}/weeks/${weekId}`));
+  showToast('Board deleted');
+};
+
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+// ── Site password gate ─────────────────────────────────────────────
+const PW_KEY = 'srb_auth';
+const PW_CORRECT = 'rudy';
+(function() {
+  if (sessionStorage.getItem(PW_KEY) !== 'ok') {
+    document.getElementById('pw-gate').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('pw-input').focus(), 50);
+  }
+})();
+window.pwCheck = function() {
+  const val = document.getElementById('pw-input').value.trim().toLowerCase();
+  if (val === PW_CORRECT) {
+    sessionStorage.setItem(PW_KEY, 'ok');
+    document.getElementById('pw-gate').classList.remove('show');
+    document.body.style.overflow = '';
+  } else {
+    const err = document.getElementById('pw-error');
+    err.textContent = 'Wrong password — try again.';
+    document.getElementById('pw-input').value = '';
+    setTimeout(() => err.textContent = '', 2000);
+  }
+};
+</script>
+</body>
+</html>
