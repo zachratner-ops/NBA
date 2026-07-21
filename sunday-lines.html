@@ -219,6 +219,8 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
     <div class="comm-label">⚙ Commissioner Controls</div>
     <div class="comm-actions">
       <button class="btn btn-sm btn-amber" onclick="openNewWeek()">+ New Board</button>
+      <button class="btn btn-sm btn-outline" onclick="seedDemo()" style="color:#7B1FA2;border-color:#7B1FA2;">⚡ Seed Demo Data</button>
+      <button class="btn btn-sm btn-outline" onclick="clearAllData()" style="color:#c62828;border-color:#c62828;">🗑 Clear All Data</button>
     </div>
   </div>
 
@@ -860,6 +862,69 @@ window.setWeekStatus = async function(weekId, status) {
     if (bad.length && !confirm(`Heads up: ${bad.map(([n]) => n).join(', ')} ha${bad.length > 1 ? 've' : 's'} an even number of picks. Finalize anyway?`)) return;
   }
   await set(ref(db, `bbqc/${SEASON}/weeks/${weekId}/status`), status);
+};
+
+// Demo data: two finalized boards (push, presses, a sweep) + one open board.
+// Fixed keys so re-seeding overwrites instead of duplicating.
+window.seedDemo = async function() {
+  if (!isComm) return;
+  if (!confirm('Add 3 demo boards (Week 1–2 finalized, Week 3 open)? Re-seeding overwrites previous demo boards.')) return;
+  await update(weeksRef, {
+    demo1: {
+      title: 'Week 1', date: '2026-09-13', poster: 'BBQC', status: 'final', created: 1757700000000,
+      lines: {
+        l1: { a: 'Chiefs -3', b: 'Ravens +3', result: 'a' },
+        l2: { a: 'Eagles -7', b: 'Cowboys +7', result: 'b' },
+        l3: { a: 'Over 44.5 BUF/NYJ', b: 'Under 44.5 BUF/NYJ', result: 'push' },
+        l4: { a: 'Bijan o95.5 rush', b: 'Bijan u95.5 rush', result: 'a' },
+        l5: { a: 'Broncos ML', b: 'Chargers ML', result: 'b' }
+      },
+      picks: {
+        Marc: { sides: { l1: 'a', l2: 'b', l3: 'a' }, press: 'l2' },
+        Zach: { sides: { l1: 'b', l2: 'a', l3: 'b', l4: 'a', l5: 'b' }, press: 'l1' },
+        Mike: { sides: { l1: 'a', l4: 'b', l5: 'b' }, press: null },
+        Andrew: { sides: { l2: 'b' }, press: 'l2' },
+        Jared: { sides: { l1: 'a', l2: 'b', l5: 'a' }, press: null }
+      }
+    },
+    demo2: {
+      title: 'Week 2', date: '2026-09-20', poster: 'BBQC', status: 'final', created: 1758300000000,
+      lines: {
+        l1: { a: '49ers -6', b: 'Rams +6', result: 'a' },
+        l2: { a: 'Under 41 PIT/BAL', b: 'Over 41 PIT/BAL', result: 'a' },
+        l3: { a: 'Saquon o99.5 rush', b: 'Saquon u99.5 rush', result: 'b' },
+        l4: { a: 'Bengals ML', b: 'Browns ML', result: 'a' },
+        l5: { a: 'Packers -3', b: 'Bears +3', result: 'b' }
+      },
+      picks: {
+        Matt: { sides: { l1: 'a', l2: 'a', l3: 'b', l4: 'a', l5: 'b' }, press: 'l1' },
+        Marc: { sides: { l1: 'b', l3: 'a', l4: 'a' }, press: null },
+        Zach: { sides: { l1: 'a', l2: 'b', l5: 'a' }, press: null },
+        Mike: { sides: { l5: 'b' }, press: 'l5' },
+        Ben: { sides: { l3: 'a' }, press: null }
+      }
+    },
+    demo3: {
+      title: 'Week 3', date: '2026-09-27', poster: 'BBQC', status: 'open', created: 1758900000000,
+      lines: {
+        l1: { a: 'Bills -2.5 @ MIA', b: 'Dolphins +2.5', result: null },
+        l2: { a: 'Over 47.5 DAL/PHI', b: 'Under 47.5 DAL/PHI', result: null },
+        l3: { a: 'Mahomes o2.5 pass TD', b: 'Mahomes u2.5 pass TD', result: null },
+        l4: { a: 'Lions ML', b: 'Vikings ML', result: null },
+        l5: { a: 'Patriots -9', b: 'Jets +9', result: null }
+      },
+      picks: {}
+    }
+  });
+  showToast('⚡ Demo data seeded — 3 boards');
+};
+
+window.clearAllData = async function() {
+  if (!isComm) return;
+  if (!confirm('Delete EVERY board, pick, and result for the season? This cannot be undone.')) return;
+  if (!confirm('Last chance — wipe the entire season?')) return;
+  await remove(weeksRef);
+  showToast('🗑 Season data cleared');
 };
 
 window.deleteWeek = async function(weekId) {
