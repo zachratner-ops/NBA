@@ -490,6 +490,179 @@ console.log('[cron] WC crons registered | server=' + new Date().toString() +
   ' | ET=' + new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }) +
   ' | inWCWindow=' + inWCWindow());
 
+// ══════════════════════════════════════════════════════════════════
+// BBQC SUNDAY BETS — GroupMe bot (slate / lock-ins / reminder / reveal)
+// ══════════════════════════════════════════════════════════════════
+// Posts to a dedicated Sunday Bets GroupMe group. Set BBQC_GROUPME_BOT_ID
+// on Railway to go live; until then it dry-runs (logs instead of posts).
+const BBQC_GROUPME_BOT_ID = process.env.BBQC_GROUPME_BOT_ID || '';
+const BBQC_DRY_RUN = process.env.BBQC_DRY_RUN === 'true' || !BBQC_GROUPME_BOT_ID;
+const BBQC_SEASON = process.env.BBQC_SEASON || '2026';
+const BBQC_MEMBERS = ['Adam','Andrew','Ben','Jared','Marc','Mark','Matt','Max','Mike','Zach'];
+const BBQC_LINE_IDS = ['l1','l2','l3','l4','l5'];
+const BBQC_PAGE = 'gyou.in/sunday-bets.html';
+const BBQC_BOOT = Date.now(); // only announce boards/locks that happen after this process starts
+const bbqcRef = (p) => admin.database().ref('bbqc/' + BBQC_SEASON + '/' + p);
+const bbqcTodayET = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
+
+// Fire-and-forget GroupMe text post.
+function bbqcPost(text) {
+  if (BBQC_DRY_RUN) { console.log('[BBQC GroupMe DRY RUN]\n' + text + '\n'); return Promise.resolve(); }
+  const body = JSON.stringify({ bot_id: BBQC_GROUPME_BOT_ID, text: text });
+  return new Promise(function(resolve) {
+    const req = https.request({
+      hostname: 'api.groupme.com', path: '/v3/bots/post', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+    }, function(r) { r.resume(); r.on('end', resolve); });
+    req.on('error', function(e) { console.error('[BBQC GroupMe] post failed:', e.message); resolve(); });
+    req.write(body); req.end();
+  });
+}
+
+// Decode a sealed pick entry (mirrors the client XOR-obfuscation in sunday-bets.html).
+const BBQC_OBF_KEY = 'bbqc-seal-v1';
+function bbqcDeobf(b64, salt) {
+  try {
+    const s = Buffer.from(b64, 'base64').toString('latin1');
+    const k = salt + BBQC_OBF_KEY;
+    let out = '';
+    for (let i = 0; i < s.length; i++) out += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    return JSON.parse(out);
+  } catch (e) { return null; }
+}
+function bbqcDecodePick(e) {
+  if (!e) return null;
+  if (e.sides) return { sides: e.sides, press: e.press || null }; // legacy plaintext
+  if (e.seal) { const d = bbqcDeobf(e.seal, e.salt || ''); if (d && d.sides) return { sides: d.sides, press: d.press || null }; }
+  return null;
+}
+
+// ── Message builders ──────────────────────────────────────────────
+function bbqcSlateMsg(w) {
+  const bets = BBQC_LINE_IDS.map(function(lid, i) {
+    const ln = w.lines && w.lines[lid];
+    if (!ln) return null;
+    return (i + 1) + '. ' + (ln.header ? ln.header + ': ' : '') + ln.a + ' vs ' + ln.b;
+  }).filter(Boolean);
+  return ['🔥 Sunday Bets — ' + (w.title || 'This week') + ' is up!',
+    'Pick a side on 1, 3, or 5. Blind until the 1pm ET reveal.', '']
+    .concat(bets).concat(['', '🔗 ' + BBQC_PAGE]).join('\n');
+}
+function bbqcLockMsg(name, count, lockedCount, w) {
+  return '🔒 ' + name + ' is in with ' + count + ' pick' + (count > 1 ? 's' : '') +
+    ' for ' + (w.title || 'this week') + ' — ' + lockedCount + ' locked in so far.';
+}
+function bbqcRevealMsg(w) {
+  const picks = {};
+  Object.entries(w.picks || {}).forEach(function(pair) {
+    const d = bbqcDecodePick(pair[1]); if (d) picks[pair[0]] = d;
+  });
+  const out = ['🎲 REVEAL — Sunday Bets ' + (w.title || ''), "Picks are locked. Here's who's on what:", ''];
+  BBQC_LINE_IDS.forEach(function(lid, i) {
+    const ln = w.lines && w.lines[lid]; if (!ln) return;
+    const aSide = [], bSide = [];
+    Object.entries(picks).forEach(function(pair) {
+      const name = pair[0], d = pair[1], s = d.sides[lid];
+      if (!s) return;
+      (s === 'a' ? aSide : bSide).push(d.press === lid ? name + '🔥' : name);
+    });
+    out.push((i + 1) + '. ' + (ln.header || (ln.a + ' vs ' + ln.b)));
+    out.push('   • ' + ln.a + ': ' + (aSide.length ? aSide.join(', ') : '—'));
+    out.push('   • ' + ln.b + ': ' + (bSide.length ? bSide.join(', ') : '—'));
+  });
+  out.push('', '🔥 = pressed · 🔗 ' + BBQC_PAGE);
+  return out.join('\n');
+}
+
+// ── Event-driven posts: slate set + each player locking in ────────
+// child_added/child_changed fire for existing boards on connect too, so guards
+// (created/ts >= BBQC_BOOT, plus per-week notify flags) prevent backfill spam.
+async function bbqcHandleWeek(weekId, w) {
+  if (!w || !firebaseReady) return;
+  try {
+    const notifyRef = bbqcRef('notify/' + weekId);
+    const nsnap = await notifyRef.get();
+    const notify = nsnap.exists() ? (nsnap.val() || {}) : {};
+
+    // Slate announcement — only for boards created after this process booted.
+    if (w.status === 'open' && !notify.slate && (w.created || 0) >= BBQC_BOOT) {
+      await bbqcPost(bbqcSlateMsg(w));
+      await notifyRef.child('slate').set(true);
+      notify.slate = true;
+    }
+
+    // Lock-in announcements — only for picks sealed after boot.
+    const picks = w.picks || {};
+    const locks = notify.locks || {};
+    const lockedCount = Object.keys(picks).length;
+    for (const name of Object.keys(picks)) {
+      const e = picks[name];
+      if (!e || locks[name] || (e.ts || 0) < BBQC_BOOT) continue;
+      const d = bbqcDecodePick(e);
+      const count = d ? Object.keys(d.sides).length : 0;
+      if (!count) continue;
+      await bbqcPost(bbqcLockMsg(name, count, lockedCount, w));
+      await notifyRef.child('locks/' + name).set(true);
+    }
+  } catch (e) { console.error('[BBQC] handleWeek error:', e.message); }
+}
+
+if (firebaseReady) {
+  const weeksRef = bbqcRef('weeks');
+  weeksRef.on('child_added', function(snap) { bbqcHandleWeek(snap.key, snap.val()); });
+  weeksRef.on('child_changed', function(snap) { bbqcHandleWeek(snap.key, snap.val()); });
+  console.log('[BBQC] Sunday Bets listeners attached | dryRun=' + BBQC_DRY_RUN);
+}
+
+// ── Timed posts: 11am ET reminder + 1pm ET reveal (Sundays) ───────
+// Both target the open board dated for today (ET) and fire once per board.
+async function bbqcReminderJob() {
+  if (!firebaseReady) return;
+  const today = bbqcTodayET();
+  const weeks = (await bbqcRef('weeks').get()).val() || {};
+  for (const [id, w] of Object.entries(weeks)) {
+    if (!w || w.status !== 'open' || w.date !== today) continue;
+    const notifyRef = bbqcRef('notify/' + id);
+    if ((await notifyRef.child('reminder').get()).val()) continue;
+    const inNames = Object.keys(w.picks || {});
+    const missing = BBQC_MEMBERS.filter(function(m) { return inNames.indexOf(m) === -1; });
+    const msg = ['⏰ 2 hours to lock — Sunday Bets ' + (w.title || ''),
+      'Picks close at 1pm ET, then everything reveals.',
+      inNames.length ? ('✅ In: ' + inNames.join(', ')) : '',
+      missing.length ? ('🕐 Still out: ' + missing.join(', ')) : '🎉 Everyone is in!',
+      '', '🔗 ' + BBQC_PAGE].filter(Boolean).join('\n');
+    await bbqcPost(msg);
+    await notifyRef.child('reminder').set(true);
+    console.log('[BBQC] reminder posted for ' + (w.title || id));
+  }
+}
+async function bbqcRevealJob() {
+  if (!firebaseReady) return;
+  const today = bbqcTodayET();
+  const weeks = (await bbqcRef('weeks').get()).val() || {};
+  for (const [id, w] of Object.entries(weeks)) {
+    if (!w || w.status !== 'open' || w.date !== today) continue;
+    const notifyRef = bbqcRef('notify/' + id);
+    if ((await notifyRef.child('reveal').get()).val()) continue;
+    await bbqcPost(bbqcRevealMsg(w));
+    await notifyRef.child('reveal').set(true);
+    await bbqcRef('weeks/' + id + '/status').set('locked'); // auto-lock so the site reveals too
+    console.log('[BBQC] reveal posted + board locked for ' + (w.title || id));
+  }
+}
+cron.schedule('0 11 * * 0', bbqcReminderJob, ET_TZ); // Sundays 11:00 ET
+cron.schedule('0 13 * * 0', bbqcRevealJob, ET_TZ);   // Sundays 13:00 ET
+
+// Manual triggers for testing (dry-run unless BBQC_GROUPME_BOT_ID is set).
+app.post('/bbqc/reminder', async function(req, res) { await bbqcReminderJob(); res.json({ ok: true, dryRun: BBQC_DRY_RUN }); });
+app.post('/bbqc/reveal', async function(req, res) { await bbqcRevealJob(); res.json({ ok: true, dryRun: BBQC_DRY_RUN }); });
+app.get('/bbqc/preview/:weekId', async function(req, res) {
+  if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
+  const w = (await bbqcRef('weeks/' + req.params.weekId).get()).val();
+  if (!w) return res.status(404).json({ error: 'week not found' });
+  res.json({ dryRun: BBQC_DRY_RUN, slate: bbqcSlateMsg(w), reveal: bbqcRevealMsg(w) });
+});
+
 // ── WebSocket ─────────────────────────────────────────────────────
 const clients = {};
 function broadcast(slug, msg) {
