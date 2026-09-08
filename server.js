@@ -550,7 +550,8 @@ function bbqcSlateMsg(w) {
 }
 function bbqcLockMsg(name, count, lockedCount, w) {
   return '🔒 ' + name + ' is in with ' + count + ' pick' + (count > 1 ? 's' : '') +
-    ' for ' + (w.title || 'this week') + ' — ' + lockedCount + ' locked in so far.';
+    ' for ' + (w.title || 'this week') + ' — ' + lockedCount + ' participant' +
+    (lockedCount > 1 ? 's' : '') + ' locked in so far.';
 }
 function bbqcRevealMsg(w) {
   const picks = {};
