@@ -537,6 +537,52 @@ function bbqcDecodePick(e) {
   return null;
 }
 
+// Peer-to-peer money math — mirrors computeWeek() in sunday-bets.html.
+// Each pair on opposite sides of a graded bet trades $10 * 2^(presses in the
+// pair); a 5-for-5 sweep collects $20 from every other bettor.
+const BBQC_BASE = 10, BBQC_SWEEP = 20;
+function bbqcComputeWeek(w) {
+  const picks = {};
+  Object.entries(w.picks || {}).forEach(function(pair) {
+    const d = bbqcDecodePick(pair[1]);
+    if (d && d.sides && Object.keys(d.sides).length) picks[pair[0]] = d;
+  });
+  const players = Object.keys(picks);
+  const per = {};
+  players.forEach(function(m) {
+    per[m] = { net: 0, wins: 0, losses: 0, pushes: 0, count: Object.keys(picks[m].sides).length, press: picks[m].press || null, sweep: false };
+  });
+  BBQC_LINE_IDS.forEach(function(id) {
+    const r = w.lines && w.lines[id] && w.lines[id].result;
+    if (!r) return;
+    const onLine = players.filter(function(m) { return picks[m].sides[id]; });
+    if (r === 'push') { onLine.forEach(function(m) { per[m].pushes++; }); return; }
+    const winners = onLine.filter(function(m) { return picks[m].sides[id] === r; });
+    const losers = onLine.filter(function(m) { return picks[m].sides[id] !== r; });
+    winners.forEach(function(m) { per[m].wins++; });
+    losers.forEach(function(m) { per[m].losses++; });
+    winners.forEach(function(wn) { losers.forEach(function(ls) {
+      const stake = BBQC_BASE * (picks[wn].press === id ? 2 : 1) * (picks[ls].press === id ? 2 : 1);
+      per[wn].net += stake; per[ls].net -= stake;
+    }); });
+  });
+  players.filter(function(m) { return per[m].count === 5 && per[m].wins === 5; }).forEach(function(s) {
+    per[s].sweep = true;
+    players.forEach(function(p) { if (p === s) return; per[s].net += BBQC_SWEEP; per[p].net -= BBQC_SWEEP; });
+  });
+  return { per: per, players: players };
+}
+function bbqcSeasonTotals(weeks) {
+  const tot = {};
+  Object.values(weeks || {}).forEach(function(w) {
+    if (!w || w.status !== 'final') return;
+    const fin = bbqcComputeWeek(w);
+    Object.entries(fin.per).forEach(function(p) { tot[p[0]] = (tot[p[0]] || 0) + p[1].net; });
+  });
+  return tot;
+}
+const bbqcMoney = function(n) { return n === 0 ? '$0' : (n > 0 ? '+$' : '-$') + Math.abs(n); };
+
 // ── Message builders ──────────────────────────────────────────────
 function bbqcSlateMsg(w) {
   const bets = BBQC_LINE_IDS.map(function(lid, i) {
@@ -574,6 +620,36 @@ function bbqcRevealMsg(w) {
   out.push('', '🔥 = pressed · 🔗 ' + BBQC_PAGE);
   return out.join('\n');
 }
+function bbqcFinalMsg(w, weeks) {
+  const fin = bbqcComputeWeek(w);
+  // Graded bets recap
+  const results = BBQC_LINE_IDS.map(function(id, i) {
+    const ln = w.lines && w.lines[id]; if (!ln) return null;
+    const r = ln.result;
+    const res = r === 'push' ? 'PUSH 🤝' : r === 'a' ? ln.a + ' ✅' : r === 'b' ? ln.b + ' ✅' : '—';
+    return (i + 1) + '. ' + (ln.header || (ln.a + ' vs ' + ln.b)) + ' → ' + res;
+  }).filter(Boolean);
+  // Week money, ranked
+  const ranked = fin.players.slice().sort(function(a, b) { return fin.per[b].net - fin.per[a].net; });
+  const medals = ['🥇', '🥈', '🥉'];
+  const money = ranked.map(function(n, i) {
+    const r = fin.per[n];
+    const tag = r.net > 0 ? (medals[i] || '▫️') : (r.net < 0 ? '🔻' : '➖');
+    const rec = r.wins + '-' + r.losses + (r.pushes ? '-' + r.pushes + 'p' : '') + (r.sweep ? ' 🎰' : '');
+    return tag + ' ' + n + '  ' + bbqcMoney(r.net) + '  (' + rec + ')';
+  });
+  const sweepers = ranked.filter(function(n) { return fin.per[n].sweep; });
+  // Season leader after this week
+  const season = bbqcSeasonTotals(weeks);
+  const seasonRanked = Object.entries(season).sort(function(a, b) { return b[1] - a[1]; });
+  const leaderLine = seasonRanked.length ? '📊 Season leader: ' + seasonRanked[0][0] + ' ' + bbqcMoney(seasonRanked[0][1]) : '';
+  return ['🏁 ' + (w.title || 'This week') + ' — FINAL', 'Results are in.', '']
+    .concat(results)
+    .concat(['', '💰 Week results:']).concat(money.length ? money : ['(no bets this week)'])
+    .concat(sweepers.length ? ['', '🎰 ' + sweepers.join(' & ') + ' swept all 5 — everyone else pays up!'] : [])
+    .concat(['', leaderLine, '🔗 ' + BBQC_PAGE].filter(Boolean))
+    .join('\n');
+}
 
 // ── Event-driven posts: slate set + each player locking in ────────
 // child_added/child_changed fire for existing boards on connect too, so guards
@@ -604,6 +680,15 @@ async function bbqcHandleWeek(weekId, w) {
       if (!count) continue;
       await bbqcPost(bbqcLockMsg(name, count, lockedCount, w));
       await notifyRef.child('locks/' + name).set(true);
+    }
+
+    // Finalized-week results summary — once per board, only for a fresh
+    // finalize (client stamps finalizedAt) after this process booted.
+    if (w.status === 'final' && !notify.final && (w.finalizedAt || 0) >= BBQC_BOOT) {
+      const weeks = (await bbqcRef('weeks').get()).val() || {};
+      await bbqcPost(bbqcFinalMsg(w, weeks));
+      await notifyRef.child('final').set(true);
+      console.log('[BBQC] finalize summary posted for ' + (w.title || weekId));
     }
   } catch (e) { console.error('[BBQC] handleWeek error:', e.message); }
 }
@@ -661,7 +746,8 @@ app.get('/bbqc/preview/:weekId', async function(req, res) {
   if (!firebaseReady) return res.status(503).json({ error: 'Firebase not ready' });
   const w = (await bbqcRef('weeks/' + req.params.weekId).get()).val();
   if (!w) return res.status(404).json({ error: 'week not found' });
-  res.json({ dryRun: BBQC_DRY_RUN, slate: bbqcSlateMsg(w), reveal: bbqcRevealMsg(w) });
+  const weeks = (await bbqcRef('weeks').get()).val() || {};
+  res.json({ dryRun: BBQC_DRY_RUN, slate: bbqcSlateMsg(w), reveal: bbqcRevealMsg(w), final: bbqcFinalMsg(w, weeks) });
 });
 
 // ── WebSocket ─────────────────────────────────────────────────────
