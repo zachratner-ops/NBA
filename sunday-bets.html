@@ -220,7 +220,7 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
   <details class="rules-card">
     <summary>📖 Full rules</summary>
     <div class="rules-body">
-      🏠 <strong>BBQC posts the 5 bets</strong> each week (standard public lines) — they set the slate, they're not wagers themselves<br>
+      📋 <strong>BBQC posts the 5 bets</strong> each week (standard public lines) — they set the slate, they're not wagers themselves<br>
       🎯 Each participant independently <strong>picks a side on 1, 3, or 5</strong> of the bets<br>
       👀 Picks are <strong>blind</strong> — revealed simultaneously when the board locks<br>
       💵 Each bet is a <strong>flat $10 head-to-head</strong> between every pair of people on opposite sides<br>
@@ -228,6 +228,16 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
       🎰 <strong>Sweep bonus:</strong> go 5-for-5 and collect $20 from every other participant who bet that week<br>
       🤝 <strong>Pushes</strong> = no action, $0 — and a push knocks you out of sweep contention<br>
       💰 Everything settles through the season ledger
+      <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid #eee;">
+      🏠 <strong>The Backstop</strong><br>
+      🛟 One participant may assume <strong>The Backstop</strong> role instead of picking sides themselves<br>
+      🎯 For each of the 5 lines, the computer <strong>auto-assigns the Backstop to whichever side has 0 bettors</strong><br>
+      🚫 If a line already has bettors on both sides, the Backstop <strong>sits out that bet</strong> — no pick, no exception<br>
+      🔢 The 1/3/5 odd-count rule <strong>doesn't apply</strong> to the Backstop — they play however many lines end up with an empty side that week<br>
+      💵 Backstop bets are otherwise normal matchups — <strong>standard press rules still apply</strong>, so the stake is $20 if the Backstop's opponent presses that bet<br>
+      🎰 The Backstop is <strong>fully exempt from the sweep bonus</strong> — can't win it, and doesn't pay into it if someone else sweeps<br>
+      👥 A sweeper collects from every participant <strong>except the Backstop</strong> (and except themselves)
+      </div>
     </div>
   </details>
 </div>
@@ -250,9 +260,9 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
     <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
     <div class="field"><label>Date</label><input id="nw-date" type="date"></div>
     <div class="field"><label>Posted by</label><input id="nw-poster" type="text" value="BBQC"></div>
-    <div class="field"><label>House this week (optional)</label>
+    <div class="field"><label>Backstop this week (optional)</label>
       <select id="nw-house"><option value="">None — pure peer-to-peer</option></select>
-      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">The house doesn't pick. On any bet where everyone else lands on the same side, the house takes the other side and pairs off against the whole field.</div>
+      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">The Backstop doesn't pick. On any bet where everyone else lands on the same side, the Backstop takes the empty side and pairs off against the whole field.</div>
     </div>
     <div class="field"><label>The 5 bets — a header, then two sides</label>
       <div class="nw-line">
@@ -624,7 +634,7 @@ function weekGridHtml(w) {
   return `<div class="grid-wrap"><table class="sheet">
     <tr><th class="bet-col">Bet</th>
       ${players.map(m => `<th style="color:${color(m)}">${esc(m)}</th>`).join('')}
-      ${H ? `<th class="housecol">🏠 ${esc(houseName)}<div style="font-size:9px;font-weight:600;">${H.wins}-${H.losses} as house</div></th>` : ''}
+      ${H ? `<th class="housecol">🏠 ${esc(houseName)}<div style="font-size:9px;font-weight:600;">${H.wins}-${H.losses} as Backstop</div></th>` : ''}
       <th class="movecol">$ Moved</th></tr>
     ${lineRows}${sweepRow}${subRow}${seasonRow}
   </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div>`;
@@ -685,8 +695,8 @@ function weekCard(w, collapsed = false) {
         <span class="lb-rank">🏠</span>
         ${avatarHtml(houseName)}
         <div class="lb-main">
-          <div class="lb-name">${esc(houseName)} <span class="lb-badge" style="background:#f3ecf7;color:#7B1FA2;">HOUSE</span></div>
-          <div class="lb-sub"><span>${H.wins}-${H.losses} as house · backstopped ${H.bets.length} bet${H.bets.length === 1 ? '' : 's'}</span></div>
+          <div class="lb-name">${esc(houseName)} <span class="lb-badge" style="background:#f3ecf7;color:#7B1FA2;">BACKSTOP</span></div>
+          <div class="lb-sub"><span>${H.wins}-${H.losses} as Backstop · covered ${H.bets.length} bet${H.bets.length === 1 ? '' : 's'}</span></div>
         </div>
         <span class="lb-net ${cls(H.net)}">${fmtMoney(H.net)}</span>
       </div>
@@ -742,7 +752,7 @@ function weekCard(w, collapsed = false) {
     }).join('');
     let status = '';
     if (!myName) status = 'Pick your name, then choose a side on 1, 3, or 5 bets. Picks are sealed the moment you lock in.';
-    else if (iAmHouse) status = `🏠 <strong>You're the house this week.</strong> You don't pick — on any bet where the whole field lands on one side, you take the other side and pair off with all of them.`;
+    else if (iAmHouse) status = `🏠 <strong>You're the Backstop this week.</strong> You don't pick — on any bet where the whole field lands on one side, you take the empty side and pair off with all of them.`;
     else if (iAmSealed) status = `🔒 <strong>${esc(myName)} is locked in.</strong> Sealed until the board locks — nobody can see or change these picks. Need a re-do? Ask the commissioner to unlock you.`;
     else if (selCount === 0) status = 'Choose a side on 1, 3, or 5 bets. Press one 🔥 if you\'re feeling it.';
     else if (!validCount) status = `<span style="color:#c62828;font-weight:700;">${selCount} picked — must be an odd number (1, 3, or 5).</span>`;

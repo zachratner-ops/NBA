@@ -611,7 +611,7 @@ function bbqcSlateMsg(w) {
     if (!ln) return null;
     return (i + 1) + '. ' + (ln.header ? ln.header + ': ' : '') + ln.a + ' vs ' + ln.b;
   }).filter(Boolean);
-  const houseLine = w.house ? ['', '🏠 House this week: ' + w.house + ' — takes the other side of any bet the field is unanimous on.'] : [];
+  const houseLine = w.house ? ['', '🏠 Backstop this week: ' + w.house + ' — takes the empty side of any bet the field is unanimous on.'] : [];
   return ['🔥 Sunday Bets — ' + (w.title || 'This week') + ' is up!',
     'Pick a side on 1, 3, or 5. Blind until the 1pm ET reveal.', '']
     .concat(bets).concat(houseLine).concat(['', '🔗 ' + BBQC_PAGE]).join('\n');
@@ -629,7 +629,7 @@ function bbqcRevealMsg(w) {
     const d = bbqcDecodePick(pair[1]); if (d) picks[pair[0]] = d;
   });
   const out = ['🎲 REVEAL — Sunday Bets ' + (w.title || ''), "Picks are locked. Here's who's on what:", ''];
-  if (houseName) out.push('🏠 House: ' + houseName, '');
+  if (houseName) out.push('🏠 Backstop: ' + houseName, '');
   BBQC_LINE_IDS.forEach(function(lid, i) {
     const ln = w.lines && w.lines[lid]; if (!ln) return;
     const aSide = [], bSide = [];
@@ -670,7 +670,7 @@ function bbqcFinalMsg(w, weeks) {
   const sweepers = ranked.filter(function(n) { return fin.per[n].sweep; });
   // House line (separate from the ranked field)
   const H = fin.house, houseName = fin.houseName;
-  const houseLines = H ? ['', '🏠 House — ' + houseName + '  ' + bbqcMoney(H.net) + '  (' + H.wins + '-' + H.losses + ' as house, ' + H.bets.length + ' bet' + (H.bets.length === 1 ? '' : 's') + ')'] : [];
+  const houseLines = H ? ['', '🏠 Backstop — ' + houseName + '  ' + bbqcMoney(H.net) + '  (' + H.wins + '-' + H.losses + ' as Backstop, ' + H.bets.length + ' bet' + (H.bets.length === 1 ? '' : 's') + ')'] : [];
   // Season leader after this week
   const season = bbqcSeasonTotals(weeks);
   const seasonRanked = Object.entries(season).sort(function(a, b) { return b[1] - a[1]; });
@@ -747,7 +747,7 @@ async function bbqcReminderJob() {
     const missing = BBQC_MEMBERS.filter(function(m) { return m !== w.house && inNames.indexOf(m) === -1; });
     const msg = ['⏰ 2 hours to lock — Sunday Bets ' + (w.title || ''),
       'Picks close at 1pm ET, then everything reveals.',
-      w.house ? ('🏠 House: ' + w.house) : '',
+      w.house ? ('🏠 Backstop: ' + w.house) : '',
       inNames.length ? ('✅ In: ' + inNames.join(', ')) : '',
       missing.length ? ('🕐 Still out: ' + missing.join(', ')) : '🎉 Everyone is in!',
       '', '🔗 ' + BBQC_PAGE].filter(Boolean).join('\n');
