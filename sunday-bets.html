@@ -106,6 +106,8 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 .sheet tr.subrow td{font-weight:800;border-top:2.5px solid #1a1a1a;background:#fafaf8;}
 .sheet tr.seasonrow td{font-weight:800;background:#f0f0ee;}
 .sheet th.movecol,.sheet td.movecol{border-left:2.5px solid #1a1a1a;color:#666;}
+.sheet th.housecol,.sheet td.housecol{border-left:2px solid #7B1FA2;}
+.sheet th.housecol{color:#7B1FA2;}
 
 
 /* Leaderboard (season standings + week summary) */
@@ -248,6 +250,10 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
     <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
     <div class="field"><label>Date</label><input id="nw-date" type="date"></div>
     <div class="field"><label>Posted by</label><input id="nw-poster" type="text" value="BBQC"></div>
+    <div class="field"><label>House this week (optional)</label>
+      <select id="nw-house"><option value="">None — pure peer-to-peer</option></select>
+      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">The house doesn't pick. On any bet where everyone else lands on the same side, the house takes the other side and pairs off against the whole field.</div>
+    </div>
     <div class="field"><label>The 5 bets — a header, then two sides</label>
       <div class="nw-line">
         <input class="nw-header" id="nw-h1" placeholder="1. Header — e.g. Eagles vs. Cowboys O/U">
@@ -413,9 +419,14 @@ function decodedPicks(w) {
 // ── Money math ─────────────────────────────────────────────────────
 // Peer-to-peer: every pair on opposite sides of a graded line owes
 // $10 × 2^(presses on that line among the pair). Sweep = 5 picks, 5 wins.
+// House (optional, one per slate): doesn't pick. On any bet where the whole
+// field lands on one side, the house takes the other side and pairs off with
+// each of them ($10 × their press). House sits out sweep entirely and its
+// results are tracked separately (per[house].isHouse).
 function computeWeek(w) {
   const picks = decodedPicks(w);
-  const players = MEMBERS.filter(m => picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
+  const houseName = w.house || null;
+  const players = MEMBERS.filter(m => m !== houseName && picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
   const per = {}; // name → {net, wins, losses, pushes, count, press, sweep}
   const pair = {}; // 'A|B' (A<B) → net for A
   const pairAdd = (a, b, amt) => { // a gains amt from b
@@ -423,6 +434,7 @@ function computeWeek(w) {
     pair[key] = (pair[key] || 0) + (a < b ? amt : -amt);
   };
   players.forEach(m => per[m] = { net: 0, wins: 0, losses: 0, pushes: 0, count: Object.keys(picks[m].sides).length, press: picks[m].press || null, sweep: false });
+  const house = houseName ? { net: 0, wins: 0, losses: 0, bets: [] } : null; // bets: {id, side, win, amt}
 
   LINE_IDS.forEach(id => {
     const r = w.lines?.[id]?.result;
@@ -438,9 +450,27 @@ function computeWeek(w) {
       per[wn].net += stake; per[ls].net -= stake;
       pairAdd(wn, ls, stake);
     }));
+
+    // House backstop: only when the whole field on this bet agrees.
+    if (house && onLine.length) {
+      const sides = new Set(onLine.map(m => picks[m].sides[id]));
+      if (sides.size === 1) {
+        const fieldSide = [...sides][0];
+        const fieldWon = (r === fieldSide);
+        let amt = 0; // house's net on this bet
+        onLine.forEach(m => {
+          const stake = BASE * (picks[m].press === id ? 2 : 1);
+          if (fieldWon) { per[m].net += stake; amt -= stake; }
+          else { per[m].net -= stake; amt += stake; }
+        });
+        house.net += amt;
+        if (fieldWon) house.losses++; else house.wins++;
+        house.bets.push({ id, side: fieldSide === 'a' ? 'b' : 'a', win: !fieldWon, amt });
+      }
+    }
   });
 
-  // Sweep bonus: 5 picks, 5 wins (a push already breaks wins===5)
+  // Sweep bonus: 5 picks, 5 wins (a push already breaks wins===5). House excluded.
   const sweepers = players.filter(m => per[m].count === 5 && per[m].wins === 5);
   sweepers.forEach(s => {
     per[s].sweep = true;
@@ -450,7 +480,9 @@ function computeWeek(w) {
       pairAdd(s, p, SWEEP);
     });
   });
-  return { per, pair, players };
+
+  if (house) per[houseName] = { net: house.net, wins: house.wins, losses: house.losses, pushes: 0, count: 0, press: null, sweep: false, isHouse: true, houseBets: house.bets };
+  return { per, pair, players, houseName, house };
 }
 
 // ── Rendering ──────────────────────────────────────────────────────
@@ -517,10 +549,14 @@ function shortSide(mine, other) {
 // Cell = picked side while ungraded, W/L/P once graded; 🔥 marks a press.
 function weekGridHtml(w) {
   const picks = decodedPicks(w);
-  const players = MEMBERS.filter(m => picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
-  if (!players.length) return '';
+  const houseName = w.house || null;
+  const players = MEMBERS.filter(m => m !== houseName && picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
   const fin = computeWeek(w);
+  const H = fin.house;
+  if (!players.length && !H) return '';
+
   const season = seasonTotalsThrough(w);
+  const houseCol = c => H ? `<td class="housecol ${c || ''}">` : ''; // opening tag when a house exists
 
   const lineRows = LINE_IDS.map((id, i) => {
     const ln = w.lines?.[id];
@@ -542,11 +578,27 @@ function weekGridHtml(w) {
         moved += BASE * (picks[wn].press === id ? 2 : 1) * (picks[ls].press === id ? 2 : 1);
       }));
     }
+    // House column: backstops only when the field on this bet is unanimous.
+    let houseCell = '';
+    if (H) {
+      const onLine = players.filter(m => picks[m].sides[id]);
+      const sides = new Set(onLine.map(m => picks[m].sides[id]));
+      if (!onLine.length || sides.size > 1) houseCell = '<td class="housecol"></td>';
+      else {
+        const hSide = [...sides][0] === 'a' ? 'b' : 'a';
+        if (!r) houseCell = `<td class="housecol cq pick-cell" title="${esc(hSide === 'a' ? ln.a : ln.b)}">${esc(hSide === 'a' ? shortSide(ln.a, ln.b) : shortSide(ln.b, ln.a))}</td>`;
+        else if (r === 'push') houseCell = '<td class="housecol cp pick-cell">—</td>';
+        else {
+          moved += onLine.reduce((s, m) => s + BASE * (picks[m].press === id ? 2 : 1), 0);
+          houseCell = r === hSide ? '<td class="housecol cw pick-cell">W</td>' : '<td class="housecol cl pick-cell">L</td>';
+        }
+      }
+    }
     const label = ln.header
       ? `${i + 1}. ${esc(ln.header)}<div style="font-size:10px;color:#999;font-weight:600;">${esc(ln.a)} <span style="color:#bbb;">vs</span> ${esc(ln.b)}</div>`
       : `${i + 1}. ${esc(ln.a)} <span style="color:#bbb;font-size:10px;">vs</span> ${esc(ln.b)}`;
     const resTxt = r === 'push' ? 'PUSH' : r ? esc(r === 'a' ? ln.a : ln.b) + ' ✓' : '';
-    return `<tr><td class="bet-name">${label}${resTxt ? `<div style="font-size:10px;color:#2e7d32;font-weight:700;">${resTxt}</div>` : ''}</td>${cells}
+    return `<tr><td class="bet-name">${label}${resTxt ? `<div style="font-size:10px;color:#2e7d32;font-weight:700;">${resTxt}</div>` : ''}</td>${cells}${houseCell}
       <td class="movecol">${r && r !== 'push' ? '$' + moved : r === 'push' ? '$0' : ''}</td></tr>`;
   }).join('');
 
@@ -559,17 +611,20 @@ function weekGridHtml(w) {
       if (fin.per[m].sweep) { const amt = SWEEP * (players.length - 1); moved += amt; return `<td class="cw">+$${amt}</td>`; }
       return `<td class="cl">-$${SWEEP * sweepers.filter(s => s !== m).length}</td>`;
     }).join('');
-    sweepRow = `<tr><td class="bet-name">Sweep Bonus 🎰</td>${cells}<td class="movecol">$${moved}</td></tr>`;
+    sweepRow = `<tr><td class="bet-name">Sweep Bonus 🎰</td>${cells}${H ? '<td class="housecol"></td>' : ''}<td class="movecol">$${moved}</td></tr>`;
   }
 
+  const hNet = H ? fin.per[houseName].net : 0;
+  const hSeason = H ? (season[houseName] || 0) : 0;
   const subRow = `<tr class="subrow"><td class="bet-name">${esc((w.title || 'Week').toUpperCase())} SUBTOTAL</td>
-    ${players.map(m => `<td class="${cls(fin.per[m].net)}">${fmtMoney(fin.per[m].net)}</td>`).join('')}<td class="movecol"></td></tr>`;
+    ${players.map(m => `<td class="${cls(fin.per[m].net)}">${fmtMoney(fin.per[m].net)}</td>`).join('')}${H ? `${houseCol(cls(hNet))}${fmtMoney(hNet)}</td>` : ''}<td class="movecol"></td></tr>`;
   const seasonRow = `<tr class="seasonrow"><td class="bet-name">SEASON TOTAL${w.status !== 'final' ? '*' : ''}</td>
-    ${players.map(m => { const n = season[m] || 0; return `<td class="${cls(n)}">${fmtMoney(n)}</td>`; }).join('')}<td class="movecol"></td></tr>`;
+    ${players.map(m => { const n = season[m] || 0; return `<td class="${cls(n)}">${fmtMoney(n)}</td>`; }).join('')}${H ? `${houseCol(cls(hSeason))}${fmtMoney(hSeason)}</td>` : ''}<td class="movecol"></td></tr>`;
 
   return `<div class="grid-wrap"><table class="sheet">
     <tr><th class="bet-col">Bet</th>
       ${players.map(m => `<th style="color:${color(m)}">${esc(m)}</th>`).join('')}
+      ${H ? `<th class="housecol">🏠 ${esc(houseName)}<div style="font-size:9px;font-weight:600;">${H.wins}-${H.losses} as house</div></th>` : ''}
       <th class="movecol">$ Moved</th></tr>
     ${lineRows}${sweepRow}${subRow}${seasonRow}
   </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div>`;
@@ -582,7 +637,8 @@ function weekCard(w, collapsed = false) {
   const fin = computeWeek(w);
   const sealed = w.picks || {}; // raw sealed entries — contents never rendered while open
   const iAmSealed = !!(myName && sealed[myName]);
-  const canPick = open && myName && !iAmSealed;
+  const iAmHouse = !!(myName && w.house === myName);
+  const canPick = open && myName && !iAmSealed && !iAmHouse;
   const draft = canPick ? (drafts[w.id] || { sides: {}, press: null }) : { sides: {}, press: null };
   const selCount = Object.keys(draft.sides).length;
   const validCount = [1, 3, 5].includes(selCount);
@@ -596,14 +652,16 @@ function weekCard(w, collapsed = false) {
       <span class="week-title">${esc(w.title || 'Week')}</span>
       <span class="week-date">${w.date ? new Date(w.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
       <span class="poster-chip">📋 ${esc(w.poster || 'BBQC')}</span>
+      ${w.house ? `<span class="poster-chip" style="color:#7B1FA2;background:#f3ecf7;">🏠 ${esc(w.house)}</span>` : ''}
       ${statusChip}
     </div>`;
 
   // Collapsed history: header + ranked money leaderboard for the week
   if (collapsed) {
     const names = fin.players.sort((a, b) => fin.per[b].net - fin.per[a].net);
-    const maxAbs = Math.max(1, ...names.map(n => Math.abs(fin.per[n].net)));
-    const moneyFooter = names.length ? `<div class="lb-card" style="border:none;border-top:0.5px solid #f0f0f0;border-radius:0;">${names.map((n, i) => {
+    const H = fin.house, houseName = fin.houseName;
+    const maxAbs = Math.max(1, ...names.map(n => Math.abs(fin.per[n].net)), H ? Math.abs(H.net) : 0);
+    const playerRows = names.map((n, i) => {
       const r = fin.per[n];
       const chips = [
         r.press ? `<span class="lb-badge">🔥</span>` : '',
@@ -621,8 +679,21 @@ function weekCard(w, collapsed = false) {
         </div>
         ${plBar(r.net, maxAbs)}
       </div>`;
-    }).join('')}</div>` : '';
-    return `<div class="week-card">${head}${moneyFooter}</div>`;
+    }).join('');
+    const houseRow = H ? `<div class="lb-row">
+      <div class="lb-top">
+        <span class="lb-rank">🏠</span>
+        ${avatarHtml(houseName)}
+        <div class="lb-main">
+          <div class="lb-name">${esc(houseName)} <span class="lb-badge" style="background:#f3ecf7;color:#7B1FA2;">HOUSE</span></div>
+          <div class="lb-sub"><span>${H.wins}-${H.losses} as house · backstopped ${H.bets.length} bet${H.bets.length === 1 ? '' : 's'}</span></div>
+        </div>
+        <span class="lb-net ${cls(H.net)}">${fmtMoney(H.net)}</span>
+      </div>
+      ${plBar(H.net, maxAbs)}
+    </div>` : '';
+    const body = (names.length || H) ? `<div class="lb-card" style="border:none;border-top:0.5px solid #f0f0f0;border-radius:0;">${playerRows}${houseRow}</div>` : '';
+    return `<div class="week-card">${head}${body}</div>`;
   }
 
   // Line rows — pick UI while open (only my unsealed draft visible), read-only after
@@ -663,13 +734,15 @@ function weekCard(w, collapsed = false) {
   if (open) {
     const nameChips = MEMBERS.map(m => {
       const isSealed = !!sealed[m];
+      const isHouseM = w.house === m;
       const active = myName === m;
       return `<button class="name-chip ${active ? 'active' : ''}"
-        style="${active ? `background:${isSealed ? '#9aa0a8' : color(m)};` : ''}${isSealed && !active ? 'opacity:.55;' : ''}"
-        onclick="setMyName('${m}')">${m}${isSealed ? ' 🔒' : ''}</button>`;
+        style="${active ? `background:${isHouseM ? '#7B1FA2' : isSealed ? '#9aa0a8' : color(m)};` : ''}${isSealed && !active ? 'opacity:.55;' : ''}"
+        onclick="setMyName('${m}')">${m}${isHouseM ? ' 🏠' : isSealed ? ' 🔒' : ''}</button>`;
     }).join('');
     let status = '';
     if (!myName) status = 'Pick your name, then choose a side on 1, 3, or 5 bets. Picks are sealed the moment you lock in.';
+    else if (iAmHouse) status = `🏠 <strong>You're the house this week.</strong> You don't pick — on any bet where the whole field lands on one side, you take the other side and pair off with all of them.`;
     else if (iAmSealed) status = `🔒 <strong>${esc(myName)} is locked in.</strong> Sealed until the board locks — nobody can see or change these picks. Need a re-do? Ask the commissioner to unlock you.`;
     else if (selCount === 0) status = 'Choose a side on 1, 3, or 5 bets. Press one 🔥 if you\'re feeling it.';
     else if (!validCount) status = `<span style="color:#c62828;font-weight:700;">${selCount} picked — must be an odd number (1, 3, or 5).</span>`;
@@ -718,18 +791,20 @@ function weekCard(w, collapsed = false) {
 
 function seasonStandingsHtml(finalWeeks) {
   const tot = {};
-  MEMBERS.forEach(m => tot[m] = { net: 0, w: 0, l: 0, p: 0, picks: 0, weeks: 0, sweeps: 0, presses: 0, form: [] });
+  MEMBERS.forEach(m => tot[m] = { net: 0, w: 0, l: 0, p: 0, picks: 0, weeks: 0, sweeps: 0, presses: 0, form: [], houseNet: 0, houseW: 0, houseL: 0, houseWeeks: 0 });
   // Oldest → newest so the form strip reads left (early) to right (latest).
   const chrono = [...finalWeeks].sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.created || 0) - (b.created || 0));
   chrono.forEach(w => {
     const fin = computeWeek(w);
     Object.entries(fin.per).forEach(([n, r]) => {
       const t = tot[n];
-      t.net += r.net; t.w += r.wins; t.l += r.losses; t.p += r.pushes;
-      t.picks += r.count; t.weeks++;
-      if (r.sweep) t.sweeps++;
-      if (r.press) t.presses++;
-      t.form.push(r.net);
+      t.net += r.net; t.weeks++; t.form.push(r.net);
+      if (r.isHouse) { t.houseNet += r.net; t.houseW += r.wins; t.houseL += r.losses; t.houseWeeks++; }
+      else {
+        t.w += r.wins; t.l += r.losses; t.p += r.pushes; t.picks += r.count;
+        if (r.sweep) t.sweeps++;
+        if (r.press) t.presses++;
+      }
     });
   });
   const ranked = Object.entries(tot).filter(([, r]) => r.weeks > 0).sort((a, b) => b[1].net - a[1].net);
@@ -740,8 +815,11 @@ function seasonStandingsHtml(finalWeeks) {
     `<span class="pip ${v > 0 ? 'up' : v < 0 ? 'dn' : 'fl'}" title="${fmtMoney(v)}"></span>`).join('')}</span>`;
   const badges = r => [
     r.presses ? `<span class="lb-badge">${r.presses}🔥</span>` : '',
-    r.sweeps ? `<span class="lb-badge">${r.sweeps}🎰</span>` : ''
+    r.sweeps ? `<span class="lb-badge">${r.sweeps}🎰</span>` : '',
+    r.houseWeeks ? `<span class="lb-badge" style="background:#f3ecf7;color:#7B1FA2;">🏠 ${r.houseW}-${r.houseL} · ${fmtMoney(r.houseNet)}</span>` : ''
   ].join('');
+  // Record shown in a row's sub-line (house-only members show their house record).
+  const recTxt = r => (r.picks > 0 || !r.houseWeeks) ? `<span>${r.w}-${r.l}${r.p ? `-${r.p}p` : ''}</span>` : '';
 
   // Hero: current leader.
   const [ln, lr] = ranked[0];
@@ -749,7 +827,7 @@ function seasonStandingsHtml(finalWeeks) {
     <span class="lb-hero-av" style="background:${color(ln)}">${esc((ln[0] || '?').toUpperCase())}</span>
     <div class="lb-hero-txt">
       <div class="lb-hero-name">${esc(ln)} <span style="font-size:13px;">🏆</span></div>
-      <div class="lb-hero-sub">leads the season · ${lr.w}-${lr.l}${lr.p ? `-${lr.p}p` : ''} · ${lr.weeks} wk${lr.weeks > 1 ? 's' : ''}</div>
+      <div class="lb-hero-sub">leads the season · ${(lr.picks > 0 || !lr.houseWeeks) ? `${lr.w}-${lr.l}${lr.p ? `-${lr.p}p` : ''} · ` : ''}${lr.houseWeeks ? `🏠 ${lr.houseW}-${lr.houseL} · ` : ''}${lr.weeks} wk${lr.weeks > 1 ? 's' : ''}</div>
     </div>
     <span class="lb-hero-net ${cls(lr.net)}">${fmtMoney(lr.net)}</span>
   </div>`;
@@ -762,7 +840,7 @@ function seasonStandingsHtml(finalWeeks) {
         ${avatarHtml(n)}
         <div class="lb-main">
           <div class="lb-name">${esc(n)}</div>
-          <div class="lb-sub">${formStrip(r.form)} <span>${r.w}-${r.l}${r.p ? `-${r.p}p` : ''}</span>${badges(r)}${i > 0 ? `<span style="color:#c4c4c0;">${gap.replace(' · ', '')}</span>` : ''}</div>
+          <div class="lb-sub">${formStrip(r.form)} ${recTxt(r)}${badges(r)}${i > 0 ? `<span style="color:#c4c4c0;">${gap.replace(' · ', '')}</span>` : ''}</div>
         </div>
         <span class="lb-net ${cls(r.net)}">${fmtMoney(r.net)}</span>
       </div>
@@ -908,6 +986,10 @@ window.checkCommPw = function() {
 window.openNewWeek = function() {
   const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
   document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
+  const houseSel = document.getElementById('nw-house');
+  houseSel.innerHTML = '<option value="">None — pure peer-to-peer</option>' +
+    MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
+  houseSel.value = '';
   const d = new Date();
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
   document.getElementById('nw-date').value = d.toISOString().slice(0, 10);
@@ -928,7 +1010,8 @@ window.saveNewWeek = async function() {
     lines[`l${i}`] = { header, a, b, result: null };
   }
   if (!title) { document.getElementById('nw-error').textContent = 'Need a week label.'; return; }
-  await push(weeksRef, { title, date, poster, status: 'open', lines, picks: {}, created: Date.now() });
+  const house = document.getElementById('nw-house').value || null;
+  await push(weeksRef, { title, date, poster, house, status: 'open', lines, picks: {}, created: Date.now() });
   for (let i = 1; i <= 5; i++) { document.getElementById(`nw-h${i}`).value = ''; document.getElementById(`nw-l${i}a`).value = ''; document.getElementById(`nw-l${i}b`).value = ''; }
   document.getElementById('nw-error').textContent = '';
   closeModal('new-week-modal');

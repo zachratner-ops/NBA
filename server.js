@@ -542,8 +542,10 @@ function bbqcDecodePick(e) {
 // pair); a 5-for-5 sweep collects $20 from every other bettor.
 const BBQC_BASE = 10, BBQC_SWEEP = 20;
 function bbqcComputeWeek(w) {
+  const houseName = w.house || null;
   const picks = {};
   Object.entries(w.picks || {}).forEach(function(pair) {
+    if (pair[0] === houseName) return; // the house doesn't pick
     const d = bbqcDecodePick(pair[1]);
     if (d && d.sides && Object.keys(d.sides).length) picks[pair[0]] = d;
   });
@@ -552,6 +554,7 @@ function bbqcComputeWeek(w) {
   players.forEach(function(m) {
     per[m] = { net: 0, wins: 0, losses: 0, pushes: 0, count: Object.keys(picks[m].sides).length, press: picks[m].press || null, sweep: false };
   });
+  const house = houseName ? { net: 0, wins: 0, losses: 0, bets: [] } : null;
   BBQC_LINE_IDS.forEach(function(id) {
     const r = w.lines && w.lines[id] && w.lines[id].result;
     if (!r) return;
@@ -565,12 +568,30 @@ function bbqcComputeWeek(w) {
       const stake = BBQC_BASE * (picks[wn].press === id ? 2 : 1) * (picks[ls].press === id ? 2 : 1);
       per[wn].net += stake; per[ls].net -= stake;
     }); });
+    // House backstop: only when the whole field on this bet agrees.
+    if (house && onLine.length) {
+      const sides = {}; onLine.forEach(function(m) { sides[picks[m].sides[id]] = 1; });
+      if (Object.keys(sides).length === 1) {
+        const fieldSide = Object.keys(sides)[0];
+        const fieldWon = (r === fieldSide);
+        let amt = 0;
+        onLine.forEach(function(m) {
+          const stake = BBQC_BASE * (picks[m].press === id ? 2 : 1);
+          if (fieldWon) { per[m].net += stake; amt -= stake; }
+          else { per[m].net -= stake; amt += stake; }
+        });
+        house.net += amt;
+        if (fieldWon) house.losses++; else house.wins++;
+        house.bets.push({ id: id, side: fieldSide === 'a' ? 'b' : 'a', win: !fieldWon, amt: amt });
+      }
+    }
   });
   players.filter(function(m) { return per[m].count === 5 && per[m].wins === 5; }).forEach(function(s) {
     per[s].sweep = true;
     players.forEach(function(p) { if (p === s) return; per[s].net += BBQC_SWEEP; per[p].net -= BBQC_SWEEP; });
   });
-  return { per: per, players: players };
+  if (house) per[houseName] = { net: house.net, wins: house.wins, losses: house.losses, pushes: 0, count: 0, press: null, sweep: false, isHouse: true };
+  return { per: per, players: players, houseName: houseName, house: house };
 }
 function bbqcSeasonTotals(weeks) {
   const tot = {};
@@ -590,9 +611,10 @@ function bbqcSlateMsg(w) {
     if (!ln) return null;
     return (i + 1) + '. ' + (ln.header ? ln.header + ': ' : '') + ln.a + ' vs ' + ln.b;
   }).filter(Boolean);
+  const houseLine = w.house ? ['', '🏠 House this week: ' + w.house + ' — takes the other side of any bet the field is unanimous on.'] : [];
   return ['🔥 Sunday Bets — ' + (w.title || 'This week') + ' is up!',
     'Pick a side on 1, 3, or 5. Blind until the 1pm ET reveal.', '']
-    .concat(bets).concat(['', '🔗 ' + BBQC_PAGE]).join('\n');
+    .concat(bets).concat(houseLine).concat(['', '🔗 ' + BBQC_PAGE]).join('\n');
 }
 function bbqcLockMsg(name, count, lockedCount, w) {
   return '🔒 ' + name + ' is in with ' + count + ' pick' + (count > 1 ? 's' : '') +
@@ -600,11 +622,14 @@ function bbqcLockMsg(name, count, lockedCount, w) {
     (lockedCount > 1 ? 's' : '') + ' locked in so far.';
 }
 function bbqcRevealMsg(w) {
+  const houseName = w.house || null;
   const picks = {};
   Object.entries(w.picks || {}).forEach(function(pair) {
+    if (pair[0] === houseName) return;
     const d = bbqcDecodePick(pair[1]); if (d) picks[pair[0]] = d;
   });
   const out = ['🎲 REVEAL — Sunday Bets ' + (w.title || ''), "Picks are locked. Here's who's on what:", ''];
+  if (houseName) out.push('🏠 House: ' + houseName, '');
   BBQC_LINE_IDS.forEach(function(lid, i) {
     const ln = w.lines && w.lines[lid]; if (!ln) return;
     const aSide = [], bSide = [];
@@ -613,6 +638,10 @@ function bbqcRevealMsg(w) {
       if (!s) return;
       (s === 'a' ? aSide : bSide).push(d.press === lid ? name + '🔥' : name);
     });
+    // House takes the empty side when the field is unanimous.
+    if (houseName && (aSide.length ? 1 : 0) + (bSide.length ? 1 : 0) === 1) {
+      (aSide.length ? bSide : aSide).push('🏠 ' + houseName);
+    }
     out.push((i + 1) + '. ' + (ln.header || (ln.a + ' vs ' + ln.b)));
     out.push('   • ' + ln.a + ': ' + (aSide.length ? aSide.join(', ') : '—'));
     out.push('   • ' + ln.b + ': ' + (bSide.length ? bSide.join(', ') : '—'));
@@ -639,6 +668,9 @@ function bbqcFinalMsg(w, weeks) {
     return tag + ' ' + n + '  ' + bbqcMoney(r.net) + '  (' + rec + ')';
   });
   const sweepers = ranked.filter(function(n) { return fin.per[n].sweep; });
+  // House line (separate from the ranked field)
+  const H = fin.house, houseName = fin.houseName;
+  const houseLines = H ? ['', '🏠 House — ' + houseName + '  ' + bbqcMoney(H.net) + '  (' + H.wins + '-' + H.losses + ' as house, ' + H.bets.length + ' bet' + (H.bets.length === 1 ? '' : 's') + ')'] : [];
   // Season leader after this week
   const season = bbqcSeasonTotals(weeks);
   const seasonRanked = Object.entries(season).sort(function(a, b) { return b[1] - a[1]; });
@@ -646,6 +678,7 @@ function bbqcFinalMsg(w, weeks) {
   return ['🏁 ' + (w.title || 'This week') + ' — FINAL', 'Results are in.', '']
     .concat(results)
     .concat(['', '💰 Week results:']).concat(money.length ? money : ['(no bets this week)'])
+    .concat(houseLines)
     .concat(sweepers.length ? ['', '🎰 ' + sweepers.join(' & ') + ' swept all 5 — everyone else pays up!'] : [])
     .concat(['', leaderLine, '🔗 ' + BBQC_PAGE].filter(Boolean))
     .join('\n');
@@ -671,10 +704,10 @@ async function bbqcHandleWeek(weekId, w) {
     // Lock-in announcements — only for picks sealed after boot.
     const picks = w.picks || {};
     const locks = notify.locks || {};
-    const lockedCount = Object.keys(picks).length;
+    const lockedCount = Object.keys(picks).filter(function(n) { return n !== w.house; }).length;
     for (const name of Object.keys(picks)) {
       const e = picks[name];
-      if (!e || locks[name] || (e.ts || 0) < BBQC_BOOT) continue;
+      if (name === w.house || !e || locks[name] || (e.ts || 0) < BBQC_BOOT) continue;
       const d = bbqcDecodePick(e);
       const count = d ? Object.keys(d.sides).length : 0;
       if (!count) continue;
@@ -710,10 +743,11 @@ async function bbqcReminderJob() {
     if (!w || w.status !== 'open' || w.date !== today) continue;
     const notifyRef = bbqcRef('notify/' + id);
     if ((await notifyRef.child('reminder').get()).val()) continue;
-    const inNames = Object.keys(w.picks || {});
-    const missing = BBQC_MEMBERS.filter(function(m) { return inNames.indexOf(m) === -1; });
+    const inNames = Object.keys(w.picks || {}).filter(function(n) { return n !== w.house; });
+    const missing = BBQC_MEMBERS.filter(function(m) { return m !== w.house && inNames.indexOf(m) === -1; });
     const msg = ['⏰ 2 hours to lock — Sunday Bets ' + (w.title || ''),
       'Picks close at 1pm ET, then everything reveals.',
+      w.house ? ('🏠 House: ' + w.house) : '',
       inNames.length ? ('✅ In: ' + inNames.join(', ')) : '',
       missing.length ? ('🕐 Still out: ' + missing.join(', ')) : '🎉 Everyone is in!',
       '', '🔗 ' + BBQC_PAGE].filter(Boolean).join('\n');
