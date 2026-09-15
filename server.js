@@ -505,6 +505,39 @@ const BBQC_BOOT = Date.now(); // only announce boards/locks that happen after th
 const bbqcRef = (p) => admin.database().ref('bbqc/' + BBQC_SEASON + '/' + p);
 const bbqcTodayET = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
 
+// Epoch (ms) of a given wall-clock time in America/New_York, DST-aware.
+function bbqcEtWallToEpoch(y, mo, d, h, mi) {
+  const guess = Date.UTC(y, mo - 1, d, h, mi, 0);
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    .formatToParts(new Date(guess)).reduce(function(a, x) { a[x.type] = x.value; return a; }, {});
+  const etAsUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, 0);
+  return guess - (etAsUTC - guess); // subtract ET's offset from UTC
+}
+// Slate posting window for a board: [Saturday 10pm ET the night before its
+// Sunday date, Sunday 1pm ET reveal]. Dateless boards post immediately.
+function bbqcSlateWindow(w) {
+  if (!w.date) return { start: 0, end: Infinity };
+  const parts = w.date.split('-').map(Number);
+  const sun = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  const sat = new Date(sun.getTime()); sat.setUTCDate(sat.getUTCDate() - 1);
+  return {
+    start: bbqcEtWallToEpoch(sat.getUTCFullYear(), sat.getUTCMonth() + 1, sat.getUTCDate(), 22, 0),
+    end: bbqcEtWallToEpoch(sun.getUTCFullYear(), sun.getUTCMonth() + 1, sun.getUTCDate(), 13, 0)
+  };
+}
+// Post the slate once, only inside its window (10pm Sat → 1pm Sun ET).
+async function bbqcTrySlate(weekId, w) {
+  if (!w || w.status !== 'open') return;
+  const now = Date.now(), win = bbqcSlateWindow(w);
+  if (now < win.start || now > win.end) return;
+  const notifyRef = bbqcRef('notify/' + weekId);
+  if ((await notifyRef.child('slate').get()).val()) return;
+  await bbqcPost(bbqcSlateMsg(w));
+  await notifyRef.child('slate').set(true);
+  console.log('[BBQC] slate posted for ' + (w.title || weekId));
+}
+
 // Fire-and-forget GroupMe text post.
 function bbqcPost(text) {
   if (BBQC_DRY_RUN) { console.log('[BBQC GroupMe DRY RUN]\n' + text + '\n'); return Promise.resolve(); }
@@ -694,12 +727,8 @@ async function bbqcHandleWeek(weekId, w) {
     const nsnap = await notifyRef.get();
     const notify = nsnap.exists() ? (nsnap.val() || {}) : {};
 
-    // Slate announcement — only for boards created after this process booted.
-    if (w.status === 'open' && !notify.slate && (w.created || 0) >= BBQC_BOOT) {
-      await bbqcPost(bbqcSlateMsg(w));
-      await notifyRef.child('slate').set(true);
-      notify.slate = true;
-    }
+    // Slate announcement — held until its 10pm-Sat → 1pm-Sun ET window.
+    await bbqcTrySlate(weekId, w);
 
     // Lock-in announcements — only for picks sealed after boot.
     const picks = w.picks || {};
@@ -770,10 +799,19 @@ async function bbqcRevealJob() {
     console.log('[BBQC] reveal posted + board locked for ' + (w.title || id));
   }
 }
+// Slate release: fire at 10pm ET Saturday for any board already completed for
+// the next day (boards completed later post on their own via bbqcTrySlate).
+async function bbqcSlateJob() {
+  if (!firebaseReady) return;
+  const weeks = (await bbqcRef('weeks').get()).val() || {};
+  for (const [id, w] of Object.entries(weeks)) await bbqcTrySlate(id, w);
+}
+cron.schedule('0 22 * * 6', bbqcSlateJob, ET_TZ);    // Saturdays 22:00 ET
 cron.schedule('0 11 * * 0', bbqcReminderJob, ET_TZ); // Sundays 11:00 ET
 cron.schedule('0 13 * * 0', bbqcRevealJob, ET_TZ);   // Sundays 13:00 ET
 
 // Manual triggers for testing (dry-run unless BBQC_GROUPME_BOT_ID is set).
+app.post('/bbqc/slate', async function(req, res) { await bbqcSlateJob(); res.json({ ok: true, dryRun: BBQC_DRY_RUN }); });
 app.post('/bbqc/reminder', async function(req, res) { await bbqcReminderJob(); res.json({ ok: true, dryRun: BBQC_DRY_RUN }); });
 app.post('/bbqc/reveal', async function(req, res) { await bbqcRevealJob(); res.json({ ok: true, dryRun: BBQC_DRY_RUN }); });
 app.get('/bbqc/preview/:weekId', async function(req, res) {
