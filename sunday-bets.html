@@ -258,7 +258,9 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
   <div class="modal">
     <h2>🔥 New Sunday Board</h2>
     <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
-    <div class="field"><label>Date</label><input id="nw-date" type="date"></div>
+    <div class="field"><label>Date — the Sunday of the slate</label><input id="nw-date" type="date">
+      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Drives the GroupMe timing: slate posts 10pm ET the night before, reminder 11am &amp; reveal 1pm ET that day.</div>
+    </div>
     <div class="field"><label>Posted by</label><input id="nw-poster" type="text" value="BBQC"></div>
     <div class="field"><label>Backstop this week (optional)</label>
       <select id="nw-house"><option value="">None — pure peer-to-peer</option></select>
@@ -1020,6 +1022,14 @@ window.saveNewWeek = async function() {
     lines[`l${i}`] = { header, a, b, result: null };
   }
   if (!title) { document.getElementById('nw-error').textContent = 'Need a week label.'; return; }
+  if (!date) { document.getElementById('nw-error').textContent = 'Need a date (the Sunday of the slate).'; return; }
+  // The date drives the GroupMe timing (10pm-Sat slate, 11am/1pm-Sun reminder
+  // & reveal), so warn if it isn't a Sunday.
+  const dow = new Date(date + 'T12:00:00').getDay();
+  if (dow !== 0) {
+    const wd = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' });
+    if (!confirm(`Heads up: ${date} is a ${wd}, not a Sunday. The slate posts at 10pm ET the night before this date, and the reminder + reveal run on it — a non-Sunday date shifts all the GroupMe timing. Post anyway?`)) return;
+  }
   const house = document.getElementById('nw-house').value || null;
   await push(weeksRef, { title, date, poster, house, status: 'open', lines, picks: {}, created: Date.now() });
   for (let i = 1; i <= 5; i++) { document.getElementById(`nw-h${i}`).value = ''; document.getElementById(`nw-l${i}a`).value = ''; document.getElementById(`nw-l${i}b`).value = ''; }
