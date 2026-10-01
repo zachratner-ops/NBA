@@ -142,6 +142,42 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 .pl-fill.neg{background:linear-gradient(90deg,#d64545,#b53030);}
 .pl-mid{width:2px;height:14px;background:#d0d0cc;border-radius:1px;flex-shrink:0;}
 
+/* Detail view switcher (grid / by player / matchups) */
+.view-seg{display:inline-flex;border:0.5px solid #ddd;border-radius:9px;overflow:hidden;margin:12px 14px 2px;}
+.view-seg button{border:none;background:#fff;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;color:#999;}
+.view-seg button:not(:last-child){border-right:0.5px solid #eee;}
+.view-seg button.on{background:#1a1a1a;color:#fff;}
+/* By-player card */
+.pcard-wrap{padding:0 14px 12px;}
+.pcard-chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;}
+.pcard-chip{font-size:12px;font-weight:700;padding:5px 11px;border-radius:20px;border:1.5px solid #ddd;background:#fff;cursor:pointer;color:#1a1a1a;}
+.pcard{background:#fff;border:0.5px solid #ececea;border-radius:12px;overflow:hidden;}
+.pc-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fafaf8;border-bottom:0.5px solid #f0f0f0;}
+.pc-name{font-weight:800;font-size:14px;}
+.pc-sub{font-size:12px;color:#888;margin-top:1px;}
+.pc-row{padding:10px 14px;border-bottom:0.5px solid #f5f5f3;}
+.pc-row:last-child{border-bottom:none;}
+.pc-row.pc-out{opacity:.5;}
+.pc-bet{font-size:12px;font-weight:700;color:#555;}
+.pc-pick{font-size:13px;margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pc-stake{font-size:11px;color:#888;font-weight:600;}
+.pc-res{font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px;}
+.pc-res.win{background:#e8f5e9;color:#2e7d32;} .pc-res.loss{background:#ffebee;color:#c62828;} .pc-res.push{background:#f0f0ee;color:#888;}
+.pc-opps{font-size:12px;color:#777;margin-top:4px;line-height:1.5;}
+.pc-amt{font-weight:700;color:#555;font-variant-numeric:tabular-nums;}
+/* Matchups list */
+.mu-wrap{padding:2px 14px 14px;}
+.mu-head{font-size:12px;color:#888;font-weight:700;padding:10px 0;}
+.mu-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid #f5f5f3;font-size:13px;}
+.mu-row:last-child{border-bottom:none;}
+.mu-side{display:flex;align-items:center;gap:6px;min-width:0;}
+.mu-side .lb-av{width:22px;height:22px;font-size:11px;}
+.mu-name{font-weight:700;white-space:nowrap;}
+.mu-vs{font-size:10px;color:#bbb;font-weight:800;}
+.mu-amt{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;}
+.mu-bets{font-size:11px;color:#aaa;width:50px;text-align:right;flex-shrink:0;}
+.subview-empty{padding:22px 14px;text-align:center;color:#999;font-size:13px;}
+
 /* Comm */
 .comm-panel{background:#fffbeb;border:1px solid #f9a825;border-radius:12px;padding:12px 16px;margin-bottom:16px;}
 .comm-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#996c00;margin-bottom:8px;}
@@ -365,6 +401,9 @@ let expandedWeeks = new Set();
 let myName = localStorage.getItem('bbqc_name') || null;
 // Uncommitted claim edits per week: { sides: {lineId:'a'|'b'}, press: lineId|null }
 let drafts = {};
+// Per-week detail view switcher: weekView[id] = 'grid'|'player'|'matchups'; cardSel[id] = selected player
+let weekView = {};
+let cardSel = {};
 
 onValue(weeksRef, snap => { weeks = snap.val() || {}; render(); });
 
@@ -533,6 +572,8 @@ function render() {
 
 window.switchTab = function(t) { tab = t; localStorage.setItem('bbqc_tab', t); render(); };
 window.toggleWeekExpand = function(id) { expandedWeeks.has(id) ? expandedWeeks.delete(id) : expandedWeeks.add(id); render(); };
+window.setWeekView = function(id, v) { weekView[id] = v; render(); };
+window.setCardPlayer = function(id, name) { cardSel[id] = name; weekView[id] = 'player'; render(); };
 
 // Season net per person through a given week
 function seasonTotalsThrough(w) {
@@ -640,6 +681,104 @@ function weekGridHtml(w) {
       <th class="movecol">$ Moved</th></tr>
     ${lineRows}${sweepRow}${subRow}${seasonRow}
   </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div>`;
+}
+
+// Per-bet head-to-head matchups for a revealed week, including the Backstop.
+// Each matchup { a, b, stake, aSide, bSide, bHouse }.
+function weekMatchupData(w) {
+  const picks = decodedPicks(w);
+  const houseName = w.house || null;
+  const players = MEMBERS.filter(m => m !== houseName && picks[m] && picks[m].sides && Object.keys(picks[m].sides).length);
+  const byBet = {};
+  LINE_IDS.forEach(id => {
+    const ln = w.lines?.[id]; if (!ln) return;
+    const onLine = players.filter(m => picks[m].sides[id]);
+    const ms = [];
+    const aSide = onLine.filter(m => picks[m].sides[id] === 'a');
+    const bSide = onLine.filter(m => picks[m].sides[id] === 'b');
+    aSide.forEach(x => bSide.forEach(y => {
+      ms.push({ a: x, b: y, aSide: 'a', bSide: 'b', stake: BASE * (picks[x].press === id ? 2 : 1) * (picks[y].press === id ? 2 : 1) });
+    }));
+    // Backstop takes the empty side of a unanimous bet.
+    if (houseName && onLine.length) {
+      const sides = new Set(onLine.map(m => picks[m].sides[id]));
+      if (sides.size === 1) {
+        const fieldSide = [...sides][0], hSide = fieldSide === 'a' ? 'b' : 'a';
+        onLine.forEach(m => ms.push({ a: m, b: houseName, aSide: fieldSide, bSide: hSide, bHouse: true, stake: BASE * (picks[m].press === id ? 2 : 1) }));
+      }
+    }
+    byBet[id] = ms;
+  });
+  return { picks, players, houseName, byBet };
+}
+
+// One person's card: their pick, stake and opponents on each of the 5 bets.
+function playerCardHtml(w, name, data) {
+  const { picks, byBet, houseName } = data;
+  const fin = computeWeek(w);
+  const isHouse = name === houseName;
+  let totalStake = 0;
+  const rows = LINE_IDS.map((id, i) => {
+    const ln = w.lines?.[id]; if (!ln) return '';
+    const r = ln.result;
+    const ms = (byBet[id] || []).filter(m => m.a === name || m.b === name);
+    const sideKey = isHouse ? (ms.length ? (ms[0].a === name ? ms[0].aSide : ms[0].bSide) : null) : (picks[name]?.sides[id] || null);
+    const label = `${i + 1}. ${esc(ln.header || (ln.a + ' vs ' + ln.b))}`;
+    if (!sideKey) return `<div class="pc-row pc-out"><div class="pc-bet">${label}</div><div class="pc-pick">— no pick</div></div>`;
+    const betStake = ms.reduce((s, m) => s + m.stake, 0); totalStake += betStake;
+    const pressed = !isHouse && picks[name]?.press === id;
+    const opps = ms.map(m => { const o = m.a === name ? m.b : m.a; return `${o === houseName ? '🏠 ' : ''}${esc(o)} <span class="pc-amt">$${m.stake}</span>`; });
+    let resTag = '';
+    if (r === 'push') resTag = `<span class="pc-res push">PUSH</span>`;
+    else if (r) {
+      const won = isHouse ? (r === sideKey) : (picks[name].sides[id] === r);
+      resTag = won ? `<span class="pc-res win">WON +$${betStake}</span>` : `<span class="pc-res loss">LOST -$${betStake}</span>`;
+    }
+    return `<div class="pc-row">
+      <div class="pc-bet">${label}</div>
+      <div class="pc-pick"><strong>${esc(sideKey === 'a' ? ln.a : ln.b)}</strong>${pressed ? ' 🔥' : ''} <span class="pc-stake">$${betStake} at stake</span> ${resTag}</div>
+      <div class="pc-opps">${betStake ? 'vs ' + opps.join(' · ') : '<span style="color:#bbb;">no opponent — wash, $0</span>'}</div>
+    </div>`;
+  }).join('');
+  const net = fin.per[name]?.net || 0;
+  return `<div class="pcard">
+    <div class="pc-head">${avatarHtml(name)}<div>
+      <div class="pc-name">${esc(name)}${isHouse ? ' <span class="lb-badge" style="background:#f3ecf7;color:#7B1FA2;">BACKSTOP</span>' : ''}</div>
+      <div class="pc-sub">$${totalStake} total at stake${w.status === 'final' ? ` · net ${fmtMoney(net)}` : ''}</div>
+    </div></div>${rows}</div>`;
+}
+
+function weekPlayerViewHtml(w) {
+  const data = weekMatchupData(w);
+  const everyone = [...data.players.slice().sort(), ...(data.houseName ? [data.houseName] : [])];
+  if (!everyone.length) return '<div class="subview-empty">No picks to show yet.</div>';
+  let sel = cardSel[w.id];
+  if (!everyone.includes(sel)) sel = everyone.includes(myName) ? myName : everyone[0];
+  const chips = everyone.map(n => `<button class="pcard-chip" style="${n === sel ? `background:${n === data.houseName ? '#7B1FA2' : color(n)};border-color:transparent;color:#fff;` : ''}" onclick="setCardPlayer('${w.id}','${n}')">${n === data.houseName ? '🏠 ' : ''}${esc(n)}</button>`).join('');
+  return `<div class="pcard-wrap"><div class="pcard-chips">${chips}</div>${playerCardHtml(w, sel, data)}</div>`;
+}
+
+// Week matchups: who's matched up against whom, and for how much (aggregated).
+function weekMatchupsHtml(w) {
+  const data = weekMatchupData(w);
+  const pairs = {};
+  Object.values(data.byBet).forEach(ms => ms.forEach(m => {
+    const key = [m.a, m.b].sort().join('\u0001');
+    if (!pairs[key]) { const s = [m.a, m.b].sort(); pairs[key] = { a: s[0], b: s[1], total: 0, bets: 0 }; }
+    pairs[key].total += m.stake; pairs[key].bets++;
+  }));
+  const rows = Object.values(pairs).sort((x, y) => y.total - x.total);
+  if (!rows.length) return '<div class="subview-empty">No head-to-heads this week — every bet was a wash.</div>';
+  const total = rows.reduce((s, r) => s + r.total, 0);
+  const hn = data.houseName;
+  return `<div class="mu-wrap"><div class="mu-head">${rows.length} matchup${rows.length === 1 ? '' : 's'} · $${total} total on the line</div>
+    ${rows.map(r => `<div class="mu-row">
+      <span class="mu-side">${avatarHtml(r.a)}<span class="mu-name">${r.a === hn ? '🏠 ' : ''}${esc(r.a)}</span></span>
+      <span class="mu-vs">vs</span>
+      <span class="mu-side">${avatarHtml(r.b)}<span class="mu-name">${r.b === hn ? '🏠 ' : ''}${esc(r.b)}</span></span>
+      <span class="mu-amt">$${r.total}</span>
+      <span class="mu-bets">${r.bets} bet${r.bets === 1 ? '' : 's'}</span>
+    </div>`).join('')}</div>`;
 }
 
 function weekCard(w, collapsed = false) {
@@ -776,7 +915,15 @@ function weekCard(w, collapsed = false) {
     </div>`;
   }
 
-  const grid = w.status !== 'open' ? weekGridHtml(w) : '';
+  // Revealed weeks get a view switcher: grid / by-player / matchups.
+  let detail = '';
+  if (w.status !== 'open') {
+    const view = weekView[w.id] || 'grid';
+    const seg = (v, lbl) => `<button class="${view === v ? 'on' : ''}" onclick="setWeekView('${w.id}','${v}')">${lbl}</button>`;
+    const switcher = `<div class="view-seg">${seg('grid', '📊 Grid')}${seg('player', '👤 By player')}${seg('matchups', '🤝 Matchups')}</div>`;
+    const body = view === 'matchups' ? weekMatchupsHtml(w) : view === 'player' ? weekPlayerViewHtml(w) : weekGridHtml(w);
+    detail = switcher + body;
+  }
 
   let commBar = '';
   if (isComm) {
@@ -798,7 +945,7 @@ function weekCard(w, collapsed = false) {
   }
 
   const showLines = open || (isComm && w.status !== 'open');
-  return `<div class="week-card">${head}${showLines ? lineRows : ''}${claimBar}${grid}${commBar}</div>`;
+  return `<div class="week-card">${head}${showLines ? lineRows : ''}${claimBar}${detail}${commBar}</div>`;
 }
 
 function seasonStandingsHtml(finalWeeks) {
