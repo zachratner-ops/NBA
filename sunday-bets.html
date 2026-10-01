@@ -143,40 +143,36 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 .pl-mid{width:2px;height:14px;background:#d0d0cc;border-radius:1px;flex-shrink:0;}
 
 /* Detail view switcher (grid / by player / matchups) */
-.view-seg{display:inline-flex;border:0.5px solid #ddd;border-radius:9px;overflow:hidden;margin:12px 14px 2px;}
-.view-seg button{border:none;background:#fff;font-size:12px;font-weight:700;padding:7px 12px;cursor:pointer;color:#999;}
+.view-seg{display:inline-flex;border:0.5px solid #e2e2e0;border-radius:9px;overflow:hidden;margin:12px 14px 2px;}
+.view-seg button{border:none;background:#fff;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer;color:#999;}
 .view-seg button:not(:last-child){border-right:0.5px solid #eee;}
 .view-seg button.on{background:#1a1a1a;color:#fff;}
-/* By-player card */
-.pcard-wrap{padding:0 14px 12px;}
-.pcard-chips{display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;}
-.pcard-chip{font-size:12px;font-weight:700;padding:5px 11px;border-radius:20px;border:1.5px solid #ddd;background:#fff;cursor:pointer;color:#1a1a1a;}
-.pcard{background:#fff;border:0.5px solid #ececea;border-radius:12px;overflow:hidden;}
-.pc-head{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fafaf8;border-bottom:0.5px solid #f0f0f0;}
-.pc-name{font-weight:800;font-size:14px;}
-.pc-sub{font-size:12px;color:#888;margin-top:1px;}
-.pc-row{padding:10px 14px;border-bottom:0.5px solid #f5f5f3;}
-.pc-row:last-child{border-bottom:none;}
-.pc-row.pc-out{opacity:.5;}
-.pc-bet{font-size:12px;font-weight:700;color:#555;}
-.pc-pick{font-size:13px;margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.pc-stake{font-size:11px;color:#888;font-weight:600;}
-.pc-res{font-size:10px;font-weight:800;padding:1px 7px;border-radius:10px;}
-.pc-res.win{background:#e8f5e9;color:#2e7d32;} .pc-res.loss{background:#ffebee;color:#c62828;} .pc-res.push{background:#f0f0ee;color:#888;}
-.pc-opps{font-size:12px;color:#777;margin-top:4px;line-height:1.5;}
-.pc-amt{font-weight:700;color:#555;font-variant-numeric:tabular-nums;}
+/* By-player card — one bold label, one muted detail line, one number */
+.pcard-wrap{padding:0 16px 14px;}
+.pcard-chips{display:flex;gap:6px;flex-wrap:wrap;padding:12px 0 6px;}
+.pcard-chip{font-size:12px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid #e2e2e0;background:#fff;cursor:pointer;color:#555;}
+.pc-head{display:flex;align-items:center;gap:10px;padding:10px 0 12px;}
+.pc-name{font-weight:800;font-size:15px;}
+.pc-sub{font-size:12px;color:#9a9a97;margin-top:2px;}
+.pc-row{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-top:0.5px solid #f0efec;}
+.pc-main{flex:1;min-width:0;}
+.pc-title{font-size:13px;font-weight:700;letter-spacing:-.01em;}
+.pc-detail{font-size:12px;color:#8f8f8c;margin-top:3px;line-height:1.45;}
+.pc-detail b{color:#555;font-weight:700;}
+.pc-val{font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0;}
+.pc-val.win{color:#2e7d32;} .pc-val.loss{color:#c62828;} .pc-val.push{color:#9a9a97;font-weight:700;font-size:12px;} .pc-val.pend{color:#b6b6b2;}
+.pc-out .pc-title{color:#c4c4c0;font-weight:600;}
 /* Matchups list */
-.mu-wrap{padding:2px 14px 14px;}
-.mu-head{font-size:12px;color:#888;font-weight:700;padding:10px 0;}
-.mu-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:0.5px solid #f5f5f3;font-size:13px;}
-.mu-row:last-child{border-bottom:none;}
-.mu-side{display:flex;align-items:center;gap:6px;min-width:0;}
-.mu-side .lb-av{width:22px;height:22px;font-size:11px;}
+.mu-wrap{padding:4px 16px 14px;}
+.mu-head{font-size:12px;color:#9a9a97;font-weight:600;padding:10px 0 2px;}
+.mu-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:0.5px solid #f0efec;font-size:13px;}
+.mu-pair{display:flex;align-items:center;gap:7px;flex:1;min-width:0;}
+.mu-row .lb-av{width:24px;height:24px;font-size:11px;}
 .mu-name{font-weight:700;white-space:nowrap;}
-.mu-vs{font-size:10px;color:#bbb;font-weight:800;}
-.mu-amt{margin-left:auto;font-weight:800;font-variant-numeric:tabular-nums;}
-.mu-bets{font-size:11px;color:#aaa;width:50px;text-align:right;flex-shrink:0;}
-.subview-empty{padding:22px 14px;text-align:center;color:#999;font-size:13px;}
+.mu-vs{font-size:10px;color:#c4c4c0;font-weight:800;margin:0 1px;}
+.mu-amt{font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0;}
+.mu-bets{font-size:11px;color:#bbb;flex-shrink:0;}
+.subview-empty{padding:26px 14px;text-align:center;color:#9a9a97;font-size:13px;}
 
 /* Comm */
 .comm-panel{background:#fffbeb;border:1px solid #f9a825;border-radius:12px;padding:12px 16px;margin-bottom:16px;}
@@ -723,28 +719,29 @@ function playerCardHtml(w, name, data) {
     const r = ln.result;
     const ms = (byBet[id] || []).filter(m => m.a === name || m.b === name);
     const sideKey = isHouse ? (ms.length ? (ms[0].a === name ? ms[0].aSide : ms[0].bSide) : null) : (picks[name]?.sides[id] || null);
-    const label = `${i + 1}. ${esc(ln.header || (ln.a + ' vs ' + ln.b))}`;
-    if (!sideKey) return `<div class="pc-row pc-out"><div class="pc-bet">${label}</div><div class="pc-pick">— no pick</div></div>`;
+    const title = `${i + 1}. ${esc(ln.header || (ln.a + ' vs ' + ln.b))}`;
+    if (!sideKey) return `<div class="pc-row pc-out"><div class="pc-main"><div class="pc-title">${title}</div></div><div class="pc-val pend">—</div></div>`;
     const betStake = ms.reduce((s, m) => s + m.stake, 0); totalStake += betStake;
     const pressed = !isHouse && picks[name]?.press === id;
-    const opps = ms.map(m => { const o = m.a === name ? m.b : m.a; return `${o === houseName ? '🏠 ' : ''}${esc(o)} <span class="pc-amt">$${m.stake}</span>`; });
-    let resTag = '';
-    if (r === 'push') resTag = `<span class="pc-res push">PUSH</span>`;
-    else if (r) {
-      const won = isHouse ? (r === sideKey) : (picks[name].sides[id] === r);
-      resTag = won ? `<span class="pc-res win">WON +$${betStake}</span>` : `<span class="pc-res loss">LOST -$${betStake}</span>`;
-    }
+    const opps = ms.map(m => { const o = m.a === name ? m.b : m.a; return (o === houseName ? '🏠 ' : '') + esc(o); });
+    const vs = betStake ? ` · vs ${opps.join(', ')}` : ' · no opponent (wash)';
+    let valCls = 'pend', val = '$' + betStake;
+    if (r === 'push') { valCls = 'push'; val = 'Push'; }
+    else if (r) { const won = isHouse ? (r === sideKey) : (picks[name].sides[id] === r); valCls = won ? 'win' : 'loss'; val = (won ? '+$' : '−$') + betStake; }
     return `<div class="pc-row">
-      <div class="pc-bet">${label}</div>
-      <div class="pc-pick"><strong>${esc(sideKey === 'a' ? ln.a : ln.b)}</strong>${pressed ? ' 🔥' : ''} <span class="pc-stake">$${betStake} at stake</span> ${resTag}</div>
-      <div class="pc-opps">${betStake ? 'vs ' + opps.join(' · ') : '<span style="color:#bbb;">no opponent — wash, $0</span>'}</div>
+      <div class="pc-main">
+        <div class="pc-title">${title}</div>
+        <div class="pc-detail"><b>${esc(sideKey === 'a' ? ln.a : ln.b)}</b>${pressed ? ' 🔥' : ''}${vs}</div>
+      </div>
+      <div class="pc-val ${valCls}">${val}</div>
     </div>`;
   }).join('');
   const net = fin.per[name]?.net || 0;
+  const sub = `$${totalStake} at stake${w.status === 'final' ? ` · settled ${fmtMoney(net)}` : ''}`;
   return `<div class="pcard">
     <div class="pc-head">${avatarHtml(name)}<div>
       <div class="pc-name">${esc(name)}${isHouse ? ' <span class="lb-badge" style="background:#f3ecf7;color:#7B1FA2;">BACKSTOP</span>' : ''}</div>
-      <div class="pc-sub">$${totalStake} total at stake${w.status === 'final' ? ` · net ${fmtMoney(net)}` : ''}</div>
+      <div class="pc-sub">${sub}</div>
     </div></div>${rows}</div>`;
 }
 
@@ -771,13 +768,11 @@ function weekMatchupsHtml(w) {
   if (!rows.length) return '<div class="subview-empty">No head-to-heads this week — every bet was a wash.</div>';
   const total = rows.reduce((s, r) => s + r.total, 0);
   const hn = data.houseName;
-  return `<div class="mu-wrap"><div class="mu-head">${rows.length} matchup${rows.length === 1 ? '' : 's'} · $${total} total on the line</div>
+  const nm = n => (n === hn ? '🏠 ' : '') + esc(n);
+  return `<div class="mu-wrap"><div class="mu-head">${rows.length} matchup${rows.length === 1 ? '' : 's'} · $${total} on the line</div>
     ${rows.map(r => `<div class="mu-row">
-      <span class="mu-side">${avatarHtml(r.a)}<span class="mu-name">${r.a === hn ? '🏠 ' : ''}${esc(r.a)}</span></span>
-      <span class="mu-vs">vs</span>
-      <span class="mu-side">${avatarHtml(r.b)}<span class="mu-name">${r.b === hn ? '🏠 ' : ''}${esc(r.b)}</span></span>
-      <span class="mu-amt">$${r.total}</span>
-      <span class="mu-bets">${r.bets} bet${r.bets === 1 ? '' : 's'}</span>
+      <span class="mu-pair">${avatarHtml(r.a)}<span class="mu-name">${nm(r.a)}</span><span class="mu-vs">vs</span>${avatarHtml(r.b)}<span class="mu-name">${nm(r.b)}</span></span>
+      <span class="mu-amt">$${r.total}</span>${r.bets > 1 ? `<span class="mu-bets">${r.bets} bets</span>` : ''}
     </div>`).join('')}</div>`;
 }
 
