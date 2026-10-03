@@ -637,6 +637,46 @@ function bbqcSeasonTotals(weeks) {
 }
 const bbqcMoney = function(n) { return n === 0 ? '$0' : (n > 0 ? '+$' : '-$') + Math.abs(n); };
 
+// Per-bet sides, pairwise matchups, per-player exposure, and $ on each bet
+// (mirrors weekMatchupData in sunday-bets.html; stakes ignore results).
+function bbqcMatchups(w) {
+  const hn = w.house || null;
+  const picks = {};
+  Object.entries(w.picks || {}).forEach(function(p) {
+    if (p[0] === hn) return;
+    const d = bbqcDecodePick(p[1]);
+    if (d && d.sides && Object.keys(d.sides).length) picks[p[0]] = d;
+  });
+  const players = Object.keys(picks);
+  const byBet = {}, pairs = {}, exp = {};
+  function addPair(a, b, st) {
+    const s = [a, b].sort(), k = s.join('\u0001');
+    if (!pairs[k]) pairs[k] = { a: s[0], b: s[1], total: 0, bets: 0 };
+    pairs[k].total += st; pairs[k].bets++;
+    exp[a] = (exp[a] || 0) + st; exp[b] = (exp[b] || 0) + st;
+  }
+  BBQC_LINE_IDS.forEach(function(id) {
+    const ln = w.lines && w.lines[id]; if (!ln) return;
+    const on = players.filter(function(m) { return picks[m].sides[id]; });
+    const A = on.filter(function(m) { return picks[m].sides[id] === 'a'; });
+    const B = on.filter(function(m) { return picks[m].sides[id] === 'b'; });
+    let onLine = 0;
+    A.forEach(function(x) { B.forEach(function(y) { const st = BBQC_BASE * (picks[x].press === id ? 2 : 1) * (picks[y].press === id ? 2 : 1); addPair(x, y, st); onLine += st; }); });
+    let houseSide = null;
+    if (hn && on.length) {
+      const ss = {}; on.forEach(function(m) { ss[picks[m].sides[id]] = 1; });
+      if (Object.keys(ss).length === 1) {
+        houseSide = Object.keys(ss)[0] === 'a' ? 'b' : 'a';
+        on.forEach(function(m) { const st = BBQC_BASE * (picks[m].press === id ? 2 : 1); addPair(m, hn, st); onLine += st; });
+      }
+    }
+    byBet[id] = { A: A, B: B, onLine: onLine, houseSide: houseSide };
+  });
+  return { picks: picks, players: players, hn: hn, byBet: byBet, exp: exp,
+    pairs: Object.values(pairs).sort(function(x, y) { return y.total - x.total; }) };
+}
+const bbqcGradedIds = function(w) { return BBQC_LINE_IDS.filter(function(id) { return w.lines && w.lines[id] && w.lines[id].result; }); };
+
 // ── Message builders ──────────────────────────────────────────────
 function bbqcSlateMsg(w) {
   const bets = BBQC_LINE_IDS.map(function(lid, i) {
@@ -654,33 +694,55 @@ function bbqcLockMsg(name, count, lockedCount, w) {
     ' for ' + (w.title || 'this week') + ' — ' + lockedCount + ' participant' +
     (lockedCount > 1 ? 's' : '') + ' locked in so far.';
 }
-function bbqcRevealMsg(w) {
-  const houseName = w.house || null;
-  const picks = {};
-  Object.entries(w.picks || {}).forEach(function(pair) {
-    if (pair[0] === houseName) return;
-    const d = bbqcDecodePick(pair[1]); if (d) picks[pair[0]] = d;
-  });
-  const out = ['🎲 REVEAL — Sunday Bets ' + (w.title || ''), "Picks are locked. Here's who's on what:", ''];
-  if (houseName) out.push('🏠 Backstop: ' + houseName, '');
-  BBQC_LINE_IDS.forEach(function(lid, i) {
-    const ln = w.lines && w.lines[lid]; if (!ln) return;
-    const aSide = [], bSide = [];
-    Object.entries(picks).forEach(function(pair) {
-      const name = pair[0], d = pair[1], s = d.sides[lid];
-      if (!s) return;
-      (s === 'a' ? aSide : bSide).push(d.press === lid ? name + '🔥' : name);
-    });
-    // House takes the empty side when the field is unanimous.
-    if (houseName && (aSide.length ? 1 : 0) + (bSide.length ? 1 : 0) === 1) {
-      (aSide.length ? bSide : aSide).push('🏠 ' + houseName);
-    }
-    out.push((i + 1) + '. ' + (ln.header || (ln.a + ' vs ' + ln.b)));
-    out.push('   • ' + ln.a + ': ' + (aSide.length ? aSide.join(', ') : '—'));
-    out.push('   • ' + ln.b + ': ' + (bSide.length ? bSide.join(', ') : '—'));
+// #1 Reveal — who's on each side, with the $ riding on every bet.
+function bbqcOnTheLineMsg(w) {
+  const d = bbqcMatchups(w);
+  const tag = function(m, id) { return m + (d.picks[m].press === id ? '🔥' : ''); };
+  const total = d.pairs.reduce(function(s, p) { return s + p.total; }, 0);
+  const out = ["🎯 What's on the line — " + (w.title || ''), '$' + total + ' riding across the board.', ''];
+  BBQC_LINE_IDS.forEach(function(id, i) {
+    const ln = w.lines && w.lines[id]; if (!ln) return;
+    const b = d.byBet[id] || { A: [], B: [], onLine: 0, houseSide: null };
+    const A = b.A.map(function(m) { return tag(m, id); });
+    const B = b.B.map(function(m) { return tag(m, id); });
+    if (b.houseSide === 'a') A.push('🏠 ' + d.hn);
+    if (b.houseSide === 'b') B.push('🏠 ' + d.hn);
+    out.push((i + 1) + '. ' + (ln.header || (ln.a + ' vs ' + ln.b)) + '  —  $' + b.onLine);
+    out.push('   • ' + ln.a + ': ' + (A.length ? A.join(', ') : '—'));
+    out.push('   • ' + ln.b + ': ' + (B.length ? B.join(', ') : '—'));
   });
   out.push('', '🔥 = pressed · 🔗 ' + BBQC_PAGE);
   return out.join('\n');
+}
+// #2 Money on the line — biggest head-to-heads + who's most exposed.
+function bbqcMoneyLineMsg(w) {
+  const d = bbqcMatchups(w);
+  if (!d.pairs.length) return null;
+  const total = d.pairs.reduce(function(s, p) { return s + p.total; }, 0);
+  const nm = function(n) { return (n === d.hn ? '🏠 ' : '') + n; };
+  const top = d.pairs.slice(0, 5).map(function(p) { return '• ' + nm(p.a) + ' vs ' + nm(p.b) + ' — $' + p.total + (p.bets > 1 ? '  (' + p.bets + ' bets)' : ''); });
+  const medals = ['🥇', '🥈', '🥉'];
+  const exposed = Object.entries(d.exp).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3).map(function(e, i) { return '  ' + medals[i] + ' ' + nm(e[0]) + '  $' + e[1] + ' in play'; });
+  return ['💸 Money on the line — ' + (w.title || ''), '$' + total + ' across ' + d.pairs.length + ' head-to-head' + (d.pairs.length === 1 ? '' : 's') + '.', '', 'Biggest matchups:']
+    .concat(top).concat(['', 'Most at risk:']).concat(exposed).concat(['', '🔗 ' + BBQC_PAGE]).join('\n');
+}
+// #3 Live P&L — running tab as bets settle; newIds = bets settled since last post.
+function bbqcLiveMsg(w, newIds) {
+  const fin = bbqcComputeWeek(w);
+  const graded = bbqcGradedIds(w).length;
+  const ranked = Object.keys(fin.per).sort(function(a, b) { return fin.per[b].net - fin.per[a].net; });
+  const rows = ranked.map(function(n) {
+    const r = fin.per[n], dot = r.net > 0 ? '🟢' : r.net < 0 ? '🔴' : '⚪';
+    return dot + ' ' + (n === fin.houseName ? '🏠 ' : '') + n + '  ' + bbqcMoney(r.net);
+  });
+  const justIn = (newIds || []).map(function(id) {
+    const ln = w.lines[id], r = ln.result;
+    return (ln.header || (ln.a + ' vs ' + ln.b)) + ' → ' + (r === 'push' ? 'Push' : r === 'a' ? ln.a : ln.b);
+  });
+  return ['📊 ' + (w.title || '') + ' — ' + graded + ' of 5 in']
+    .concat(justIn.length ? ['✅ Just in: ' + justIn.join(' · ')] : [])
+    .concat(['', 'Running tab:']).concat(rows.length ? rows : ['(no bets)'])
+    .concat(['', (5 - graded) + ' bet' + (5 - graded === 1 ? '' : 's') + ' still live.', '🔗 ' + BBQC_PAGE]).join('\n');
 }
 function bbqcFinalMsg(w, weeks) {
   const fin = bbqcComputeWeek(w);
@@ -744,6 +806,14 @@ async function bbqcHandleWeek(weekId, w) {
       await notifyRef.child('locks/' + name).set(true);
     }
 
+    // Live P&L as bets settle — debounced so a burst of grades posts once.
+    if (w.status === 'locked') {
+      const gradedLines = bbqcGradedIds(w);
+      const posted = (notify.live && notify.live.lines) || {};
+      const hasNew = gradedLines.some(function(id) { return !posted[id]; });
+      if (hasNew && gradedLines.length < 5) bbqcScheduleLive(weekId);
+    }
+
     // Finalized-week results summary — once per board, only for a fresh
     // finalize (client stamps finalizedAt) after this process booted.
     if (w.status === 'final' && !notify.final && (w.finalizedAt || 0) >= BBQC_BOOT) {
@@ -753,6 +823,33 @@ async function bbqcHandleWeek(weekId, w) {
       console.log('[BBQC] finalize summary posted for ' + (w.title || weekId));
     }
   } catch (e) { console.error('[BBQC] handleWeek error:', e.message); }
+}
+
+// Debounced live-P&L post: grades landing within the window collapse into one
+// message. If a batch completes the board (5/5), the Finalize post covers it.
+const BBQC_LIVE_DEBOUNCE_MS = 90 * 1000;
+const _bbqcLiveTimers = {};
+function bbqcScheduleLive(weekId) {
+  clearTimeout(_bbqcLiveTimers[weekId]);
+  _bbqcLiveTimers[weekId] = setTimeout(function() { bbqcPostLive(weekId); }, BBQC_LIVE_DEBOUNCE_MS);
+}
+async function bbqcPostLive(weekId) {
+  if (!firebaseReady) return;
+  try {
+    const w = (await bbqcRef('weeks/' + weekId).get()).val();
+    if (!w || w.status !== 'locked') return;
+    const gradedLines = bbqcGradedIds(w);
+    if (gradedLines.length >= 5) return; // complete week → finalize post covers it
+    const notifyRef = bbqcRef('notify/' + weekId);
+    const notify = (await notifyRef.get()).val() || {};
+    const posted = (notify.live && notify.live.lines) || {};
+    const newIds = gradedLines.filter(function(id) { return !posted[id]; });
+    if (!newIds.length) return;
+    await bbqcPost(bbqcLiveMsg(w, newIds));
+    const lines = {}; gradedLines.forEach(function(id) { lines[id] = true; });
+    await notifyRef.child('live/lines').set(lines);
+    console.log('[BBQC] live P&L posted for ' + (w.title || weekId) + ' (' + gradedLines.length + '/5)');
+  } catch (e) { console.error('[BBQC] live post error:', e.message); }
 }
 
 if (firebaseReady) {
@@ -793,7 +890,9 @@ async function bbqcRevealJob() {
     if (!w || w.status !== 'open' || w.date !== today) continue;
     const notifyRef = bbqcRef('notify/' + id);
     if ((await notifyRef.child('reveal').get()).val()) continue;
-    await bbqcPost(bbqcRevealMsg(w));
+    await bbqcPost(bbqcOnTheLineMsg(w));            // #1 what's on the line (per bet + $)
+    const ml = bbqcMoneyLineMsg(w);                 // #2 money on the line (matchups + exposure)
+    if (ml) await bbqcPost(ml);
     await notifyRef.child('reveal').set(true);
     await bbqcRef('weeks/' + id + '/status').set('locked'); // auto-lock so the site reveals too
     console.log('[BBQC] reveal posted + board locked for ' + (w.title || id));
@@ -819,7 +918,8 @@ app.get('/bbqc/preview/:weekId', async function(req, res) {
   const w = (await bbqcRef('weeks/' + req.params.weekId).get()).val();
   if (!w) return res.status(404).json({ error: 'week not found' });
   const weeks = (await bbqcRef('weeks').get()).val() || {};
-  res.json({ dryRun: BBQC_DRY_RUN, slate: bbqcSlateMsg(w), reveal: bbqcRevealMsg(w), final: bbqcFinalMsg(w, weeks) });
+  res.json({ dryRun: BBQC_DRY_RUN, slate: bbqcSlateMsg(w), onTheLine: bbqcOnTheLineMsg(w),
+    moneyLine: bbqcMoneyLineMsg(w), live: bbqcLiveMsg(w, bbqcGradedIds(w)), final: bbqcFinalMsg(w, weeks) });
 });
 
 // ── WebSocket ─────────────────────────────────────────────────────
