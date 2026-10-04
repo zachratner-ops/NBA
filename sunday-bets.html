@@ -288,7 +288,7 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 <!-- New board modal -->
 <div class="overlay" id="new-week-modal">
   <div class="modal">
-    <h2>🔥 New Sunday Board</h2>
+    <h2 id="nw-modal-title">🔥 New Sunday Board</h2>
     <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
     <div class="field"><label>Date — the Sunday of the slate</label><input id="nw-date" type="date">
       <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Drives the GroupMe timing: slate posts 10pm ET the night before, reminder 11am &amp; reveal 1pm ET that day.</div>
@@ -323,7 +323,7 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
     <div id="nw-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('new-week-modal')">Cancel</button>
-      <button class="btn btn-green" onclick="saveNewWeek()">Post Board</button>
+      <button class="btn btn-green" id="nw-save-btn" onclick="saveNewWeek()">Post Board</button>
     </div>
   </div>
 </div>
@@ -400,6 +400,8 @@ let drafts = {};
 // Per-week detail view switcher: weekView[id] = 'grid'|'player'|'matchups'; cardSel[id] = selected player
 let weekView = {};
 let cardSel = {};
+// Non-null while the New Board modal is editing an existing board.
+let editingWeekId = null;
 
 onValue(weeksRef, snap => { weeks = snap.val() || {}; render(); });
 
@@ -930,6 +932,7 @@ function weekCard(w, collapsed = false) {
         ${sealedNames.map(m => `<button class="btn btn-sm btn-outline" onclick="unlockMember('${w.id}','${m}')">🔓 ${esc(m)}</button>`).join('')}
       </div>` : ''}
       <div class="claim-actions" style="margin-top:0;">
+        <button class="btn btn-sm btn-outline" onclick="openEditWeek('${w.id}')">✏️ Edit</button>
         ${w.status === 'open' ? `<button class="btn btn-sm btn-amber" onclick="setWeekStatus('${w.id}','locked')">🔒 Lock board &amp; reveal</button>` : ''}
         ${w.status === 'locked' ? `<button class="btn btn-sm btn-outline" onclick="setWeekStatus('${w.id}','open')">Reopen picks</button>` : ''}
         ${w.status === 'locked' ? `<button class="btn btn-sm btn-green" ${allGraded ? '' : 'disabled'} onclick="setWeekStatus('${w.id}','final')">${allGraded ? '🏁 Finalize week' : `Grade all 5 to finalize (${graded}/5)`}</button>` : ''}
@@ -1137,20 +1140,52 @@ window.checkCommPw = function() {
   }
 };
 
-window.openNewWeek = function() {
-  const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
-  document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
+function fillHouseSelect(val) {
   const houseSel = document.getElementById('nw-house');
   houseSel.innerHTML = '<option value="">None — pure peer-to-peer</option>' +
     MEMBERS.map(m => `<option value="${m}">${m}</option>`).join('');
-  houseSel.value = '';
+  houseSel.value = val || '';
+}
+
+window.openNewWeek = function() {
+  editingWeekId = null;
+  document.getElementById('nw-modal-title').textContent = '🔥 New Sunday Board';
+  document.getElementById('nw-save-btn').textContent = 'Post Board';
+  const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
+  document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
+  document.getElementById('nw-poster').value = 'BBQC';
+  fillHouseSelect('');
   const d = new Date();
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
   document.getElementById('nw-date').value = d.toISOString().slice(0, 10);
+  for (let i = 1; i <= 5; i++) { document.getElementById(`nw-h${i}`).value = ''; document.getElementById(`nw-l${i}a`).value = ''; document.getElementById(`nw-l${i}b`).value = ''; }
+  document.getElementById('nw-error').textContent = '';
+  document.getElementById('new-week-modal').classList.add('open');
+};
+
+window.openEditWeek = function(weekId) {
+  const w = weeks[weekId];
+  if (!isComm || !w) return;
+  editingWeekId = weekId;
+  document.getElementById('nw-modal-title').textContent = '✏️ Edit Board';
+  document.getElementById('nw-save-btn').textContent = 'Save changes';
+  document.getElementById('nw-title').value = w.title || '';
+  document.getElementById('nw-date').value = w.date || '';
+  document.getElementById('nw-poster').value = w.poster || 'BBQC';
+  fillHouseSelect(w.house || '');
+  for (let i = 1; i <= 5; i++) {
+    const ln = w.lines?.[`l${i}`] || {};
+    document.getElementById(`nw-h${i}`).value = ln.header || '';
+    document.getElementById(`nw-l${i}a`).value = ln.a || '';
+    document.getElementById(`nw-l${i}b`).value = ln.b || '';
+  }
+  document.getElementById('nw-error').textContent = '';
   document.getElementById('new-week-modal').classList.add('open');
 };
 
 window.saveNewWeek = async function() {
+  const editing = editingWeekId;
+  const prev = editing ? weeks[editing] : null;
   const title = document.getElementById('nw-title').value.trim();
   const date = document.getElementById('nw-date').value;
   const poster = document.getElementById('nw-poster').value.trim() || 'BBQC';
@@ -1161,7 +1196,8 @@ window.saveNewWeek = async function() {
     const b = document.getElementById(`nw-l${i}b`).value.trim();
     if (!header) { document.getElementById('nw-error').textContent = `Bet ${i} needs a header.`; return; }
     if (!a || !b) { document.getElementById('nw-error').textContent = `Bet ${i} needs both sides.`; return; }
-    lines[`l${i}`] = { header, a, b, result: null };
+    // Editing preserves any grade already on that line.
+    lines[`l${i}`] = { header, a, b, result: editing ? (prev?.lines?.[`l${i}`]?.result ?? null) : null };
   }
   if (!title) { document.getElementById('nw-error').textContent = 'Need a week label.'; return; }
   if (!date) { document.getElementById('nw-error').textContent = 'Need a date (the Sunday of the slate).'; return; }
@@ -1170,9 +1206,21 @@ window.saveNewWeek = async function() {
   const dow = new Date(date + 'T12:00:00').getDay();
   if (dow !== 0) {
     const wd = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' });
-    if (!confirm(`Heads up: ${date} is a ${wd}, not a Sunday. The slate posts at 10pm ET the night before this date, and the reminder + reveal run on it — a non-Sunday date shifts all the GroupMe timing. Post anyway?`)) return;
+    if (!confirm(`Heads up: ${date} is a ${wd}, not a Sunday. The slate posts at 10pm ET the night before this date, and the reminder + reveal run on it — a non-Sunday date shifts all the GroupMe timing. Save anyway?`)) return;
   }
   const house = document.getElementById('nw-house').value || null;
+
+  if (editing) {
+    const nPicks = Object.keys(prev?.picks || {}).length;
+    if (nPicks && !confirm(`${nPicks} ${nPicks === 1 ? 'player has' : 'players have'} already locked in. Editing a bet's wording is safe (picks are stored as side A/B, not the text) — but swapping a bet's two sides or changing the Backstop will change how it scores. Save changes?`)) return;
+    await update(ref(db, `bbqc/${SEASON}/weeks/${editing}`), { title, date, poster, house: house || null, lines });
+    editingWeekId = null;
+    document.getElementById('nw-error').textContent = '';
+    closeModal('new-week-modal');
+    showToast(`✏️ ${title} updated`);
+    return;
+  }
+
   await push(weeksRef, { title, date, poster, house, status: 'open', lines, picks: {}, created: Date.now() });
   for (let i = 1; i <= 5; i++) { document.getElementById(`nw-h${i}`).value = ''; document.getElementById(`nw-l${i}a`).value = ''; document.getElementById(`nw-l${i}b`).value = ''; }
   document.getElementById('nw-error').textContent = '';
