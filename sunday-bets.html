@@ -109,6 +109,22 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 .sheet th.housecol,.sheet td.housecol{border-left:2px solid #7B1FA2;}
 .sheet th.housecol{color:#7B1FA2;}
 
+/* Mobile transposed grid (players down, 5 bets across) — fits phone width */
+.grid-mobile{display:none;padding:10px 14px 14px;}
+.gm-legend{padding:2px 0 10px;}
+.gm-leg{font-size:11px;color:#555;padding:2px 0;line-height:1.4;}
+.gm-leg b{color:#1a1a1a;}
+table.gmtable{border-collapse:collapse;width:100%;table-layout:fixed;}
+.gmtable th,.gmtable td{border:1px solid #e0e0dc;padding:5px 2px;text-align:center;font-variant-numeric:tabular-nums;overflow:hidden;}
+.gmtable th{background:#ececea;font-weight:800;font-size:10px;}
+.gmtable th:first-child,.gmtable td.gm-name{text-align:left;font-weight:700;font-size:11px;white-space:nowrap;padding-left:7px;text-overflow:ellipsis;}
+.gmtable td.cw{background:#43a047;color:#fff;font-weight:800;font-size:12px;}
+.gmtable td.cl{background:#e53935;color:#fff;font-weight:800;font-size:12px;}
+.gmtable td.cp{background:#9e9e9e;color:#fff;font-weight:800;font-size:12px;}
+.gmtable td.cq{color:#555;font-weight:600;font-size:9px;background:#fafaf8;white-space:nowrap;}
+.gmtable td.gm-net{font-weight:800;font-size:11px;}
+.gmtable td.gm-net.pos{color:#2e7d32;} .gmtable td.gm-net.neg{color:#c62828;} .gmtable td.gm-net.zero{color:#888;}
+
 
 /* Leaderboard (season standings + week summary) */
 .lb-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;}
@@ -143,8 +159,8 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 .pl-mid{width:2px;height:14px;background:#d0d0cc;border-radius:1px;flex-shrink:0;}
 
 /* Detail view switcher (grid / by player / matchups) */
-.view-seg{display:inline-flex;border:0.5px solid #e2e2e0;border-radius:9px;overflow:hidden;margin:12px 14px 2px;}
-.view-seg button{border:none;background:#fff;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer;color:#999;}
+.view-seg{display:inline-flex;max-width:calc(100% - 28px);overflow-x:auto;border:0.5px solid #e2e2e0;border-radius:9px;margin:12px 14px 2px;}
+.view-seg button{border:none;background:#fff;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer;color:#999;white-space:nowrap;}
 .view-seg button:not(:last-child){border-right:0.5px solid #eee;}
 .view-seg button.on{background:#1a1a1a;color:#fff;}
 /* By-player card — one bold label, one muted detail line, one number */
@@ -239,6 +255,8 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 @media(max-width:600px){
   .sb-tab{flex:1;justify-content:center;padding:9px 6px;font-size:12px;}
   .side-btn{font-size:12px;padding:6px 10px;}
+  .grid-desktop{display:none;}
+  .grid-mobile{display:block;}
 }
 </style>
 <link rel="stylesheet" href="site.css">
@@ -690,13 +708,56 @@ function weekGridHtml(w) {
   const seasonRow = `<tr class="seasonrow"><td class="bet-name">SEASON TOTAL${w.status !== 'final' ? '*' : ''}</td>
     ${players.map(m => { const n = season[m] || 0; return `<td class="${cls(n)}">${fmtMoney(n)}</td>`; }).join('')}${H ? `${houseCol(cls(hSeason))}${fmtMoney(hSeason)}</td>` : ''}<td class="movecol"></td></tr>`;
 
-  return `<div class="grid-wrap"><table class="sheet">
+  const desktop = `<div class="grid-desktop"><div class="grid-wrap"><table class="sheet">
     <tr><th class="bet-col">Bet</th>
       ${players.map(m => `<th style="color:${color(m)}">${esc(m)}</th>`).join('')}
       ${H ? `<th class="housecol">🏠 ${esc(houseName)}<div style="font-size:9px;font-weight:600;">${H.wins}-${H.losses} as Backstop</div></th>` : ''}
       <th class="movecol">$ Moved</th></tr>
     ${lineRows}${sweepRow}${subRow}${seasonRow}
-  </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div>`;
+  </table>${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:6px;">* includes this week\'s results so far</div>' : ''}</div></div>`;
+
+  // Mobile: transpose so it fits the screen — players down, the 5 bets across.
+  const legend = LINE_IDS.map((id, i) => {
+    const ln = w.lines?.[id]; if (!ln) return '';
+    const r = ln.result;
+    const res = r === 'push' ? '<span style="color:#888;font-weight:700;">PUSH</span>'
+      : r ? `<span style="color:#2e7d32;font-weight:700;">${esc(r === 'a' ? ln.a : ln.b)} ✓</span>`
+      : '<span style="color:#bbb;">pending</span>';
+    return `<div class="gm-leg"><b>${i + 1}.</b> ${esc(ln.header || (ln.a + ' vs ' + ln.b))} — ${res}</div>`;
+  }).join('');
+  const gmCell = (m, id, isHouse) => {
+    const ln = w.lines?.[id], r = ln?.result;
+    if (isHouse) {
+      const onLine = players.filter(p => picks[p].sides[id]);
+      const sides = new Set(onLine.map(p => picks[p].sides[id]));
+      if (!onLine.length || sides.size > 1) return '<td></td>';
+      const hSide = [...sides][0] === 'a' ? 'b' : 'a';
+      if (!r) return `<td class="cq">${esc(hSide === 'a' ? shortSide(ln.a, ln.b) : shortSide(ln.b, ln.a))}</td>`;
+      if (r === 'push') return '<td class="cp">—</td>';
+      return r === hSide ? '<td class="cw">W</td>' : '<td class="cl">L</td>';
+    }
+    const side = picks[m].sides[id];
+    if (!side) return '<td></td>';
+    const fire = picks[m].press === id ? '<span class="press-mark">🔥</span>' : '';
+    if (!r) return `<td class="cq">${esc(side === 'a' ? shortSide(ln.a, ln.b) : shortSide(ln.b, ln.a))}${fire}</td>`;
+    if (r === 'push') return `<td class="cp">P${fire}</td>`;
+    return side === r ? `<td class="cw">W${fire}</td>` : `<td class="cl">L${fire}</td>`;
+  };
+  const gmRow = (m, isHouse) => {
+    const net = fin.per[m].net, sweep = !isHouse && fin.per[m].sweep;
+    const name = `<td class="gm-name" style="color:${isHouse ? '#7B1FA2' : color(m)}">${isHouse ? '🏠 ' : ''}${esc(m)}${sweep ? ' 🎰' : ''}</td>`;
+    return `<tr>${name}${LINE_IDS.map(id => gmCell(m, id, isHouse)).join('')}<td class="gm-net ${cls(net)}">${fmtMoney(net)}</td></tr>`;
+  };
+  const mobile = `<div class="grid-mobile">
+    <div class="gm-legend">${legend}</div>
+    <table class="gmtable"><colgroup><col style="width:27%"><col span="5" style="width:11%"><col style="width:18%"></colgroup>
+      <tr><th></th>${LINE_IDS.map((id, i) => `<th>${i + 1}</th>`).join('')}<th>Net</th></tr>
+      ${players.map(m => gmRow(m, false)).join('')}${H ? gmRow(houseName, true) : ''}
+    </table>
+    ${w.status !== 'final' ? '<div style="font-size:10px;color:#aaa;margin-top:8px;">Net so far — updates as bets are graded.</div>' : ''}
+  </div>`;
+
+  return desktop + mobile;
 }
 
 // Per-bet head-to-head matchups for a revealed week, including the Backstop.
@@ -935,8 +996,8 @@ function weekCard(w, collapsed = false) {
   if (w.status !== 'open') {
     const view = weekView[w.id] || 'grid';
     const seg = (v, lbl) => `<button class="${view === v ? 'on' : ''}" onclick="setWeekView('${w.id}','${v}')">${lbl}</button>`;
-    const switcher = `<div class="view-seg">${seg('grid', '📊 Grid')}${seg('player', '👤 By player')}${seg('matchups', '🤝 Matchups')}</div>`;
-    const body = view === 'matchups' ? weekMatchupsHtml(w) : view === 'player' ? weekPlayerViewHtml(w) : weekGridHtml(w);
+    const switcher = `<div class="view-seg">${seg('grid', '📊 Grid')}${seg('player', '👤 By player')}${seg('matchups', '🤝 Matchups')}${seg('flow', '💸 Flow')}</div>`;
+    const body = view === 'matchups' ? weekMatchupsHtml(w) : view === 'player' ? weekPlayerViewHtml(w) : view === 'flow' ? weekFlowHtml(w) : weekGridHtml(w);
     detail = switcher + body;
   }
 
@@ -1029,6 +1090,26 @@ function seasonFlowHtml(finalWeeks) {
       <div class="sankey-sub">Net across ${finalWeeks.length} week${finalWeeks.length > 1 ? 's' : ''} · $${total.toLocaleString()} changing hands · pays → collects</div></div>
     <div class="sankey-swipe">swipe to see who collects →</div>
     <div class="sankey-scroll">${sankeySvg(links, color, n => esc(n))}</div>
+    <details class="flow-table"><summary>Settle up — ${links.length} payment${links.length > 1 ? 's' : ''}</summary><div class="flow-rows">${rows}</div></details>
+  </div>`;
+}
+
+// Per-week cash flow (one week; reflects graded bets so far while in progress).
+function weekFlowHtml(w) {
+  const links = flowLinks([w]);
+  if (!links.length) return '<div class="subview-empty">No money has moved yet — no graded bet with both sides taken.</div>';
+  const hn = w.house || null;
+  const total = links.reduce((s, l) => s + l.value, 0);
+  const lbl = n => (n === hn ? '🏠 ' : '') + esc(n);
+  const graded = LINE_IDS.filter(id => w.lines?.[id]?.result).length;
+  const sub = w.status === 'final' ? `Final · $${total.toLocaleString()} settled · pays → collects`
+    : `${graded}/5 graded so far · $${total.toLocaleString()} moved · pays → collects`;
+  const dot = n => `<span style="width:8px;height:8px;border-radius:50%;background:${color(n)};flex-shrink:0;display:inline-block;"></span>`;
+  const rows = links.map(l => `<div class="flow-row">${dot(l.from)}${lbl(l.from)} <span style="color:#bbb;">→</span> ${dot(l.to)}${lbl(l.to)}<span class="flow-amt">$${l.value.toLocaleString()}</span></div>`).join('');
+  return `<div class="sankey-card" style="border:none;border-radius:0;margin-top:0;">
+    <div class="sankey-head" style="padding-left:14px;"><div class="sankey-sub">${sub}</div></div>
+    <div class="sankey-swipe">swipe to see who collects →</div>
+    <div class="sankey-scroll">${sankeySvg(links, color, lbl)}</div>
     <details class="flow-table"><summary>Settle up — ${links.length} payment${links.length > 1 ? 's' : ''}</summary><div class="flow-rows">${rows}</div></details>
   </div>`;
 }
