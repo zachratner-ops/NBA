@@ -174,6 +174,24 @@ table.sheet{border-collapse:collapse;font-size:12px;min-width:560px;width:100%;}
 .mu-bets{font-size:11px;color:#bbb;flex-shrink:0;}
 .subview-empty{padding:26px 14px;text-align:center;color:#9a9a97;font-size:13px;}
 
+/* Cash-flow Sankey (who pays whom) */
+.sankey-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;margin-top:14px;}
+.sankey-head{padding:14px 16px 2px;}
+.sankey-title{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#555;}
+.sankey-sub{font-size:11px;color:#aaa;margin-top:3px;}
+.sankey-scroll{overflow-x:auto;padding:8px 8px 10px;}
+.sankey-scroll svg{display:block;min-width:520px;width:100%;max-width:720px;height:auto;margin:0 auto;}
+.sankey-swipe{display:none;font-size:10px;color:#bbb;text-align:right;padding:4px 16px 0;}
+@media(max-width:600px){ .sankey-swipe{display:block;} }
+.sk-link{opacity:.5;transition:opacity .15s;cursor:pointer;}
+.sk-link:hover{opacity:.9;}
+.flow-table{padding:0 16px 14px;}
+.flow-table summary{font-size:11px;font-weight:700;color:#888;cursor:pointer;padding:6px 0;}
+.flow-rows{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;padding-top:6px;}
+.flow-row{display:flex;align-items:center;gap:6px;font-size:12px;padding:3px 0;border-bottom:0.5px solid #f5f5f3;}
+.flow-amt{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;}
+@media(max-width:600px){ .flow-rows{grid-template-columns:1fr;} }
+
 /* Comm */
 .comm-panel{background:#fffbeb;border:1px solid #f9a825;border-radius:12px;padding:12px 16px;margin-bottom:16px;}
 .comm-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#996c00;margin-bottom:8px;}
@@ -509,8 +527,8 @@ function computeWeek(w) {
         let amt = 0; // house's net on this bet
         onLine.forEach(m => {
           const stake = BASE * (picks[m].press === id ? 2 : 1);
-          if (fieldWon) { per[m].net += stake; amt -= stake; }
-          else { per[m].net -= stake; amt += stake; }
+          if (fieldWon) { per[m].net += stake; amt -= stake; pairAdd(m, houseName, stake); }
+          else { per[m].net -= stake; amt += stake; pairAdd(houseName, m, stake); }
         });
         house.net += amt;
         if (fieldWon) house.losses++; else house.wins++;
@@ -555,7 +573,7 @@ function render() {
           <div style="font-size:16px;font-weight:700;margin-bottom:6px;">No board up</div>
           <div style="font-size:13px;">${finalWeeks.length ? 'Nothing to pick right now — check Standings or History.' : 'The first BBQC board will show up here when the season kicks off.'}</div></div>`;
   } else if (tab === 'standings') {
-    body = finalWeeks.length ? seasonStandingsHtml(finalWeeks)
+    body = finalWeeks.length ? seasonStandingsHtml(finalWeeks) + seasonFlowHtml(finalWeeks)
       : `<div class="empty"><div class="empty-icon">📊</div>
           <div style="font-size:16px;font-weight:700;margin-bottom:6px;">Nothing on the books yet</div>
           <div style="font-size:13px;">Standings appear once the first board is finalized.</div></div>`;
@@ -944,6 +962,75 @@ function weekCard(w, collapsed = false) {
 
   const showLines = open || (isComm && w.status !== 'open');
   return `<div class="week-card">${head}${showLines ? lineRows : ''}${claimBar}${detail}${commBar}</div>`;
+}
+
+// Hand-rolled two-column cash-flow Sankey (payers left, collectors right).
+// links: [{from,to,value}], nodeColor/nodeLabel: fn(key). Adapted from wc-draft.
+function sankeySvg(links, nodeColor, nodeLabel) {
+  if (!links.length) return '';
+  const total = links.reduce((s, l) => s + l.value, 0);
+  const outSum = {}, inSum = {};
+  links.forEach(l => { outSum[l.from] = (outSum[l.from] || 0) + l.value; inSum[l.to] = (inSum[l.to] || 0) + l.value; });
+  const left = Object.keys(outSum).sort((a, b) => outSum[b] - outSum[a]);
+  const right = Object.keys(inSum).sort((a, b) => inSum[b] - inSum[a]);
+  const W = 680, GAP = 14, NW = 14, LX = 140, RX = W - 140 - NW, PADT = 26;
+  const H = Math.max(240, Math.min(560, Math.max(left.length, right.length) * 44 + 80));
+  const plotH = H - PADT - 12;
+  const scale = Math.min((plotH - (left.length - 1) * GAP) / total, (plotH - (right.length - 1) * GAP) / total);
+  const nodeY = (keys, sums) => { const pos = {}; let y = PADT; keys.forEach(k => { const h = sums[k] * scale; pos[k] = { y, h }; y += h + GAP; }); return pos; };
+  const lPos = nodeY(left, outSum), rPos = nodeY(right, inSum);
+  const rIdx = {}, lIdx = {};
+  right.forEach((k, i) => rIdx[k] = i); left.forEach((k, i) => lIdx[k] = i);
+  const srcOff = {}, tgtOff = {}, geom = new Map();
+  [...links].sort((a, b) => (lIdx[a.from] - lIdx[b.from]) || (rIdx[a.to] - rIdx[b.to])).forEach(l => { const o = srcOff[l.from] || 0; geom.set(l, { sy: lPos[l.from].y + o }); srcOff[l.from] = o + l.value * scale; });
+  [...links].sort((a, b) => (rIdx[a.to] - rIdx[b.to]) || (lIdx[a.from] - lIdx[b.from])).forEach(l => { const o = tgtOff[l.to] || 0; geom.get(l).ty = rPos[l.to].y + o; tgtOff[l.to] = o + l.value * scale; });
+  const defs = [], paths = [];
+  links.forEach((l, i) => {
+    const { sy, ty } = geom.get(l), h = l.value * scale, x0 = LX + NW, x1 = RX, mx = (x0 + x1) / 2;
+    defs.push(`<linearGradient id="skg${i}" gradientUnits="userSpaceOnUse" x1="${x0}" x2="${x1}" y1="0" y2="0"><stop offset="0" stop-color="${nodeColor(l.from)}"/><stop offset="1" stop-color="${nodeColor(l.to)}"/></linearGradient>`);
+    paths.push(`<path class="sk-link" fill="url(#skg${i})" d="M${x0},${sy.toFixed(1)} C${mx},${sy.toFixed(1)} ${mx},${ty.toFixed(1)} ${x1},${ty.toFixed(1)} L${x1},${(ty + h).toFixed(1)} C${mx},${(ty + h).toFixed(1)} ${mx},${(sy + h).toFixed(1)} ${x0},${(sy + h).toFixed(1)} Z"><title>${nodeLabel(l.from)} → ${nodeLabel(l.to)} · $${l.value.toLocaleString()}</title></path>`);
+  });
+  const nodesSvg = (keys, pos, sums, isLeft) => keys.map(k => {
+    const { y, h } = pos[k], cx = isLeft ? LX : RX, tx = isLeft ? LX - 8 : RX + NW + 8, anchor = isLeft ? 'end' : 'start';
+    const cy = y + h / 2, amt = `${isLeft ? '−' : '+'}$${sums[k].toLocaleString()}`;
+    const rect = `<rect x="${cx}" y="${y.toFixed(1)}" width="${NW}" height="${Math.max(h, 2).toFixed(1)}" rx="3" fill="${nodeColor(k)}"><title>${nodeLabel(k)} · ${isLeft ? 'pays' : 'collects'} $${sums[k].toLocaleString()}</title></rect>`;
+    if (h < 30) return rect + `<text x="${tx}" y="${(cy + 4).toFixed(1)}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="#1a1a1a">${nodeLabel(k)} <tspan font-size="10" font-weight="600" fill="#999">${amt}</tspan></text>`;
+    return rect + `<text x="${tx}" y="${(cy - 1).toFixed(1)}" text-anchor="${anchor}" font-size="12" font-weight="700" fill="#1a1a1a">${nodeLabel(k)}</text><text x="${tx}" y="${(cy + 11).toFixed(1)}" text-anchor="${anchor}" font-size="10" font-weight="600" fill="#999">${amt}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Net cash flow between members">
+    <text x="${LX + NW}" y="14" text-anchor="end" font-size="9" font-weight="800" letter-spacing="1" fill="#bbb">PAYS</text>
+    <text x="${RX}" y="14" font-size="9" font-weight="800" letter-spacing="1" fill="#bbb">COLLECTS</text>
+    <defs>${defs.join('')}</defs>${paths.join('')}${nodesSvg(left, lPos, outSum, true)}${nodesSvg(right, rPos, inSum, false)}
+  </svg>`;
+}
+
+// Net directed settlement links aggregated across the given weeks.
+function flowLinks(weeksArr) {
+  const pair = {};
+  weeksArr.forEach(w => { const fin = computeWeek(w); Object.entries(fin.pair).forEach(([k, v]) => pair[k] = (pair[k] || 0) + v); });
+  const links = [];
+  Object.entries(pair).forEach(([key, v]) => {
+    if (!v) return;
+    const [a, b] = key.split('|'); // v = net for a (a<b): v>0 → b pays a
+    if (v > 0) links.push({ from: b, to: a, value: v });
+    else links.push({ from: a, to: b, value: -v });
+  });
+  return links.sort((x, y) => y.value - x.value);
+}
+
+function seasonFlowHtml(finalWeeks) {
+  const links = flowLinks(finalWeeks);
+  if (!links.length) return '';
+  const total = links.reduce((s, l) => s + l.value, 0);
+  const dot = n => `<span style="width:8px;height:8px;border-radius:50%;background:${color(n)};flex-shrink:0;display:inline-block;"></span>`;
+  const rows = links.map(l => `<div class="flow-row">${dot(l.from)}${esc(l.from)} <span style="color:#bbb;">→</span> ${dot(l.to)}${esc(l.to)}<span class="flow-amt">$${l.value.toLocaleString()}</span></div>`).join('');
+  return `<div class="section-label">Cash Flow</div><div class="sankey-card">
+    <div class="sankey-head"><div class="sankey-title">💸 Where the money flows</div>
+      <div class="sankey-sub">Net across ${finalWeeks.length} week${finalWeeks.length > 1 ? 's' : ''} · $${total.toLocaleString()} changing hands · pays → collects</div></div>
+    <div class="sankey-swipe">swipe to see who collects →</div>
+    <div class="sankey-scroll">${sankeySvg(links, color, n => esc(n))}</div>
+    <details class="flow-table"><summary>Settle up — ${links.length} payment${links.length > 1 ? 's' : ''}</summary><div class="flow-rows">${rows}</div></details>
+  </div>`;
 }
 
 function seasonStandingsHtml(finalWeeks) {
