@@ -898,6 +898,55 @@ if (firebaseReady) {
   console.log('[NBA O/U] lock-in listener attached | season=' + NBAOUS_SEASON + ' | dryRun=' + BBQC_DRY_RUN);
 }
 
+// ── Standings: ESPN regular-season W-L → nba_ous/<season>/standings ─
+// Pulled every 15 min through the evening game window (pages subscribe, so
+// they update live), plus a 3am ET pull that also writes the finished day to
+// history/<date>, one point per day for the points race.
+const NBAOUS_ESPN_SEASON = process.env.NBAOUS_ESPN_SEASON || '2027'; // ESPN keys a season by its ending year
+async function nbaousFetchStandings() {
+  const r = await httpsGet('site.api.espn.com', '/apis/v2/sports/basketball/nba/standings?season=' + NBAOUS_ESPN_SEASON + '&seasontype=2', { 'Accept': 'application/json' });
+  if (r.status !== 200) throw new Error('ESPN standings HTTP ' + r.status);
+  const teams = {};
+  (JSON.parse(r.body).children || []).forEach(function(c) {
+    ((c.standings || {}).entries || []).forEach(function(e) {
+      const stat = function(n) { return ((e.stats || []).find(function(s) { return s.name === n; }) || {}).value || 0; };
+      teams[e.team.abbreviation] = [stat('wins'), stat('losses')];
+    });
+  });
+  if (Object.keys(teams).length !== 30) throw new Error('ESPN returned ' + Object.keys(teams).length + ' teams');
+  return teams;
+}
+async function nbaousStandingsJob(snapshotDate) {
+  if (!firebaseReady) return { error: 'Firebase not initialized' };
+  try {
+    const teams = await nbaousFetchStandings();
+    await nbaousRef('standings').set({ teams: teams, updatedAt: Date.now() });
+    const played = Object.values(teams).some(function(t) { return t[0] + t[1] > 0; });
+    if (snapshotDate && played) await nbaousRef('history/' + snapshotDate).set(teams);
+    return { ok: true, snapshot: snapshotDate && played ? snapshotDate : null };
+  } catch (e) {
+    console.error('[NBA O/U] standings pull failed:', e.message);
+    return { error: e.message };
+  }
+}
+// NBA regular season runs mid-Oct → mid-Apr; stay quiet in the offseason.
+const nbaousInSeason = function() { const m = new Date().getMonth() + 1; return m >= 10 || m <= 4; };
+// ET date of the day that just finished (the 3am pull belongs to yesterday).
+const nbaousYesterdayET = function() { return new Date(Date.now() - 12 * 3600 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); };
+
+cron.schedule('*/15 18-23,0-1 * * *', function() { if (nbaousInSeason()) nbaousStandingsJob(null); }, ET_TZ);
+cron.schedule('0 3 * * *', async function() {
+  if (!nbaousInSeason()) return;
+  console.log('[NBA O/U] nightly standings + snapshot:', JSON.stringify(await nbaousStandingsJob(nbaousYesterdayET())));
+}, ET_TZ);
+if (firebaseReady && nbaousInSeason()) nbaousStandingsJob(null); // fresh numbers on boot
+
+// Manual pull, e.g. POST /nba-ous/refresh?snapshot=2026-10-21 to backfill a day.
+app.post('/nba-ous/refresh', async function(req, res) {
+  const snap = /^\d{4}-\d{2}-\d{2}$/.test(req.query.snapshot || '') ? req.query.snapshot : null;
+  res.json(await nbaousStandingsJob(snap));
+});
+
 // ── Timed posts: 11am ET reminder + 1pm ET reveal (Sundays) ───────
 // Both target the open board dated for today (ET) and fire once per board.
 async function bbqcReminderJob() {

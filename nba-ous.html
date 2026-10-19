@@ -113,6 +113,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .pk .t small,.dc .t small{display:block;color:#999;font-size:11px;margin-top:1px;}
 .pk .v{font-weight:800;font-variant-numeric:tabular-nums;}
 
+/* Key lines */
+.kl-tag{display:inline-block;font-size:10px;font-weight:800;padding:1px 7px;border-radius:8px;background:#f2f1ee;color:#6a6a66;margin-left:6px;vertical-align:1px;}
+
 /* What's deciding it */
 .dc{display:flex;gap:12px;padding:12px 16px;border-bottom:0.5px solid #f3f3f1;}
 .dc:last-child{border-bottom:none;}
@@ -393,8 +396,9 @@ let draft = {}; // abbr → 'O'|'U'
 let standings = {}; // abbr → {w, l}
 let standingsAt = null;
 
-store.subscribe(render);
+store.subscribe(() => { useNewestStandings(); render(); });
 
+const toStandings = snap => Object.fromEntries(Object.entries(snap).map(([a, [w, l]]) => [a, { w, l }]));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cls = n => { n = Math.round(n); return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero'; }; // colors follow the rounded number shown
 const color = m => COLORS[m] || '#555';
@@ -482,9 +486,22 @@ function payouts(n) {
   return n >= SECOND_MIN_PLAYERS ? [pot - SECOND, SECOND] : [pot];
 }
 
-// ── Live standings (ESPN, regular season) ─────────────────────────
+// ── Live standings ─────────────────────────────────────────────────
+// The server pulls ESPN into standings/ every 15 min through the game window
+// (and writes the daily history/ snapshot); the page subscribes, so records
+// update without a reload. If the server copy is stale, the page fetches
+// ESPN itself, and whichever copy is newer wins.
+const STALE_MS = 45 * 60 * 1000;
+let espn = null; // {teams: {abbr: {w, l}}, at}
+function useNewestStandings() {
+  const srv = state.standings;
+  const srvAt = srv?.updatedAt || 0;
+  if (srv?.teams && srvAt >= (espn?.at || 0)) { standings = toStandings(srv.teams); standingsAt = new Date(srvAt); }
+  else if (espn) { standings = espn.teams; standingsAt = new Date(espn.at); }
+}
 async function loadStandings() {
   if (DEMO_LIVE) return; // demo=live uses fake records
+  if (Date.now() - (state.standings?.updatedAt || 0) < STALE_MS) return; // server copy is fresh
   try {
     const r = await fetch(`https://site.api.espn.com/apis/v2/sports/basketball/nba/standings?season=${ESPN_SEASON}&seasontype=2`);
     const d = await r.json();
@@ -493,19 +510,11 @@ async function loadStandings() {
       const stat = name => (e.stats || []).find(s => s.name === name)?.value || 0;
       next[e.team.abbreviation] = { w: stat('wins'), l: stat('losses') };
     }));
-    if (Object.keys(next).length) { standings = next; standingsAt = new Date(); snapshot(); render(); }
+    if (Object.keys(next).length) { espn = { teams: next, at: Date.now() }; useNewestStandings(); render(); }
   } catch (e) { console.warn('standings fetch failed', e); }
 }
-// Save today's records (ET) once games have been played and picks are revealed.
-function snapshot() {
-  const ph = phase();
-  if (DEMO || (ph !== 'locked' && ph !== 'final')) return;
-  if (!Object.values(standings).some(s => s.w + s.l > 0)) return;
-  const snap = Object.fromEntries(Object.entries(standings).map(([a, s]) => [a, [s.w, s.l]]));
-  const key = etDate();
-  if (JSON.stringify(state.history?.[key]) !== JSON.stringify(snap)) store.set(`history/${key}`, snap);
-}
-loadStandings();
+// First check waits a beat so the Firebase subscription can say whether the server copy is fresh.
+setTimeout(loadStandings, 1500);
 setInterval(loadStandings, 5 * 60 * 1000);
 // Re-render each minute so the countdown ticks and the board flips at lock.
 setInterval(() => { if (phase() === 'open' || Date.now() - lockAt() < 120000) render(); }, 30000);
@@ -600,7 +609,6 @@ let raceFocus = new Set();
 let race = null; // {dates, pts, players, x, W, L, R} for the hover handler
 const RACE_MIN_GP = 5; // early-season pace is noise; the race starts once teams average this many games
 const etDate = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-const toStandings = snap => Object.fromEntries(Object.entries(snap).map(([a, [w, l]]) => [a, { w, l }]));
 const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 function standingsHtml(ph) {
@@ -626,6 +634,7 @@ function standingsHtml(ph) {
     </div>
     ${raceHtml(players, picks, scored[0]?.m)}
     ${decidingHtml(players, picks)}
+    ${keyLinesHtml(players, picks)}
     <div class="legend" style="border:none;padding:4px 4px 0;">${final ? 'Scored on final records.' : 'Points are projected from each team\'s 82-game pace. Tap a name to see their picks.'}
       ${standingsAt ? `Records via ESPN, updated ${standingsAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.` : ''}</div>`;
 }
@@ -641,7 +650,11 @@ function picksHtml(s) {
 // Points race: everyone's projected points by day. Lines are gray except the
 // focused ones (you + the leader by default; tap names to choose).
 function raceHtml(players, picks, leader) {
-  const hist = state.history || {};
+  const hist = { ...(state.history || {}) }; // copy: today's live point is added below, not saved
+  const today = etDate();
+  const anyPlayed = Object.values(standings).some(s => s.w + s.l > 0);
+  const lastSaved = Object.keys(hist).sort().pop() || '';
+  if (anyPlayed && today > lastSaved) hist[today] = Object.fromEntries(Object.entries(standings).map(([a, s]) => [a, [s.w, s.l]]));
   const dates = Object.keys(hist).sort().filter(d => {
     const v = Object.values(hist[d]);
     return v.reduce((s, [w, l]) => s + w + l, 0) / v.length >= RACE_MIN_GP;
@@ -719,6 +732,40 @@ function decidingHtml(players, picks) {
           <small>${ts.w}-${ts.l} · on pace for ${Math.round(ts.pace)}, line ${ts.line}</small>
           <div class="sides">${right.length ? `<div><b class="pos">✓</b> ${names(right)}</div>` : ''}${wrong.length ? `<div><b class="neg">✗</b> ${names(wrong)}</div>` : ''}</div></div>
         <span class="d ${cls(diff)}">${fmtPts(diff)}</span></div>`;
+    }).join('')}
+  </div>`;
+}
+
+// Key lines: the teams with the most leverage over the standings. Per extra
+// win, two players on opposite sides drift 2 points apart, a picker and a
+// non-picker drift 1, same-side pickers don't move. Summing that over every
+// pair ranks splits, lone wolves and solo picks above lines everyone shares.
+function keyLinesHtml(players, picks) {
+  const n = players.length;
+  const rows = TEAMS.map(t => {
+    const over = players.filter(m => picks[m][t.abbr] === 'O'), under = players.filter(m => picks[m][t.abbr] === 'U');
+    const none = n - over.length - under.length;
+    return { t, over, under, swing: 2 * over.length * under.length + (over.length + under.length) * none };
+  }).filter(r => r.over.length + r.under.length).sort((a, b) => b.swing - a.swing || a.t.name.localeCompare(b.t.name)).slice(0, 6);
+  if (!rows.length) return '';
+  const tag = ({ over, under }) => {
+    if (over.length && under.length) {
+      const [lone, rest] = over.length === 1 && under.length > 1 ? [over, under] : under.length === 1 && over.length > 1 ? [under, over] : [];
+      return lone ? `${esc(lone[0])} vs ${rest.length}` : `Split ${over.length}–${under.length}`;
+    }
+    const side = over.length ? over : under;
+    return side.length === 1 ? `Only ${esc(side[0])}` : `${side.length} all ${over.length ? 'over' : 'under'}`;
+  };
+  const names = list => list.map(m => `<span style="white-space:nowrap"><span class="dot" style="background:${color(m)};margin-right:3px"></span>${esc(m)}</span>`).join(', ');
+  return `<div class="card">
+    <div class="card-head"><span class="card-title">Key lines</span><span class="card-sub">Where the standings can swing most</span></div>
+    ${rows.map(r => {
+      const ts = teamStatus(r.t.abbr), diff = ts.gp ? ts.pace - ts.line : null;
+      return `<div class="dc"><img src="${logoUrl(r.t.abbr)}" alt="" loading="lazy">
+        <div class="t"><div class="nm">${esc(r.t.name)} ${ts.line}<span class="kl-tag">${tag(r)}</span></div>
+          <small>${ts.gp ? `${ts.w}-${ts.l} · on pace for ${Math.round(ts.pace)}` : 'No games yet'}</small>
+          <div class="sides">${r.over.length ? `<div><b>▲</b> ${names(r.over)}</div>` : ''}${r.under.length ? `<div><b>▼</b> ${names(r.under)}</div>` : ''}</div></div>
+        ${diff == null ? '' : `<span class="d ${cls(diff)}">${fmtPts(diff)}</span>`}</div>`;
     }).join('')}
   </div>`;
 }
