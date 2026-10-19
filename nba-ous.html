@@ -84,35 +84,43 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .countdown{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(120deg,#fffaf0,#fff);border-bottom:0.5px solid #f0eede;font-size:13px;}
 .countdown b{font-variant-numeric:tabular-nums;}
 
-/* Leaderboard */
-.lb-row{padding:11px 14px;border-bottom:0.5px solid #f5f5f3;}
-.lb-row:last-child{border-bottom:none;}
-.lb-row.leader{background:linear-gradient(90deg,#fffdf3,#fff);}
-.lb-top{display:flex;align-items:center;gap:11px;}
-.lb-rank{width:24px;text-align:center;font-size:13px;font-weight:800;color:#c4c4c0;flex-shrink:0;}
-.lb-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0;}
-.lb-main{flex:1;min-width:0;}
-.lb-name{font-weight:800;font-size:14px;letter-spacing:-.01em;display:flex;align-items:center;gap:6px;}
-.lb-sub{font-size:11px;color:#9a9a97;margin-top:2px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.lb-net{font-weight:800;font-size:17px;font-variant-numeric:tabular-nums;text-align:right;flex-shrink:0;}
-.lb-net small{display:block;font-size:10px;color:#aaa;font-weight:700;}
-.lb-badge{font-size:10px;font-weight:800;padding:1px 6px;border-radius:8px;background:#f2f1ee;color:#7a7a75;letter-spacing:.02em;}
-.lb-badge.money{background:#e8f5e9;color:#2e7d32;}
-.form-strip{display:inline-flex;gap:3px;align-items:center;}
-.pip{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
-.pip.up{background:#2e7d32;} .pip.dn{background:#d64545;} .pip.lk-up{background:#1b5e20;outline:1.5px solid #a5d6a7;} .pip.lk-dn{background:#8e1c1c;outline:1.5px solid #ef9a9a;}
-.pl-bar{display:flex;align-items:center;height:9px;margin:9px 0 1px 67px;}
-.pl-half{flex:1;display:flex;height:9px;}
-.pl-half.neg{justify-content:flex-end;}
-.pl-fill{height:9px;border-radius:3px;min-width:2px;}
-.pl-fill.pos{background:linear-gradient(90deg,#43a047,#2e7d32);}
-.pl-fill.neg{background:linear-gradient(90deg,#d64545,#b53030);}
-.pl-mid{width:2px;height:14px;background:#d0d0cc;border-radius:1px;flex-shrink:0;}
-.lb-detail{margin:10px 0 2px 67px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 14px;}
-.lb-pick{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;}
-.lb-pick .pk-side{font-size:10px;font-weight:800;width:16px;text-align:center;border-radius:4px;color:#fff;}
-.lb-pick .pk-team{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#555;}
-.lb-pick .pk-pts{font-weight:800;font-variant-numeric:tabular-nums;}
+/* Standings list */
+.sl-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid #f3f3f1;cursor:pointer;}
+.sl-row:hover{background:#fafaf8;}
+.sl-row.me{background:#f7f9fd;}
+.sl-rank{width:16px;text-align:right;color:#bbb;font-weight:700;font-variant-numeric:tabular-nums;}
+.sl-name{flex:1;min-width:0;font-weight:600;display:flex;align-items:center;gap:8px;}
+.sl-row.me .sl-name{font-weight:800;}
+.sl-pay{font-size:12px;font-weight:700;color:#2e7d32;}
+.sl-pts{width:48px;text-align:right;font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;}
+
+/* Race chart */
+.race-legend{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px 0;}
+.race-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;border:1px solid #e2e2e0;background:#fff;color:#888;cursor:pointer;}
+.race-chip.on{color:#1a1a1a;border-color:#1a1a1a;}
+.race-wrap{position:relative;padding:6px 6px 4px;}
+.race-wrap svg{display:block;width:100%;height:auto;touch-action:pan-y;}
+.race-tip{position:absolute;pointer-events:none;background:#1a1a1a;color:#fff;border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.55;min-width:120px;display:none;z-index:3;}
+.race-tip .tr{display:flex;align-items:center;gap:6px;}
+.race-tip .tr span:last-child{margin-left:auto;padding-left:10px;font-variant-numeric:tabular-nums;font-weight:700;}
+
+/* Selected player's picks */
+.my-picks{padding:0 16px 8px 42px;border-bottom:0.5px solid #f3f3f1;background:#fcfcfb;}
+.pk{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:0.5px solid #f5f5f3;font-size:13px;}
+.pk img,.dc img{width:24px;height:24px;object-fit:contain;flex-shrink:0;}
+.pk .t{flex:1;min-width:0;}
+.pk .t small,.dc .t small{display:block;color:#999;font-size:11px;margin-top:1px;}
+.pk .v{font-weight:800;font-variant-numeric:tabular-nums;}
+
+/* What's deciding it */
+.dc{display:flex;gap:12px;padding:12px 16px;border-bottom:0.5px solid #f3f3f1;}
+.dc:last-child{border-bottom:none;}
+.dc .t{flex:1;min-width:0;}
+.dc .nm{font-weight:800;}
+.dc .sides{font-size:12px;margin-top:6px;line-height:1.7;color:#555;}
+.dc .sides b{font-weight:800;}
+.dc .d{font-weight:800;font-variant-numeric:tabular-nums;font-size:15px;}
 
 /* Board grid */
 .grid-wrap{overflow-x:auto;}
@@ -174,7 +182,6 @@ table.sheet{border-collapse:separate;border-spacing:0;font-size:12px;width:100%;
   .sb-tab{flex:1;justify-content:center;padding:9px 6px;font-size:12px;}
   .team-row{padding:8px 12px;gap:6px;}
   .side-btn{min-width:54px;padding:6px 8px;}
-  .pl-bar,.lb-detail{margin-left:0;}
   .sheet th,.sheet td{padding:5px 6px;}
 }
 </style>
@@ -385,16 +392,13 @@ let myName = localStorage.getItem('nbaous_name') || null;
 let draft = {}; // abbr → 'O'|'U'
 let standings = {}; // abbr → {w, l}
 let standingsAt = null;
-let expanded = new Set();
 
 store.subscribe(render);
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero';
+const cls = n => { n = Math.round(n); return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero'; }; // colors follow the rounded number shown
 const color = m => COLORS[m] || '#555';
-const fmtPts = n => (n > 0 ? '+' : '') + (Math.round(n * 10) / 10).toFixed(Number.isInteger(Math.round(n * 10) / 10) ? 0 : 1);
-const avatarHtml = n => `<span class="lb-av" style="background:${color(n)}">${esc((n[0] || '?').toUpperCase())}</span>`;
-const medal = i => ['🥇', '🥈', '🥉'][i] || `#${i + 1}`;
+const fmtPts = n => { const r = Math.round(n); return (r > 0 ? '+' : '') + r; };
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -453,8 +457,8 @@ function pickPoints(side, wins, line) {
   const over = d > 0 ? d + 0.5 : d - 0.5;
   return side === 'O' ? over : -over;
 }
-function teamStatus(abbr) {
-  const s = standings[abbr] || { w: 0, l: 0 };
+function teamStatus(abbr, st = standings) {
+  const s = st[abbr] || { w: 0, l: 0 };
   const line = lines()[abbr];
   const gp = s.w + s.l;
   const pace = gp ? s.w / gp * GAMES : line;
@@ -463,9 +467,9 @@ function teamStatus(abbr) {
   return { ...s, gp, line, pace, clinch };
 }
 // One player's card: projected points on pace (or final once the season's over).
-function scorePlayer(p) {
+function scorePlayer(p, st = standings) {
   const rows = Object.entries(p).map(([abbr, side]) => {
-    const ts = teamStatus(abbr);
+    const ts = teamStatus(abbr, st);
     const wins = ts.gp >= GAMES ? ts.w : ts.pace;
     const pts = ts.gp ? pickPoints(side, wins, ts.line) : 0;
     const locked = ts.clinch ? (ts.clinch === side ? 'lk-up' : 'lk-dn') : null;
@@ -489,8 +493,17 @@ async function loadStandings() {
       const stat = name => (e.stats || []).find(s => s.name === name)?.value || 0;
       next[e.team.abbreviation] = { w: stat('wins'), l: stat('losses') };
     }));
-    if (Object.keys(next).length) { standings = next; standingsAt = new Date(); render(); }
+    if (Object.keys(next).length) { standings = next; standingsAt = new Date(); snapshot(); render(); }
   } catch (e) { console.warn('standings fetch failed', e); }
+}
+// Save today's records (ET) once games have been played and picks are revealed.
+function snapshot() {
+  const ph = phase();
+  if (DEMO || (ph !== 'locked' && ph !== 'final')) return;
+  if (!Object.values(standings).some(s => s.w + s.l > 0)) return;
+  const snap = Object.fromEntries(Object.entries(standings).map(([a, s]) => [a, [s.w, s.l]]));
+  const key = etDate();
+  if (JSON.stringify(state.history?.[key]) !== JSON.stringify(snap)) store.set(`history/${key}`, snap);
 }
 loadStandings();
 setInterval(loadStandings, 5 * 60 * 1000);
@@ -580,54 +593,156 @@ function pickCardHtml() {
 }
 const sortedTeams = () => TEAMS.slice().sort((a, b) => (lines()[b.abbr] - lines()[a.abbr]) || a.name.localeCompare(b.name));
 
+// Standings tab, top to bottom: a plain ranked list (tap a name for their
+// picks), the points race, then the teams furthest from their line.
+let openRow = null;
+let raceFocus = new Set();
+let race = null; // {dates, pts, players, x, W, L, R} for the hover handler
+const RACE_MIN_GP = 5; // early-season pace is noise; the race starts once teams average this many games
+const etDate = (d = new Date()) => d.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+const toStandings = snap => Object.fromEntries(Object.entries(snap).map(([a, [w, l]]) => [a, { w, l }]));
+const fmtDay = d => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
 function standingsHtml(ph) {
   const picks = decodedPicks();
   const players = MEMBERS.filter(m => picks[m]);
   if (!players.length) return `<div class="empty"><div class="empty-icon">🤷</div>Nobody locked in picks.</div>`;
   const scored = players.map(m => ({ m, ...scorePlayer(picks[m]) })).sort((a, b) => b.total - a.total);
   const pay = payouts(players.length);
-  const maxAbs = Math.max(1, ...scored.map(s => Math.abs(s.total)));
   const anyGames = Object.values(standings).some(s => s.w + s.l > 0);
-  const label = ph === 'final' ? 'Final' : 'Projected';
+  const final = ph === 'final';
+  const potLine = `$${(players.length * ENTRY).toLocaleString()} pot · ${pay.length > 1 ? `1st $${pay[0]}, 2nd $${pay[1]}` : `winner takes $${pay[0]}`}`;
 
-  const rows = scored.map((s, i) => {
-    const money = anyGames && pay[i] ? `<span class="lb-badge money">${ph === 'final' ? '' : 'on pace for '}$${pay[i]}</span>` : '';
-    const pips = `<span class="form-strip">${s.rows.map(r => `<span class="pip ${r.locked || r.trend || ''}" style="${r.trend ? '' : 'background:#dcdcd8'}"></span>`).join('')}</span>`;
-    const pct = Math.min(100, Math.round(Math.abs(s.total) / maxAbs * 100));
-    const open = expanded.has(s.m);
-    return `<div class="lb-row ${i === 0 && anyGames ? 'leader' : ''}" style="cursor:pointer" onclick="toggleRow('${s.m}')">
-      <div class="lb-top">
-        <span class="lb-rank">${anyGames ? medal(i) : '–'}</span>${avatarHtml(s.m)}
-        <div class="lb-main">
-          <div class="lb-name">${esc(s.m)} ${money}</div>
-          <div class="lb-sub">${pips}<span>${anyGames ? `${s.right}/10 trending right` : 'no games yet'}</span></div>
-        </div>
-        <div class="lb-net ${cls(s.total)}">${anyGames ? fmtPts(s.total) : '0'}<small>${label.toLowerCase()} pts</small></div>
-      </div>
-      <div class="pl-bar">
-        <div class="pl-half neg">${s.total < 0 ? `<span class="pl-fill neg" style="width:${pct}%"></span>` : ''}</div>
-        <div class="pl-mid"></div>
-        <div class="pl-half pos">${s.total > 0 ? `<span class="pl-fill pos" style="width:${pct}%"></span>` : ''}</div>
-      </div>
-      ${open ? `<div class="lb-detail">${s.rows.map(r => `<div class="lb-pick">
-        <span class="pk-side" style="background:${r.side === 'O' ? '#2e7d32' : '#c62828'}">${r.side}</span>
-        <span class="pk-team">${esc(TEAM[r.abbr].nick)} ${r.ts.line} <span style="color:#bbb">${r.ts.w}-${r.ts.l}</span>${r.locked === 'lk-up' ? ' ✅' : r.locked === 'lk-dn' ? ' ❌' : ''}</span>
-        <span class="pk-pts ${cls(r.pts)}">${r.ts.gp ? fmtPts(r.pts) : '–'}</span></div>`).join('')}</div>` : ''}
-    </div>`;
-  }).join('');
+  const list = scored.map((s, i) => `<div class="sl-row ${s.m === myName ? 'me' : ''}" onclick="toggleRow('${s.m}')">
+      <span class="sl-rank">${anyGames ? i + 1 : ''}</span>
+      <span class="sl-name"><span class="dot" style="background:${color(s.m)}"></span>${esc(s.m)}</span>
+      ${anyGames && pay[i] ? `<span class="sl-pay">$${pay[i]}</span>` : ''}
+      <span class="sl-pts ${anyGames ? cls(s.total) : 'zero'}">${anyGames ? fmtPts(s.total) : '–'}</span>
+    </div>${openRow === s.m ? picksHtml(s) : ''}`).join('');
 
-  const updated = standingsAt ? `Records via ESPN · updated ${standingsAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Loading records…';
-  const potLine = `Pot $${(players.length * ENTRY).toLocaleString()} · ${pay.length > 1 ? `1st $${pay[0]}, 2nd $${pay[1]}` : `winner takes $${pay[0]}`}`;
   return `<div class="card">
-    <div class="card-head"><span class="card-title">${ph === 'final' ? '🏁 Final Standings' : 'Standings'}</span>
-      <span class="card-sub">${potLine}</span>
-      <span class="status-chip ${ph === 'final' ? 'status-final' : 'status-locked'}">${ph === 'final' ? 'Final' : '🔒 Locked'}</span></div>
-    ${rows}
-    <div class="legend">${ph === 'final' ? 'Scored on final records.' : 'Each pick is scored on its team\'s 82-game pace.'} Tap a row to see the picks. ${updated}
-      <br><span style="background:#2e7d32"></span>trending right <span style="background:#d64545"></span>trending wrong <span style="background:#1b5e20;outline:1.5px solid #a5d6a7"></span>clinched</div>
+      <div class="card-head"><span class="card-title">${final ? '🏁 Final standings' : 'Standings'}</span><span class="card-sub">${potLine}</span></div>
+      ${list}
+    </div>
+    ${raceHtml(players, picks, scored[0]?.m)}
+    ${decidingHtml(players, picks)}
+    <div class="legend" style="border:none;padding:4px 4px 0;">${final ? 'Scored on final records.' : 'Points are projected from each team\'s 82-game pace. Tap a name to see their picks.'}
+      ${standingsAt ? `Records via ESPN, updated ${standingsAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}.` : ''}</div>`;
+}
+window.toggleRow = function(m) { openRow = openRow === m ? null : m; render(); };
+
+function picksHtml(s) {
+  return `<div class="my-picks">${s.rows.map(r => `<div class="pk"><img src="${logoUrl(r.abbr)}" alt="" loading="lazy">
+      <span class="t">${esc(TEAM[r.abbr].nick)} ${r.side === 'O' ? 'over' : 'under'} ${r.ts.line}${r.locked ? (r.locked === 'lk-up' ? ' ✅' : ' ❌') : ''}
+        <small>${r.ts.w}-${r.ts.l}${r.ts.gp ? ` · on pace for ${Math.round(r.ts.pace)}` : ''}</small></span>
+      <span class="v ${cls(r.pts)}">${r.ts.gp ? fmtPts(r.pts) : '–'}</span></div>`).join('')}</div>`;
+}
+
+// Points race: everyone's projected points by day. Lines are gray except the
+// focused ones (you + the leader by default; tap names to choose).
+function raceHtml(players, picks, leader) {
+  const hist = state.history || {};
+  const dates = Object.keys(hist).sort().filter(d => {
+    const v = Object.values(hist[d]);
+    return v.reduce((s, [w, l]) => s + w + l, 0) / v.length >= RACE_MIN_GP;
+  });
+  const head = `<div class="card-head"><span class="card-title">Points race</span></div>`;
+  if (dates.length < 2) {
+    race = null;
+    return `<div class="card">${head}<div class="empty" style="padding:24px 20px;font-size:13px;">The race starts once teams are about ${RACE_MIN_GP} games in.</div></div>`;
+  }
+  const pts = Object.fromEntries(players.map(m => [m, dates.map(d => scorePlayer(picks[m], toStandings(hist[d])).total)]));
+  const focus = raceFocus.size ? raceFocus : new Set([leader, players.includes(myName) ? myName : null].filter(Boolean));
+
+  // Size the viewBox to the real width so text stays readable on phones.
+  const W = Math.max(330, Math.min(720, (document.getElementById('content')?.clientWidth || 720) - 12));
+  const H = W < 500 ? 260 : 300, L = 34, R = 92, T = 14, B = 26;
+  const all = Object.values(pts).flat();
+  const step = niceStep((Math.max(0, ...all) - Math.min(0, ...all)) / 5 || 10);
+  const lo = Math.floor(Math.min(0, ...all) / step) * step, hi = Math.ceil(Math.max(0, ...all) / step) * step;
+  const x = i => L + i / (dates.length - 1) * (W - L - R);
+  const y = v => T + (hi - v) / (hi - lo || 1) * (H - T - B);
+  race = { dates, pts, players, x, W, L, R };
+
+  const grid = [];
+  for (let v = lo; v <= hi + 1e-9; v += step) {
+    grid.push(`<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? '#c8c8c4' : '#f0f0ed'}"/>
+      <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="#aaa">${v > 0 ? '+' : ''}${Math.round(v)}</text>`);
+  }
+  const nTicks = Math.min(W < 500 ? 3 : 4, dates.length);
+  const xt = [...new Set(Array.from({ length: nTicks }, (_, k) => Math.round(k * (dates.length - 1) / (nTicks - 1 || 1))))]
+    .map(i => `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? 'start' : i === dates.length - 1 ? 'end' : 'middle'}" font-size="10" fill="#aaa">${fmtDay(dates[i])}</text>`);
+  const path = m => pts[m].map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  const back = players.filter(m => !focus.has(m)).map(m => `<path d="${path(m)}" fill="none" stroke="#dcdcd8" stroke-width="1.5" stroke-linejoin="round"/>`);
+  const front = players.filter(m => focus.has(m)).map(m => `<path d="${path(m)}" fill="none" stroke="#fff" stroke-width="5" stroke-linejoin="round"/><path d="${path(m)}" fill="none" stroke="${color(m)}" stroke-width="2.5" stroke-linejoin="round"/>`);
+  // End labels for focused lines only, nudged apart so they don't collide.
+  const last = dates.length - 1;
+  const labels = players.filter(m => focus.has(m)).map(m => ({ m, v: pts[m][last], ly: y(pts[m][last]) })).sort((a, b) => a.ly - b.ly);
+  for (let i = 1; i < labels.length; i++) labels[i].ly = Math.max(labels[i].ly, labels[i - 1].ly + 14);
+  const ends = labels.map(l => `<circle cx="${x(last)}" cy="${y(l.v)}" r="4" fill="${color(l.m)}" stroke="#fff" stroke-width="2"/>
+    <text x="${x(last) + 9}" y="${l.ly + 4}" font-size="11" font-weight="700" fill="#333">${esc(l.m)} <tspan fill="#888" font-weight="600">${fmtPts(l.v)}</tspan></text>`);
+
+  const legend = players.map(m => `<span class="race-chip ${focus.has(m) ? 'on' : ''}" onclick="toggleFocus('${m}')"><span class="dot" style="background:${focus.has(m) ? color(m) : '#d6d6d2'}"></span>${esc(m)}</span>`).join('');
+  return `<div class="card">${head}
+    <div class="race-legend">${legend}</div>
+    <div class="race-wrap" id="race-wrap">
+      <svg id="race-svg" viewBox="0 0 ${W} ${H}" onpointermove="raceHover(event)" onpointerleave="raceHover(null)" role="img" aria-label="Projected points by day for each player">
+        ${grid.join('')}${xt.join('')}${back.join('')}${front.join('')}${ends.join('')}
+        <line id="race-x" y1="${T}" y2="${H - B}" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
+      </svg>
+      <div class="race-tip" id="race-tip"></div>
+    </div>
   </div>`;
 }
-window.toggleRow = function(m) { expanded.has(m) ? expanded.delete(m) : expanded.add(m); render(); };
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+}
+window.toggleFocus = function(m) { raceFocus.has(m) ? raceFocus.delete(m) : raceFocus.add(m); render(); };
+
+// The teams furthest from their line, and who's on each side.
+function decidingHtml(players, picks) {
+  const rows = TEAMS.map(t => ({ t, ts: teamStatus(t.abbr) }))
+    .filter(({ t, ts }) => ts.gp && players.some(m => picks[m][t.abbr]))
+    .map(r => ({ ...r, diff: r.ts.pace - r.ts.line }))
+    .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
+    .slice(0, 5);
+  if (!rows.length) return '';
+  const names = list => list.map(m => `<span style="white-space:nowrap"><span class="dot" style="background:${color(m)};margin-right:3px"></span>${esc(m)}</span>`).join(', ');
+  return `<div class="card">
+    <div class="card-head"><span class="card-title">What's deciding it</span><span class="card-sub">Teams furthest from their line</span></div>
+    ${rows.map(({ t, ts, diff }) => {
+      const good = diff > 0 ? 'O' : 'U';
+      const right = players.filter(m => picks[m][t.abbr] === good), wrong = players.filter(m => picks[m][t.abbr] && picks[m][t.abbr] !== good);
+      return `<div class="dc"><img src="${logoUrl(t.abbr)}" alt="" loading="lazy">
+        <div class="t"><div class="nm">${esc(t.name)}</div>
+          <small>${ts.w}-${ts.l} · on pace for ${Math.round(ts.pace)}, line ${ts.line}</small>
+          <div class="sides">${right.length ? `<div><b class="pos">✓</b> ${names(right)}</div>` : ''}${wrong.length ? `<div><b class="neg">✗</b> ${names(wrong)}</div>` : ''}</div></div>
+        <span class="d ${cls(diff)}">${fmtPts(diff)}</span></div>`;
+    }).join('')}
+  </div>`;
+}
+
+let resizeT;
+window.addEventListener('resize', () => { clearTimeout(resizeT); resizeT = setTimeout(() => { if (race) render(); }, 150); });
+window.raceHover = function(e) {
+  const tip = document.getElementById('race-tip'), xl = document.getElementById('race-x');
+  if (!race || !tip) return;
+  if (!e) { tip.style.display = 'none'; xl.style.display = 'none'; return; }
+  const svg = document.getElementById('race-svg'), box = svg.getBoundingClientRect();
+  const vx = (e.clientX - box.left) / box.width * race.W;
+  const n = race.dates.length;
+  const i = Math.max(0, Math.min(n - 1, Math.round((vx - race.L) / (race.W - race.L - race.R) * (n - 1))));
+  const px = race.x(i);
+  xl.setAttribute('x1', px); xl.setAttribute('x2', px); xl.style.display = '';
+  const ranked = race.players.map(m => [m, race.pts[m][i]]).sort((a, b) => b[1] - a[1]);
+  tip.innerHTML = `<b>${fmtDay(race.dates[i])}</b>` + ranked.map(([m, v]) => `<div class="tr"><span class="dot" style="background:${color(m)}"></span><span>${esc(m)}</span><span>${fmtPts(v)}</span></div>`).join('');
+  tip.style.display = 'block';
+  const wrap = document.getElementById('race-wrap').getBoundingClientRect();
+  const left = px / race.W * box.width + (box.left - wrap.left);
+  tip.style.left = (left > wrap.width / 2 ? left - tip.offsetWidth - 12 : left + 12) + 'px';
+  tip.style.top = '10px';
+};
 
 function boardHtml(ph) {
   const picks = decodedPicks();
@@ -645,7 +760,7 @@ function boardHtml(ph) {
       return `<td class="pc ${c}" title="${esc(m)}: ${side === 'O' ? 'Over' : 'Under'}${ts.gp ? ' · ' + fmtPts(pts) : ''}">${side}${ts.gp ? ` ${fmtPts(pts)}` : ''}</td>`;
     }).join('');
     return `<tr><td class="tcol">${esc(t.nick)}</td><td class="num">${ts.line}</td><td class="num">${ts.w}-${ts.l}</td>
-      <td class="num">${ts.gp ? ts.pace.toFixed(1) : '–'}</td><td class="num diff ${ts.gp ? cls(diff) : ''}">${ts.gp ? (diff > 0 ? '+' : '') + diff.toFixed(1) : '–'}</td>${cells}</tr>`;
+      <td class="num">${ts.gp ? Math.round(ts.pace) : '–'}</td><td class="num diff ${ts.gp ? cls(Math.round(diff)) : ''}">${ts.gp ? fmtPts(diff) : '–'}</td>${cells}</tr>`;
   }).join('');
   return `<div class="card"><div class="grid-wrap"><table class="sheet">
     <thead><tr><th class="tcol">Team</th><th>Line</th><th>W-L</th><th>Pace</th><th>vs Line</th>
@@ -867,10 +982,17 @@ if (DEMO) {
       const salt = 'demo' + k;
       state.picks[m] = { seal: obf(JSON.stringify(card), salt), salt, ts: Date.now() };
     });
-    // Fake 40 games: each team lands within ±12 wins of its line on pace.
-    const st = {};
-    abbrs.forEach(a => { const pace = Math.max(8, Math.min(74, SAMPLE[a] + (Math.random() * 24 - 12))); const w = Math.round(pace / GAMES * 40); st[a] = { w, l: 40 - w }; });
-    setTimeout(() => __demo.setStandings(st), 0);
+    // Fake 60 days: each team's true pace lands within ±12 wins of its line; ~1 game every 2 days.
+    const rate = Object.fromEntries(abbrs.map(a => [a, Math.max(8, Math.min(74, SAMPLE[a] + (Math.random() * 24 - 12))) / GAMES]));
+    const rec = Object.fromEntries(abbrs.map(a => [a, [0, 0]]));
+    state.history = {};
+    const day = new Date('2026-10-20T12:00:00');
+    for (let d = 0; d < 60; d++) {
+      abbrs.forEach(a => { if (Math.random() < .5) rec[a][Math.random() < rate[a] ? 0 : 1]++; });
+      day.setDate(day.getDate() + 1);
+      state.history[etDate(day)] = JSON.parse(JSON.stringify(rec));
+    }
+    setTimeout(() => __demo.setStandings(toStandings(rec)), 0);
   }
 }
 </script>

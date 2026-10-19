@@ -859,6 +859,45 @@ if (firebaseReady) {
   console.log('[BBQC] Sunday Bets listeners attached | dryRun=' + BBQC_DRY_RUN);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// NBA OVER/UNDER — GroupMe lock-in posts (same bot + group as Sunday Bets)
+// ═══════════════════════════════════════════════════════════════════
+// Picks live at nba_ous/<season>/picks/<name> (sealed; the post never reveals
+// them). One post per lock-in, flagged at notify/locks/<name>; a commissioner
+// unlock removes the pick, which clears the flag so a re-lock posts again.
+const NBAOUS_SEASON = process.env.NBAOUS_SEASON || '2026-27';
+const NBAOUS_MEMBERS = ['Adam','Andrew','Ben','Jared','Marc','Matt','Max','Mike','Zach'];
+const NBAOUS_PAGE = 'gyou.in/nba-ous.html';
+const nbaousRef = (p) => admin.database().ref('nba_ous/' + NBAOUS_SEASON + '/' + p);
+
+async function nbaousHandleLock(name, e) {
+  if (!firebaseReady || !e || (e.ts || 0) < BBQC_BOOT) return; // skip backfill on connect
+  try {
+    const flag = nbaousRef('notify/locks/' + name);
+    if ((await flag.get()).exists()) return;
+    const [picksSnap, cfgSnap] = await Promise.all([nbaousRef('picks').get(), nbaousRef('config').get()]);
+    const inNames = Object.keys(picksSnap.val() || {});
+    const out = NBAOUS_MEMBERS.filter(function(m) { return inNames.indexOf(m) === -1; });
+    const lockAt = (cfgSnap.val() || {}).lockAt;
+    const when = lockAt ? new Date(lockAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET' : 'opening tip';
+    await bbqcPost(nbaousLockMsg(name, inNames.length, out, when));
+    await flag.set(true);
+  } catch (err) { console.error('[NBA O/U] lock post error:', err.message); }
+}
+function nbaousLockMsg(name, inCount, out, when) {
+  return ['🏀 ' + name + ' is locked in for NBA Over/Under (' + inCount + '/' + NBAOUS_MEMBERS.length + ' in).',
+    out.length ? 'Still out: ' + out.join(', ') + '. Picks lock ' + when + '.' : 'Everyone is in! Picks reveal at ' + when + '.',
+    '🔗 ' + NBAOUS_PAGE].join('\n');
+}
+
+if (firebaseReady) {
+  const picksRef = nbaousRef('picks');
+  picksRef.on('child_added', function(snap) { nbaousHandleLock(snap.key, snap.val()); });
+  picksRef.on('child_changed', function(snap) { nbaousHandleLock(snap.key, snap.val()); });
+  picksRef.on('child_removed', function(snap) { nbaousRef('notify/locks/' + snap.key).remove().catch(function() {}); });
+  console.log('[NBA O/U] lock-in listener attached | season=' + NBAOUS_SEASON + ' | dryRun=' + BBQC_DRY_RUN);
+}
+
 // ── Timed posts: 11am ET reminder + 1pm ET reveal (Sundays) ───────
 // Both target the open board dated for today (ET) and fire once per board.
 async function bbqcReminderJob() {
