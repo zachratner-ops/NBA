@@ -125,6 +125,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .dc .sides b{font-weight:800;}
 .dc .d{font-weight:800;font-variant-numeric:tabular-nums;font-size:15px;}
 
+/* Weekly movers */
+.mv-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:0.5px solid #f3f3f1;}
+.mv-row:last-child{border-bottom:none;}
+.mv-name{width:84px;font-weight:700;display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.mv-why{flex:1;min-width:0;font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mv-chg{width:48px;text-align:right;font-weight:800;font-variant-numeric:tabular-nums;}
+
+/* Head-to-head */
+.h2h-pick{display:flex;align-items:center;gap:8px;padding:12px 16px;flex-wrap:wrap;}
+.h2h-pick select{border:1px solid #ddd;border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;font-family:inherit;background:#fff;}
+.h2h-pick .vs{font-size:11px;font-weight:800;color:#bbb;}
+.h2h-score{display:flex;align-items:stretch;border-top:0.5px solid #f0f0ee;}
+.h2h-side{flex:1;padding:14px 16px;text-align:center;}
+.h2h-side + .h2h-side{border-left:0.5px solid #f0f0ee;}
+.h2h-side .nm{font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px;}
+.h2h-side .pt{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+.h2h-sum{padding:12px 16px;border-top:0.5px solid #f0f0ee;font-size:13px;line-height:1.6;color:#444;background:#fafaf8;}
+.h2h-row{display:grid;grid-template-columns:24px 1fr 64px 64px 52px;align-items:center;gap:8px;padding:9px 16px;border-top:0.5px solid #f3f3f1;font-size:13px;}
+.h2h-row.hd{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#999;background:#fafaf8;}
+.h2h-row img{width:24px;height:24px;object-fit:contain;}
+.h2h-row .c{text-align:right;font-variant-numeric:tabular-nums;}
+.h2h-row .c small{display:block;font-size:10px;color:#aaa;font-weight:600;}
+.h2h-row .net{text-align:right;font-weight:800;font-variant-numeric:tabular-nums;}
+.h2h-shared{padding:10px 16px 12px;font-size:12px;color:#999;border-top:0.5px solid #f0f0ee;line-height:1.6;}
+@media(max-width:600px){ .h2h-row{grid-template-columns:22px 1fr 54px 54px 44px;gap:6px;padding:9px 12px;} }
+
 /* Board grid */
 .grid-wrap{overflow-x:auto;}
 table.sheet{border-collapse:separate;border-spacing:0;font-size:12px;width:100%;}
@@ -535,12 +561,13 @@ function render() {
     return;
   }
   if (ph === 'open') { el.innerHTML = pickCardHtml(); return; }
-  const t = tab === 'board' ? 'board' : 'standings';
+  const t = ['board', 'h2h'].includes(tab) ? tab : 'standings';
   const tabsBar = `<div class="sb-tabs">
     <div class="sb-tab ${t === 'standings' ? 'active' : ''}" onclick="switchTab('standings')">Standings${ph === 'locked' ? ' <span class="live-dot"></span>' : ''}</div>
+    <div class="sb-tab ${t === 'h2h' ? 'active' : ''}" onclick="switchTab('h2h')">Head-to-head</div>
     <div class="sb-tab ${t === 'board' ? 'active' : ''}" onclick="switchTab('board')">Board</div>
   </div>`;
-  el.innerHTML = tabsBar + (t === 'board' ? boardHtml(ph) : standingsHtml(ph));
+  el.innerHTML = tabsBar + (t === 'board' ? boardHtml(ph) : t === 'h2h' ? h2hHtml(ph) : standingsHtml(ph));
 }
 window.switchTab = function(t) { tab = t; localStorage.setItem('nbaous_tab', t); render(); };
 
@@ -637,6 +664,7 @@ function standingsHtml(ph) {
       ${list}
     </div>
     ${raceHtml(players, picks, scored[0]?.m)}
+    ${moversHtml(players, picks)}
     ${decidingHtml(players, picks)}
     ${keyLinesHtml(players, picks)}
     <div class="legend" style="border:none;padding:4px 4px 0;">${final ? 'Scored on final records.' : 'Points are projected from each team\'s 82-game pace. Tap a name to see their picks.'}
@@ -793,6 +821,107 @@ window.raceHover = function(e) {
   const left = px / race.W * box.width + (box.left - wrap.left);
   tip.style.left = (left > wrap.width / 2 ? left - tip.offsetWidth - 12 : left + 12) + 'px';
   tip.style.top = '10px';
+};
+
+// ── Weekly movers ──────────────────────────────────────────────────
+// Each player's change in projected points since the snapshot a week back,
+// with the pick that moved them most.
+function moversHtml(players, picks) {
+  const hist = state.history || {};
+  const saved = Object.keys(hist).sort();
+  if (!saved.length) return '';
+  const now = [etDate(), saved[saved.length - 1]].sort().pop();
+  const cut = new Date(now + 'T12:00:00'); cut.setDate(cut.getDate() - 7);
+  const base = saved.filter(d => d <= etDate(cut)).pop();
+  if (!base) return '';
+  const then = toStandings(hist[base]);
+  const rows = players.map(m => {
+    const a = scorePlayer(picks[m], then), b = scorePlayer(picks[m]);
+    const was = Object.fromEntries(a.rows.map(r => [r.abbr, r.pts]));
+    const drivers = b.rows.map(r => ({ r, d: r.pts - was[r.abbr] })).sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
+    return { m, chg: b.total - a.total, top: drivers[0] };
+  }).sort((x, y) => y.chg - x.chg);
+  return `<div class="card">
+    <div class="card-head"><span class="card-title">This week</span><span class="card-sub">Change since ${fmtDay(base)}</span></div>
+    ${rows.map(({ m, chg, top }) => `<div class="mv-row">
+      <span class="mv-name"><span class="dot" style="background:${color(m)}"></span>${esc(m)}</span>
+      <span class="mv-why">${top && roundPts(top.d) ? `${esc(TEAM[top.r.abbr].nick)} ${top.r.side === 'O' ? 'over' : 'under'} ${fmtPts(top.d)}` : ''}</span>
+      <span class="mv-chg ${cls(chg)}">${fmtPts(chg)}</span></div>`).join('')}
+  </div>`;
+}
+
+// ── Head-to-head ───────────────────────────────────────────────────
+// Shared picks cancel out, so only the teams where two cards differ matter.
+// Per extra win a team moves the A−B gap by sideA − sideB (over +1, under −1,
+// none 0): ±2 when they're on opposite sides, ±1 when only one has the team.
+let h2h = (() => { try { return JSON.parse(localStorage.getItem('nbaous_h2h')) || {}; } catch { return {}; } })();
+function h2hHtml(ph) {
+  const picks = decodedPicks();
+  const players = MEMBERS.filter(m => picks[m]);
+  if (players.length < 2) return `<div class="empty"><div class="empty-icon">🤝</div>Need at least two players.</div>`;
+  const scored = players.map(m => ({ m, ...scorePlayer(picks[m]) })).sort((a, b) => b.total - a.total);
+  // Default: you vs the person just ahead of you (or the leader vs 2nd if you're 1st / not playing).
+  const meIdx = scored.findIndex(s => s.m === myName);
+  let a = players.includes(h2h.a) ? h2h.a : meIdx >= 0 ? myName : scored[0].m;
+  let b = players.includes(h2h.b) && h2h.b !== a ? h2h.b : scored.find((s, i) => s.m !== a && (meIdx > 0 && a === myName ? i === meIdx - 1 : true)).m;
+  const A = scored.find(s => s.m === a), B = scored.find(s => s.m === b);
+  const sideVal = v => v === 'O' ? 1 : v === 'U' ? -1 : 0;
+
+  const teams = [...new Set([...Object.keys(picks[a]), ...Object.keys(picks[b])])];
+  const shared = teams.filter(t => picks[a][t] && picks[a][t] === picks[b][t]);
+  const diff = teams.filter(t => picks[a][t] !== picks[b][t]).map(t => {
+    const ts = teamStatus(t);
+    const pa = picks[a][t] ? (A.rows.find(r => r.abbr === t)?.pts || 0) : 0;
+    const pb = picks[b][t] ? (B.rows.find(r => r.abbr === t)?.pts || 0) : 0;
+    return { t, ts, sa: picks[a][t], sb: picks[b][t], pa, pb, net: pa - pb, swing: sideVal(picks[a][t]) - sideVal(picks[b][t]) };
+  }).sort((x, y) => Math.abs(y.net) - Math.abs(x.net) || Math.abs(y.swing) - Math.abs(x.swing));
+
+  // Biggest single lever for whoever trails: how many wins off pace one team needs to close the gap.
+  const gap = A.total - B.total;
+  const trail = gap < 0 ? a : b, lead = gap < 0 ? b : a, need = Math.abs(gap);
+  let lever = '';
+  const anyGames = Object.values(standings).some(s => s.w + s.l > 0);
+  if (anyGames && roundPts(need) > 0) {
+    const sign = trail === a ? 1 : -1; // swing is measured as A−B
+    const opts = diff.filter(d => d.swing && d.ts.gp < GAMES).map(d => {
+      const per = Math.abs(d.swing), more = d.swing * sign > 0; // trailer wants more wins from this team?
+      const wins = Math.ceil(need / per);
+      const room = more ? (GAMES - d.ts.gp) - (d.ts.pace - d.ts.w) : d.ts.pace - d.ts.w; // projected remaining losses / wins
+      return { d, wins, more, ok: wins <= room };
+    }).filter(o => o.ok).sort((x, y) => x.wins - y.wins);
+    lever = opts.length
+      ? `Biggest lever: if the <b>${esc(TEAM[opts[0].d.t].nick)}</b> win <b>${opts[0].wins} ${opts[0].more ? 'more' : 'fewer'}</b> games than their pace, ${esc(trail)} passes ${esc(lead)}.`
+      : `No single team can close it alone. ${esc(trail)} needs several of these to break their way.`;
+  }
+  const sideTxt = (s, p) => s ? `${s === 'O' ? 'Over' : 'Under'}<small>${anyGames ? fmtPts(p) : '–'}</small>` : `<span style="color:#ccc">–</span>`;
+  const opt = sel => players.map(m => `<option value="${m}" ${m === sel ? 'selected' : ''}>${esc(m)}</option>`).join('');
+
+  return `<div class="card">
+    <div class="h2h-pick">
+      <select onchange="setH2H('a', this.value)">${opt(a)}</select><span class="vs">VS</span>
+      <select onchange="setH2H('b', this.value)">${opt(b)}</select>
+      <button class="btn btn-sm btn-outline" style="margin-left:auto" onclick="setH2H('swap')">⇄ Swap</button>
+    </div>
+    <div class="h2h-score">
+      ${[A, B].map(S => `<div class="h2h-side"><div class="nm"><span class="dot" style="background:${color(S.m)}"></span>${esc(S.m)}</div>
+        <div class="pt ${anyGames ? cls(S.total) : 'zero'}">${anyGames ? fmtPts(S.total) : '0'}</div></div>`).join('')}
+    </div>
+    ${anyGames ? `<div class="h2h-sum">${roundPts(need) ? `<b>${esc(lead)}</b> leads by <b>${roundPts(need)}</b>. ` : 'Dead even. '}${lever}</div>` : ''}
+    ${diff.length ? `<div class="h2h-row hd"><span></span><span>Where they differ</span><span class="c">${esc(a)}</span><span class="c">${esc(b)}</span><span class="c">Net</span></div>
+      ${diff.map(d => `<div class="h2h-row"><img src="${logoUrl(d.t)}" alt="" loading="lazy">
+        <span>${esc(TEAM[d.t].nick)} ${d.ts.line}<small style="display:block;color:#aaa;font-size:11px">${d.ts.w}-${d.ts.l}${d.ts.gp ? ` · pace ${Math.round(d.ts.pace)}` : ''}</small></span>
+        <span class="c">${sideTxt(d.sa, d.pa)}</span><span class="c">${sideTxt(d.sb, d.pb)}</span>
+        <span class="net ${anyGames ? cls(d.net) : 'zero'}">${anyGames ? fmtPts(d.net) : '–'}</span></div>`).join('')}` : ''}
+    <div class="h2h-shared">${shared.length ? `Same pick on ${shared.map(t => `${esc(TEAM[t].nick)} ${picks[a][t] === 'O' ? 'over' : 'under'}`).join(', ')}. These cancel out.` : 'No picks in common.'}
+      Net is from ${esc(a)}'s side.</div>
+  </div>`;
+}
+window.setH2H = function(k, v) {
+  const sel = [...document.querySelectorAll('.h2h-pick select')].map(e => e.value);
+  h2h = k === 'swap' ? { a: sel[1], b: sel[0] } : { a: sel[0], b: sel[1], [k]: v };
+  if (h2h.a === h2h.b) h2h[k === 'a' ? 'b' : 'a'] = sel[k === 'a' ? 0 : 1]; // picking the same person swaps them
+  try { localStorage.setItem('nbaous_h2h', JSON.stringify(h2h)); } catch {}
+  render();
 };
 
 function boardHtml(ph) {
