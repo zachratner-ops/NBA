@@ -219,7 +219,7 @@ table.sheet{border-collapse:separate;border-spacing:0;font-size:12px;width:100%;
     <div class="rules-body">
       💵 <strong>$50 entry</strong>. If 7 or more people play, <strong>2nd gets $100</strong> and the winner gets the rest. Otherwise it's winner-take-all<br>
       🎯 Pick <strong>exactly 10 teams</strong>, each one <strong>over or under</strong> its DraftKings opening win total<br>
-      ➕ Scoring: <strong>+1 per win</strong> in your direction past the line, <strong>−1 per win</strong> in the wrong direction, plus a <strong>half point</strong> for being on the right side of the .5<br>
+      ➕ Scoring: <strong>+1 for every win past the line</strong> in your direction, <strong>−1 for every win short of it</strong>. The .5 means there are no ties<br>
       🧮 Example: over 40.5 and the team goes 43-39 → <strong>+3</strong>. Over 40.5 and they go 39-43 → <strong>−2</strong><br>
       👀 Picks are <strong>blind</strong> and revealed when the board locks at opening tip<br>
       📈 During the season, standings use each team's <strong>82-game pace</strong>. Final scores use the actual records
@@ -400,9 +400,11 @@ store.subscribe(() => { useNewestStandings(); render(); });
 
 const toStandings = snap => Object.fromEntries(Object.entries(snap).map(([a, [w, l]]) => [a, { w, l }]));
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const cls = n => { n = Math.round(n); return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero'; }; // colors follow the rounded number shown
+// Round halves away from zero (Math.round sends -51.5 to -51).
+const roundPts = n => Math.sign(n) * Math.round(Math.abs(n));
+const cls = n => { n = roundPts(n); return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero'; }; // colors follow the rounded number shown
 const color = m => COLORS[m] || '#555';
-const fmtPts = n => { const r = Math.round(n); return (r > 0 ? '+' : '') + r; };
+const fmtPts = n => { const r = roundPts(n) || 0; return (r > 0 ? '+' : '') + r; };
 
 function showToast(msg) {
   const el = document.getElementById('toast');
@@ -461,6 +463,8 @@ function pickPoints(side, wins, line) {
   const over = d > 0 ? d + 0.5 : d - 0.5;
   return side === 'O' ? over : -over;
 }
+// What an over pick on this team scores now: scored on pace, or the final record at 82 games.
+const overPts = ts => pickPoints('O', ts.gp >= GAMES ? ts.w : ts.pace, ts.line);
 function teamStatus(abbr, st = standings) {
   const s = st[abbr] || { w: 0, l: 0 };
   const line = lines()[abbr];
@@ -717,7 +721,7 @@ window.toggleFocus = function(m) { raceFocus.has(m) ? raceFocus.delete(m) : race
 function decidingHtml(players, picks) {
   const rows = TEAMS.map(t => ({ t, ts: teamStatus(t.abbr) }))
     .filter(({ t, ts }) => ts.gp && players.some(m => picks[m][t.abbr]))
-    .map(r => ({ ...r, diff: r.ts.pace - r.ts.line }))
+    .map(r => ({ ...r, diff: overPts(r.ts) }))
     .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff))
     .slice(0, 5);
   if (!rows.length) return '';
@@ -760,7 +764,7 @@ function keyLinesHtml(players, picks) {
   return `<div class="card">
     <div class="card-head"><span class="card-title">Key lines</span><span class="card-sub">Where the standings can swing most</span></div>
     ${rows.map(r => {
-      const ts = teamStatus(r.t.abbr), diff = ts.gp ? ts.pace - ts.line : null;
+      const ts = teamStatus(r.t.abbr), diff = ts.gp ? overPts(ts) : null;
       return `<div class="dc"><img src="${logoUrl(r.t.abbr)}" alt="" loading="lazy">
         <div class="t"><div class="nm">${esc(r.t.name)} ${ts.line}<span class="kl-tag">${tag(r)}</span></div>
           <small>${ts.gp ? `${ts.w}-${ts.l} · on pace for ${Math.round(ts.pace)}` : 'No games yet'}</small>
@@ -797,7 +801,7 @@ function boardHtml(ph) {
   const totals = Object.fromEntries(players.map(m => [m, 0]));
   const rows = sortedTeams().map(t => {
     const ts = teamStatus(t.abbr);
-    const diff = ts.gp ? ts.pace - ts.line : 0;
+    const diff = ts.gp ? overPts(ts) : 0;
     const cells = players.map(m => {
       const side = picks[m][t.abbr];
       if (!side) return '<td></td>';
@@ -807,7 +811,7 @@ function boardHtml(ph) {
       return `<td class="pc ${c}" title="${esc(m)}: ${side === 'O' ? 'Over' : 'Under'}${ts.gp ? ' · ' + fmtPts(pts) : ''}">${side}${ts.gp ? ` ${fmtPts(pts)}` : ''}</td>`;
     }).join('');
     return `<tr><td class="tcol">${esc(t.nick)}</td><td class="num">${ts.line}</td><td class="num">${ts.w}-${ts.l}</td>
-      <td class="num">${ts.gp ? Math.round(ts.pace) : '–'}</td><td class="num diff ${ts.gp ? cls(Math.round(diff)) : ''}">${ts.gp ? fmtPts(diff) : '–'}</td>${cells}</tr>`;
+      <td class="num">${ts.gp ? Math.round(ts.pace) : '–'}</td><td class="num diff ${ts.gp ? cls(diff) : ''}">${ts.gp ? fmtPts(diff) : '–'}</td>${cells}</tr>`;
   }).join('');
   return `<div class="card"><div class="grid-wrap"><table class="sheet">
     <thead><tr><th class="tcol">Team</th><th>Line</th><th>W-L</th><th>Pace</th><th>vs Line</th>
