@@ -947,6 +947,69 @@ app.post('/nba-ous/refresh', async function(req, res) {
   res.json(await nbaousStandingsJob(snap));
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// THE BERNIE BET — final-day countdown posts (Sunday Bets bot)
+// ═══════════════════════════════════════════════════════════════════
+// bernie.html counts down to midnight ET starting Oct 22, 2026. Posts at 24h
+// left, then every 6 hours from 8am ET on the last day (each with an absurd-but-true
+// Bernie fact), then a deadline post at zero that sends people to the page;
+// the server can't know the outcome, so it never declares a winner.
+// Each post is flagged at bernie_bet/notify/<id> so redeploys don't repeat it.
+// A post missed while the server was down goes out on boot only if it's under
+// 2 hours late, so a restart never dumps a backlog.
+const BERNIE_END = new Date('2026-10-22T04:00:00Z'); // midnight ET, Oct 22
+const BERNIE_LATE_MS = 2 * 3600 * 1000;
+const BERNIE_LINK = '🔗 gyou.in/bernie.html';
+const bernieAt = function(hoursLeft) { return new Date(BERNIE_END.getTime() - hoursLeft * 3600 * 1000); };
+const BERNIE_POSTS = [
+  { id: 'h24', at: bernieAt(24), text: ['☠️ THE BERNIE BET: 24 HOURS REMAIN ☠️', '',
+    'October 22, 2016. Max and Andrew shake on $100 and one question: will Bernie Sanders still be alive in ten years?', '',
+    '3,651 days down. One to go.', '',
+    'Bernie is 85. The actuarial tables give him a 99.97% chance of seeing midnight. But actuarial tables have been wrong before.', '',
+    'At 12:00am ET Thursday, it\'s over. One man collects. One man pays.', '',
+    '🕯️ Watch the final countdown: gyou.in/bernie.html'] },
+  { id: 'h16', at: bernieAt(16), text: ['☠️ BERNIE WATCH · 16 HOURS REMAIN', '',
+    'Absurd but true: in 1987, Bernie Sanders released a folk album called "We Shall Overcome." He does not sing on it. He talks.', '',
+    'Somewhere, that album is playing. Somewhere, Max and Andrew are refreshing.', '',
+    '⏳ Bet ends 12:00am ET tonight', BERNIE_LINK] },
+  { id: 'h10', at: bernieAt(10), text: ['☠️ BERNIE WATCH · 10 HOURS REMAIN', '',
+    'Absurd but true: Bernie\'s first-ever election win was the 1981 Burlington mayor\'s race. He won by 10 votes. Ten.', '',
+    'A decade-long bet. $100 on the line. It could come down to the wire, and Bernie knows all about the wire.', '',
+    '⏳ 10 hours left', BERNIE_LINK] },
+  { id: 'h4', at: bernieAt(4), text: ['☠️ BERNIE WATCH · 4 HOURS REMAIN', '',
+    'Absurd but true: in 2016, a small bird landed on Bernie\'s podium mid-speech in Portland. The crowd went berserk. The internet named it Birdie Sanders.', '',
+    'Max, Andrew: no bird can save you now. Only time.', '',
+    '⏳ Bet ends at midnight ET', BERNIE_LINK] },
+  { id: 'end', at: BERNIE_END, text: ['⏰ IT\'S MIDNIGHT. IT\'S OVER. IS HE DEAD?', '',
+    'Ten years. 3,652 days. One question.', '',
+    'Check the proof of life, then Max and Andrew settle up:', BERNIE_LINK] },
+];
+async function bernieSend(post) {
+  if (!firebaseReady) return;
+  try {
+    const flag = admin.database().ref('bernie_bet/notify/' + post.id);
+    if ((await flag.get()).exists()) return;
+    await bbqcPost(post.text.join('\n'));
+    await flag.set(new Date().toISOString());
+    console.log('[Bernie] posted ' + post.id);
+  } catch (e) { console.error('[Bernie] post ' + post.id + ' failed:', e.message); }
+}
+if (firebaseReady) {
+  BERNIE_POSTS.forEach(function(post) {
+    const wait = post.at.getTime() - Date.now();
+    if (wait > 0) setTimeout(function() { bernieSend(post); }, wait);
+    else if (-wait < BERNIE_LATE_MS) bernieSend(post); // missed while the server was down
+  });
+  const upcoming = BERNIE_POSTS.filter(function(p) { return p.at.getTime() > Date.now(); }).map(function(p) { return p.id; });
+  if (upcoming.length) console.log('[Bernie] scheduled: ' + upcoming.join(', ') + ' | dryRun=' + BBQC_DRY_RUN);
+}
+// Preview every post's text and send time.
+app.get('/bernie/preview', function(req, res) {
+  res.type('text').send(BERNIE_POSTS.map(function(p) {
+    return '── ' + p.id + ' @ ' + p.at.toLocaleString('en-US', { timeZone: 'America/New_York' }) + ' ET ──\n' + p.text.join('\n');
+  }).join('\n\n'));
+});
+
 // ── Timed posts: 11am ET reminder + 1pm ET reveal (Sundays) ───────
 // Both target the open board dated for today (ET) and fire once per board.
 async function bbqcReminderJob() {
