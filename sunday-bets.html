@@ -329,7 +329,9 @@ table.gmtable{border-collapse:collapse;width:100%;table-layout:fixed;}
     <div class="field"><label>Date — the Sunday of the slate</label><input id="nw-date" type="date">
       <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Drives the GroupMe timing: slate posts 10pm ET the night before, reminder 11am &amp; reveal 1pm ET that day.</div>
     </div>
-    <div class="field"><label>Posted by</label><input id="nw-poster" type="text" value="BBQC"></div>
+    <div class="field"><label>Slate set by (name)</label><input id="nw-poster" type="text" placeholder="e.g. Zach">
+      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Whoever's curating this week's slate. Shows on the board and brands the GroupMe post as "{name} Edition".</div>
+    </div>
     <div class="field"><label>Backstop this week (optional)</label>
       <select id="nw-house"><option value="">None — pure peer-to-peer</option></select>
       <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">The Backstop doesn't pick. On any bet where everyone else lands on the same side, the Backstop takes the empty side and pairs off against the whole field.</div>
@@ -878,7 +880,7 @@ function weekCard(w, collapsed = false) {
       ${isHistory ? `<span class="chev ${collapsed ? '' : 'open'}">▶</span>` : ''}
       <span class="week-title">${esc(w.title || 'Week')}</span>
       <span class="week-date">${w.date ? new Date(w.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
-      <span class="poster-chip">📋 ${esc(w.poster || 'BBQC')}</span>
+      ${w.poster ? `<span class="poster-chip">✍️ ${esc(w.poster)}</span>` : ''}
       ${w.house ? `<span class="poster-chip" style="color:#7B1FA2;background:#f3ecf7;">🏠 ${esc(w.house)}</span>` : ''}
       ${statusChip}
     </div>`;
@@ -1321,7 +1323,7 @@ window.openNewWeek = function() {
   document.getElementById('nw-save-btn').textContent = 'Post Board';
   const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
   document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
-  document.getElementById('nw-poster').value = 'BBQC';
+  document.getElementById('nw-poster').value = '';
   fillHouseSelect('');
   const d = new Date();
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
@@ -1339,7 +1341,7 @@ window.openEditWeek = function(weekId) {
   document.getElementById('nw-save-btn').textContent = 'Save changes';
   document.getElementById('nw-title').value = w.title || '';
   document.getElementById('nw-date').value = w.date || '';
-  document.getElementById('nw-poster').value = w.poster || 'BBQC';
+  document.getElementById('nw-poster').value = w.poster || '';
   fillHouseSelect(w.house || '');
   for (let i = 1; i <= 5; i++) {
     const ln = w.lines?.[`l${i}`] || {};
@@ -1356,7 +1358,7 @@ window.saveNewWeek = async function() {
   const prev = editing ? weeks[editing] : null;
   const title = document.getElementById('nw-title').value.trim();
   const date = document.getElementById('nw-date').value;
-  const poster = document.getElementById('nw-poster').value.trim() || 'BBQC';
+  const poster = document.getElementById('nw-poster').value.trim();
   const lines = {};
   for (let i = 1; i <= 5; i++) {
     const header = document.getElementById(`nw-h${i}`).value.trim();

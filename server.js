@@ -685,8 +685,10 @@ function bbqcSlateMsg(w) {
     return (i + 1) + '. ' + (ln.header ? ln.header + ': ' : '') + ln.a + ' vs ' + ln.b;
   }).filter(Boolean);
   const houseLine = w.house ? ['', '🏠 Backstop this week: ' + w.house + ' — takes the empty side of any bet the field is unanimous on.'] : [];
-  return ['🔥 Sunday Bets — ' + (w.title || 'This week') + ' is up!',
-    'Pick a side on 1, 3, or 5. Blind until the 1pm ET reveal.', '']
+  const title = w.title || 'This week';
+  const head = w.poster ? '🔥 Sunday Bets — ' + w.poster + ' Edition' : '🔥 Sunday Bets — ' + title + ' is up!';
+  const sub = (w.poster ? title + ' is up! ' : '') + 'Pick a side on 1, 3, or 5. Blind until the 1pm ET reveal.';
+  return [head, sub, '']
     .concat(bets).concat(houseLine).concat(['', '🔗 ' + BBQC_PAGE]).join('\n');
 }
 function bbqcLockMsg(name, count, lockedCount, w) {
