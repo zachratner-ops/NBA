@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 Midterms · Giesener, Are You In?</title>
+<meta property="og:title" content="2026 Midterms · Giesener, Are You In?">
+<meta property="og:description" content="Call the margin in the 14 competitive Senate races, plus over/under on Democratic House seats. Picks lock at 7am ET on Election Day.">
+<meta property="og:url" content="https://gyou.in/midterms.html">
+<meta property="og:type" content="website">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:14px;min-height:100vh;}
+
+.hero{max-width:920px;margin:0 auto;padding:28px 20px 4px;}
+.hero-title{font-size:24px;font-weight:800;letter-spacing:-.02em;}
+.hero-sub{font-size:13px;color:#888;margin-top:4px;line-height:1.5;}
+.main{max-width:920px;margin:0 auto;padding:20px;}
+
+.rules-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;margin-top:14px;}
+.rules-card summary{padding:10px 16px;font-size:12px;font-weight:700;color:#666;cursor:pointer;}
+.rules-body{padding:0 16px 14px;font-size:13px;line-height:2;color:#444;}
+
+/* Tabs */
+.sb-tabs{display:flex;gap:0;border-bottom:1px solid #e8e8e8;margin-bottom:18px;}
+.sb-tab{padding:9px 20px;font-size:13px;font-weight:700;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;align-items:center;gap:6px;}
+.sb-tab.active{color:#1a1a1a;border-bottom-color:#1a1a1a;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#2e7d32;display:inline-block;}
+
+.card{background:#fff;border:0.5px solid #e0e0e0;border-radius:14px;overflow:hidden;margin-bottom:14px;}
+.card-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:0.5px solid #f0f0f0;}
+.card-title{font-size:15px;font-weight:800;}
+.card-sub{font-size:12px;color:#999;}
+.status-chip{margin-left:auto;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;}
+.status-open{background:#e8f5e9;color:#2e7d32;}
+
+/* Race sliders */
+.grp{padding:8px 16px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#999;background:#fafaf8;border-bottom:0.5px solid #f0f0ee;}
+.race{padding:12px 16px 10px;border-bottom:0.5px solid #f3f3f1;}
+.race:last-child{border-bottom:none;}
+.race-top{display:flex;align-items:baseline;gap:8px;}
+.race-st{font-weight:800;font-size:14px;}
+.race-st small{font-weight:600;color:#aaa;font-size:11px;margin-left:4px;}
+.race-val{margin-left:auto;font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;min-width:60px;text-align:right;}
+.race-names{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:600;margin-top:6px;}
+.race-names .d{color:#1565c0;}
+.race-names .r{color:#c62828;text-align:right;}
+.race-names small{color:#aaa;font-weight:600;}
+.slide-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.nudge{width:30px;height:30px;border-radius:8px;border:1px solid #ddd;background:#fff;font-size:15px;font-weight:700;cursor:pointer;color:#555;flex-shrink:0;line-height:1;}
+.nudge:hover{border-color:#999;}
+.nudge:disabled{opacity:.35;cursor:not-allowed;}
+input[type=range].mg{flex:1;min-width:0;-webkit-appearance:none;appearance:none;height:28px;background:transparent;cursor:pointer;}
+input[type=range].mg:disabled{cursor:not-allowed;}
+input[type=range].mg::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--trk);}
+input[type=range].mg::-moz-range-track{height:6px;border-radius:3px;background:var(--trk);}
+input[type=range].mg::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid var(--thumb,#888);margin-top:-8px;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+input[type=range].mg::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid var(--thumb,#888);box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.dcol{color:#1565c0;}
+.rcol{color:#c62828;}
+.house-line{font-size:12px;color:#888;margin-top:6px;}
+
+/* Claim bar */
+.claim-bar{padding:12px 16px;border-bottom:0.5px solid #f0f0f0;background:#fafaf8;}
+.claim-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.claim-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;}
+.name-chip{font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid #ddd;background:#fff;cursor:pointer;transition:all .1s;}
+.name-chip.active{color:#fff;border-color:transparent;}
+.claim-status{font-size:12px;color:#888;margin-top:10px;line-height:1.6;}
+.claim-actions{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;}
+.locked-in{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+.locked-chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;color:#fff;}
+.tally{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;padding:3px 10px;border-radius:20px;background:#f0f0ee;color:#555;}
+.sticky-bar{position:sticky;top:48px;z-index:5;}
+
+.btn{background:#1a1a1a;color:#fff;border:none;font-size:13px;font-weight:600;padding:8px 16px;border-radius:7px;cursor:pointer;font-family:inherit;}
+.btn:hover{background:#333;}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-sm{font-size:12px;padding:5px 12px;border-radius:6px;}
+.btn-outline{background:transparent;color:#1a1a1a;border:1px solid #ccc;}
+.btn-outline:hover{background:#f0f0ee;}
+.btn-green{background:#2e7d32;}
+.btn-green:hover{background:#1b5e20;}
+.btn-amber{background:#e65100;}
+.btn-amber:hover{background:#bf360c;}
+
+/* Countdown */
+.countdown{display:flex;align-items:center;gap:10px;padding:12px 16px;background:linear-gradient(120deg,#fffaf0,#fff);border-bottom:0.5px solid #f0eede;font-size:13px;}
+.countdown b{font-variant-numeric:tabular-nums;}
+
+/* Standings list */
+.sl-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:0.5px solid #f3f3f1;cursor:pointer;}
+.sl-row:hover{background:#fafaf8;}
+.sl-row.me{background:#f7f9fd;}
+.sl-rank{width:16px;text-align:right;color:#bbb;font-weight:700;font-variant-numeric:tabular-nums;}
+.sl-name{flex:1;min-width:0;font-weight:600;display:flex;align-items:center;gap:8px;}
+.sl-row.me .sl-name{font-weight:800;}
+.sl-sub{font-size:12px;color:#999;font-variant-numeric:tabular-nums;}
+.sl-pts{width:56px;text-align:right;font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;display:inline-block;}
+
+/* Expanded picks */
+.my-picks{padding:0 16px 8px 42px;border-bottom:0.5px solid #f3f3f1;background:#fcfcfb;}
+.pk{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:0.5px solid #f5f5f3;font-size:13px;}
+.pk .t{flex:1;min-width:0;}
+.pk .t small{display:block;color:#999;font-size:11px;margin-top:1px;}
+.pk .v{font-weight:800;font-variant-numeric:tabular-nums;width:52px;text-align:right;}
+.miss{color:#888;}
+.good{color:#2e7d32;}
+.bad{color:#c62828;}
+
+/* Races tab */
+.rc{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:0.5px solid #f3f3f1;cursor:pointer;}
+.rc:hover{background:#fafaf8;}
+.rc .t{flex:1;min-width:0;}
+.rc .t small{display:block;color:#999;font-size:11px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rc .res{font-weight:800;font-variant-numeric:tabular-nums;text-align:right;}
+.rc .res small{display:block;font-size:10px;font-weight:700;color:#aaa;}
+.rc-picks{padding:2px 16px 8px 30px;background:#fcfcfb;border-bottom:0.5px solid #f3f3f1;}
+.rp{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px;border-top:0.5px solid #f5f5f3;}
+.rp .nm{flex:1;display:flex;align-items:center;gap:7px;font-weight:600;}
+.rp .pv{font-weight:800;font-variant-numeric:tabular-nums;width:56px;text-align:right;}
+.rp .ms{width:52px;text-align:right;font-variant-numeric:tabular-nums;color:#999;font-size:12px;}
+
+/* Board grid */
+.grid-wrap{overflow-x:auto;}
+table.sheet{border-collapse:separate;border-spacing:0;font-size:12px;width:100%;}
+.sheet th,.sheet td{border-bottom:1px solid #ececea;border-right:1px solid #f3f3f1;padding:6px 8px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.sheet th{background:#f5f5f3;font-weight:800;font-size:11px;position:sticky;top:0;}
+.sheet .tcol{position:sticky;left:0;background:#fff;text-align:left;font-weight:700;z-index:1;border-right:1px solid #e0e0dc;}
+.sheet th.tcol{background:#f5f5f3;z-index:2;}
+.sheet td.pc{font-weight:700;}
+.sheet td.best{background:#e8f5e9;}
+.sheet td.wrong{background:#fdecea;}
+.sheet tr.tot td{font-weight:800;border-top:2px solid #1a1a1a;background:#fafaf8;}
+.legend{font-size:11px;color:#999;padding:10px 16px;line-height:1.7;border-top:0.5px solid #f0f0f0;}
+.legend span{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin:0 3px 0 8px;}
+
+/* Comm */
+.comm-panel{background:#fffbeb;border:1px solid #f9a825;border-radius:12px;padding:12px 16px;margin-bottom:16px;}
+.comm-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#996c00;margin-bottom:8px;}
+.comm-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.comm-note{font-size:12px;color:#996c00;margin-top:8px;line-height:1.5;}
+
+/* Modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:520px;margin-top:30px;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.modal h2{font-size:17px;font-weight:800;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#888;margin-bottom:5px;}
+.field input,.field select{width:100%;border:1px solid #ddd;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;background:#fff;}
+.field input:focus{outline:none;border-color:#1a1a1a;}
+.field-hint{font-size:11px;color:#999;margin-top:5px;line-height:1.4;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+.res-row{display:grid;grid-template-columns:1fr 90px 54px;gap:8px;align-items:center;padding:5px 0;border-bottom:0.5px solid #f3f3f1;font-size:13px;}
+.res-row input[type=text]{border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit;width:100%;text-align:right;}
+.res-row label{font-size:11px;color:#888;display:flex;align-items:center;gap:4px;justify-content:flex-end;}
+.res-row small{color:#aaa;font-size:11px;}
+
+.empty{text-align:center;padding:44px 20px;color:#999;}
+.empty-icon{font-size:30px;margin-bottom:10px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:24px;transition:transform .25s;z-index:1200;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.demo-banner{background:#7B1FA2;color:#fff;text-align:center;font-size:12px;font-weight:700;padding:6px;}
+
+/* Site password gate */
+.pw-gate{display:none;position:fixed;inset:0;background:#1a1a1a;z-index:9999;align-items:center;justify-content:center;}
+.pw-gate.show{display:flex;}
+.pw-box{text-align:center;padding:40px 20px;max-width:340px;width:100%;}
+.pw-title{font-size:26px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
+.pw-sub{font-size:14px;color:#666;margin-bottom:32px;}
+.pw-input{width:100%;background:#2a2a2a;border:1px solid #333;border-radius:10px;padding:13px 16px;font-size:16px;color:#fff;font-family:inherit;text-align:center;letter-spacing:.08em;}
+.pw-input:focus{outline:none;border-color:#555;}
+.pw-input::placeholder{color:#555;letter-spacing:0;}
+.pw-btn{margin-top:12px;width:100%;background:#fff;color:#1a1a1a;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;}
+.pw-btn:hover{background:#ddd;}
+.pw-error{font-size:12px;color:#e57373;margin-top:10px;min-height:16px;}
+
+@media(max-width:600px){
+  .sb-tab{flex:1;justify-content:center;padding:9px 6px;font-size:12px;}
+  .race{padding:11px 12px 9px;}
+  .sheet th,.sheet td{padding:5px 6px;}
+}
+</style>
+<link rel="stylesheet" href="site.css">
+<script src="site.js" defer></script>
+</head>
+<body>
+
+<div class="pw-gate" id="pw-gate">
+  <div class="pw-box">
+    <div class="pw-title">Giesener...<br>Are you In?</div>
+    <div class="pw-sub">Enter the password to continue</div>
+    <input class="pw-input" id="pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')pwCheck()">
+    <button class="pw-btn" onclick="pwCheck()">Enter →</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
+
+<header class="sitebar">
+  <a class="sb-home" href="index.html" aria-label="Home">🏠</a>
+  <div class="sb-title">🗳️ 2026 Midterms</div>
+  <div class="sb-actions">
+    <button class="sb-btn" id="comm-toggle" onclick="toggleComm()" aria-label="Commissioner mode">⚙</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-title">2026 Midterms 🗳️</div>
+  <div class="hero-sub">Slide each competitive Senate race to the margin you think it finishes at, then take the over or under on Democratic House seats. Closest to the real numbers wins. Picks lock at 7am ET on Election Day.</div>
+  <details class="rules-card">
+    <summary>📖 Full rules</summary>
+    <div class="rules-body">
+      🎚️ <strong>The 14 competitive Senate races</strong>: everything the Cook Political Report doesn't rate Solid, including the Ohio special. Pick the <strong>final margin</strong> between the two candidates listed, in half points<br>
+      🧮 Your score is your <strong>total miss</strong>: add up how far off each margin was. <strong>Lowest total wins</strong><br>
+      📏 Example: you pick D+4 and it ends R+1 → <strong>5 points off</strong>. You pick R+8 and it ends R+6 → <strong>2 off</strong><br>
+      🏛️ <strong>House:</strong> pick how many seats Democrats win. Landing on the wrong side of the line adds a <strong>penalty</strong> to your total. Closest seat count breaks ties<br>
+      🧑‍⚖️ Nebraska has no Democrat in the race, so the margin there is <strong>Dan Osborn (I) vs. Pete Ricketts</strong><br>
+      👀 Picks are <strong>blind</strong> until the lock. Standings update as the commissioner enters results; races still counting are marked
+    </div>
+  </details>
+</div>
+
+<div class="main">
+  <div id="comm-panel" style="display:none;" class="comm-panel">
+    <div class="comm-label">⚙ Commissioner Controls</div>
+    <div class="comm-actions" id="comm-actions"></div>
+    <div class="comm-note" id="comm-note"></div>
+  </div>
+
+  <div id="content"><div class="empty"><div class="empty-icon">🗳️</div>Loading…</div></div>
+</div>
+
+<!-- Setup modal -->
+<div class="overlay" id="setup-modal">
+  <div class="modal">
+    <h2>🏛️ House Line &amp; Lock</h2>
+    <div class="field"><label>Democratic House seats line</label><input id="setup-line" type="text" inputmode="decimal">
+      <div class="field-hint">Has to end in .5. 218 is a majority. Kalshi's seat ranges centered around 232-233 in late October.</div></div>
+    <div class="field"><label>Wrong-side penalty (points)</label><input id="setup-penalty" type="text" inputmode="decimal">
+      <div class="field-hint">Added to your total miss if your House number lands on the wrong side of the line.</div></div>
+    <div class="field"><label>Picks lock at (your local time)</label><input id="setup-lock" type="datetime-local">
+      <div class="field-hint">Default is 7:00am ET on Election Day, Tue Nov 3.</div></div>
+    <div id="setup-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('setup-modal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveSetup()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Results modal -->
+<div class="overlay" id="results-modal">
+  <div class="modal" style="max-width:480px;">
+    <h2>📊 Enter Results</h2>
+    <div class="field-hint" style="margin-bottom:10px;">Margins as <b>D+3.2</b> / <b>R+5</b> (or plain numbers, positive = D/I side). Leave blank if nothing's in yet. Check <b>Final</b> once the race is called and the count is basically done.</div>
+    <div id="results-rows"></div>
+    <div id="results-error" style="font-size:12px;color:#c62828;min-height:16px;white-space:pre-line;margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('results-modal')">Cancel</button>
+      <button class="btn btn-green" onclick="saveResults()">Save results</button>
+    </div>
+  </div>
+</div>
+
+<!-- Seal picks modal -->
+<div class="overlay" id="seal-modal">
+  <div class="modal" style="max-width:420px;">
+    <h2>🔒 Lock In &amp; Seal</h2>
+    <div id="seal-recap" style="background:#f5f5f3;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.7;margin-bottom:14px;max-height:320px;overflow-y:auto;"></div>
+    <div style="font-size:12px;color:#888;line-height:1.5;margin-bottom:12px;">
+      Once sealed, nobody (including you) can see or change these picks until the lock.
+      If you want to be able to look at your own picks later, set an optional 4-digit PIN.
+    </div>
+    <div class="field"><label>PIN (optional)</label>
+      <input id="seal-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="4 digits or leave blank" autocomplete="off"></div>
+    <div id="seal-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('seal-modal')">Back</button>
+      <button class="btn btn-green" onclick="confirmSeal()">Seal my picks 🔒</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comm password modal -->
+<div class="overlay" id="comm-pw-modal">
+  <div class="modal" style="max-width:340px;">
+    <h2>Commissioner Mode</h2>
+    <div class="field"><input id="comm-pw-input" type="password" placeholder="password" onkeydown="if(event.key==='Enter')checkCommPw()"></div>
+    <div id="comm-pw-error" style="font-size:12px;color:#c62828;min-height:16px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('comm-pw-modal')">Cancel</button>
+      <button class="btn" onclick="checkCommPw()">Enter</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyArXeMh4hCEyo2DqXfig3yD03R6oCPZIyk",
+  authDomain: "giesener-bets.firebaseapp.com",
+  databaseURL: "https://giesener-bets-default-rtdb.firebaseio.com",
+  projectId: "giesener-bets",
+  storageBucket: "giesener-bets.firebasestorage.app",
+  messagingSenderId: "728665249382",
+  appId: "1:728665249382:web:ec1635941b04d3aba7ffa7"
+};
+
+const MEMBERS = ['Adam','Andrew','Ben','Jared','Marc','Matt','Max','Mike','Zach'];
+const COLORS = {
+  Adam:'#455A64', Andrew:'#E65100', Ben:'#C62828', Jared:'#2E7D32',
+  Marc:'#F9A825', Matt:'#AD1457', Max:'#4E342E', Mike:'#0277BD', Zach:'#1565C0'
+};
+const COMM_PW = 'golf';
+const ROOT = 'midterms/2026';
+const DEFAULT_LOCK = '2026-11-03T12:00:00Z'; // 7am ET Election Day (EST by then)
+const DEFAULT_HOUSE_LINE = 232.5; // Kalshi seat ranges, late Oct
+const DEFAULT_PENALTY = 10;
+const HOUSE_SEATS = 435, HOUSE_MIN = 180, HOUSE_MAX = 270;
+const MAX_MARGIN = 30;
+// Seats not up in 2026 (34 D/I, 31 R) plus Cook's Solid races, which aren't in the game (9 D, 12 R).
+const SENATE_HOLD = { D: 43, R: 43 };
+
+// The competitive races: everything Cook doesn't rate Solid (Oct 20, 2026).
+// `d` is the non-Republican side of the margin (an independent in Nebraska);
+// `held` is the party that holds the seat now. Ratings set where each slider starts.
+const RACES = [
+  { k: 'AK', st: 'Alaska', d: 'Mary Peltola', r: 'Dan Sullivan', held: 'R', rating: 'Toss-up' },
+  { k: 'GA', st: 'Georgia', d: 'Jon Ossoff', r: 'Mike Collins', held: 'D', rating: 'Likely D' },
+  { k: 'IA', st: 'Iowa', d: 'Josh Turek', r: 'Ashley Hinson', held: 'R', rating: 'Toss-up', note: 'Open' },
+  { k: 'KS', st: 'Kansas', d: 'Adam Hamilton', r: 'Roger Marshall', held: 'R', rating: 'Toss-up' },
+  { k: 'ME', st: 'Maine', d: 'Troy Jackson', r: 'Susan Collins', held: 'R', rating: 'Toss-up' },
+  { k: 'MI', st: 'Michigan', d: 'Abdul El-Sayed', r: 'Mike Rogers', held: 'D', rating: 'Toss-up', note: 'Open' },
+  { k: 'MN', st: 'Minnesota', d: 'Peggy Flanagan', r: 'Michele Tafoya', held: 'D', rating: 'Lean D', note: 'Open' },
+  { k: 'MS', st: 'Mississippi', d: 'Scott Colom', r: 'Cindy Hyde-Smith', held: 'R', rating: 'Likely R' },
+  { k: 'NE', st: 'Nebraska', d: 'Dan Osborn', dParty: 'I', r: 'Pete Ricketts', held: 'R', rating: 'Likely R' },
+  { k: 'NH', st: 'New Hampshire', d: 'Chris Pappas', r: 'John E. Sununu', held: 'D', rating: 'Lean D', note: 'Open' },
+  { k: 'NC', st: 'North Carolina', d: 'Roy Cooper', r: 'Michael Whatley', held: 'R', rating: 'Likely D', note: 'Open' },
+  { k: 'OH', st: 'Ohio', d: 'Sherrod Brown', r: 'Jon Husted', held: 'R', rating: 'Toss-up', note: 'Special' },
+  { k: 'SC', st: 'South Carolina', d: 'Annie Andrews', r: 'Darline Graham', held: 'R', rating: 'Lean R' },
+  { k: 'TX', st: 'Texas', d: 'James Talarico', r: 'Ken Paxton', held: 'R', rating: 'Toss-up' },
+];
+const RACE = Object.fromEntries(RACES.map(r => [r.k, r]));
+// Where each slider starts before you touch it (positive = D/I side).
+const START = { 'Likely D': 8, 'Lean D': 4, 'Toss-up': 0, 'Lean R': -4, 'Likely R': -8 };
+const dParty = r => r.dParty || 'D';
+
+// ── Store ──────────────────────────────────────────────────────────
+// ?demo runs against an in-memory copy (nothing touches Firebase).
+const DEMO = new URLSearchParams(location.search).has('demo');
+const DEMO_LIVE = new URLSearchParams(location.search).get('demo') === 'live';
+let state = {};
+const store = DEMO ? (() => {
+  const subs = [];
+  const at = (path, make) => {
+    const parts = path.split('/').filter(Boolean);
+    let o = state;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (o[parts[i]] == null) { if (!make) return [null]; o[parts[i]] = {}; }
+      o = o[parts[i]];
+    }
+    return [o, parts[parts.length - 1]];
+  };
+  const fire = () => subs.forEach(f => f());
+  return {
+    subscribe: f => { subs.push(f); setTimeout(f, 0); },
+    set: async (p, v) => { const [o, k] = at(p, true); if (v == null) delete o[k]; else o[k] = JSON.parse(JSON.stringify(v)); fire(); },
+    update: async (p, v) => { const [o, k] = at(p, true); o[k] = { ...(o[k] || {}), ...JSON.parse(JSON.stringify(v)) }; fire(); },
+    remove: async p => { const [o, k] = at(p, false); if (o) delete o[k]; fire(); },
+  };
+})() : (() => {
+  const db = getDatabase(initializeApp(firebaseConfig));
+  return {
+    subscribe: f => onValue(ref(db, ROOT), snap => { state = snap.val() || {}; f(); }),
+    set: (p, v) => set(ref(db, `${ROOT}/${p}`), v),
+    update: (p, v) => update(ref(db, `${ROOT}/${p}`), v),
+    remove: p => remove(ref(db, `${ROOT}/${p}`)),
+  };
+})();
+if (DEMO) document.body.insertAdjacentHTML('afterbegin', '<div class="demo-banner">DEMO MODE: nothing here is saved</div>');
+
+let isComm = false;
+let tab = localStorage.getItem('mid26_tab') || null;
+let myName = localStorage.getItem('mid26_name') || null;
+// Draft lives in localStorage per name, so a refresh halfway through 36 sliders loses nothing.
+// Shape: {AK: -2.5, ..., HOUSE: 231}; races you haven't touched are absent and use START.
+let draft = loadDraft();
+
+store.subscribe(render);
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const color = m => COLORS[m] || '#555';
+const roundPts = n => Math.sign(n) * Math.round(Math.abs(n));
+// Margin label: positive is the D/I side.
+const fmtM = (m, r) => m === 0 ? 'Even' : m > 0 ? `${r ? dParty(r) : 'D'}+${+m.toFixed(1)}` : `R+${+(-m).toFixed(1)}`;
+const mCls = m => m > 0 ? 'dcol' : m < 0 ? 'rcol' : '';
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function loadDraft() {
+  try { return myName ? JSON.parse(localStorage.getItem('mid26_draft_' + myName) || '{}') : {}; } catch { return {}; }
+}
+function saveDraft() {
+  try { if (myName) localStorage.setItem('mid26_draft_' + myName, JSON.stringify(draft)); } catch {}
+}
+
+// ── Sealed-pick storage (same scheme as Sunday Bets / NBA O/U) ────
+// Scrambled so casual database browsing shows gibberish. A deterrent,
+// not cryptography.
+const OBF_KEY = 'midterms-seal-v1';
+function obf(str, salt) {
+  const k = salt + OBF_KEY;
+  let out = '';
+  for (let i = 0; i < str.length; i++) out += String.fromCharCode(str.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+  return btoa(out);
+}
+function deobf(b64, salt) {
+  try {
+    const s = atob(b64), k = salt + OBF_KEY;
+    let out = '';
+    for (let i = 0; i < s.length; i++) out += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+    return JSON.parse(out);
+  } catch { return null; }
+}
+async function sha256hex(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function decodedPicks() {
+  const out = {};
+  Object.entries(state.picks || {}).forEach(([n, e]) => {
+    const d = e && e.seal ? deobf(e.seal, e.salt || '') : null;
+    if (d) out[n] = d;
+  });
+  return out;
+}
+
+// ── Phase ──────────────────────────────────────────────────────────
+const lockAt = () => new Date(state.config?.lockAt || DEFAULT_LOCK).getTime();
+const houseLine = () => state.config?.houseLine ?? DEFAULT_HOUSE_LINE;
+const penalty = () => state.config?.penalty ?? DEFAULT_PENALTY;
+const results = () => state.results || {};
+// open (before lock) → locked (results coming in) → final (every race + House final)
+function phase() {
+  if (Date.now() < lockAt()) return 'open';
+  const res = results();
+  const done = RACES.every(r => res[r.k]?.final) && res.HOUSE?.final;
+  return done ? 'final' : 'locked';
+}
+
+// ── Scoring ────────────────────────────────────────────────────────
+const pickOf = (p, k) => p[k] ?? START[RACE[k].rating];
+// House side is settled once either party passes the line, or the count is final.
+function houseStatus() {
+  const h = results().HOUSE;
+  if (!h || h.d == null) return null;
+  const line = houseLine();
+  const side = h.d > line ? 'O' : (h.r != null && h.r > HOUSE_SEATS - line) || h.final ? 'U' : null;
+  return { ...h, side };
+}
+function scorePlayer(p) {
+  const res = results();
+  const rows = RACES.map(r => {
+    const pick = pickOf(p, r.k);
+    const a = res[r.k];
+    if (!a || a.m == null) return { r, pick, a: null };
+    const miss = Math.abs(pick - a.m);
+    return { r, pick, a, miss, called: Math.sign(pick) === Math.sign(a.m) && a.m !== 0 };
+  });
+  const scored = rows.filter(x => x.a);
+  const hs = houseStatus();
+  const hPick = p.HOUSE;
+  const hSide = hPick > houseLine() ? 'O' : 'U';
+  const house = { pick: hPick, side: hSide, status: hs,
+    wrong: hs?.side ? hs.side !== hSide : null,
+    off: hs?.final ? Math.abs(hPick - hs.d) : null };
+  const total = scored.reduce((s, x) => s + x.miss, 0) + (house.wrong ? penalty() : 0);
+  return { rows, total, n: scored.length, called: scored.filter(x => x.called).length, house };
+}
+// Senate seats a card implies: seats not up, plus every race it has going to the D/I side.
+function impliedSenate(p) {
+  const d = RACES.filter(r => pickOf(p, r.k) > 0).length;
+  return { D: SENATE_HOLD.D + d, R: SENATE_HOLD.R + RACES.length - d };
+}
+
+// Re-render each half minute so the countdown ticks and the board flips at lock.
+setInterval(() => { if (phase() === 'open' || Date.now() - lockAt() < 120000) { if (!window.mDrag) render(); } }, 30000);
+
+// ── Rendering ──────────────────────────────────────────────────────
+function render() {
+  const ph = phase();
+  renderComm(ph);
+  const el = document.getElementById('content');
+  if (ph === 'open') { el.innerHTML = pickCardHtml(); return; }
+  const t = ['races', 'board'].includes(tab) ? tab : 'standings';
+  const tabsBar = `<div class="sb-tabs">
+    <div class="sb-tab ${t === 'standings' ? 'active' : ''}" onclick="switchTab('standings')">Standings${ph === 'locked' ? ' <span class="live-dot"></span>' : ''}</div>
+    <div class="sb-tab ${t === 'races' ? 'active' : ''}" onclick="switchTab('races')">Races</div>
+    <div class="sb-tab ${t === 'board' ? 'active' : ''}" onclick="switchTab('board')">Board</div>
+  </div>`;
+  el.innerHTML = tabsBar + (t === 'board' ? boardHtml() : t === 'races' ? racesHtml() : standingsHtml(ph));
+}
+window.switchTab = function(t) { tab = t; localStorage.setItem('mid26_tab', t); render(); };
+
+function countdownHtml() {
+  const ms = lockAt() - Date.now();
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms / 36e5) % 24, m = Math.floor(ms / 6e4) % 60;
+  const when = new Date(lockAt()).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+  return `<div class="countdown">⏱ Picks lock <b>${when} ET</b> · <b>${d ? d + 'd ' : ''}${h}h ${m}m</b> to go</div>`;
+}
+
+const canEditPicks = () => phase() === 'open' && myName && !(state.picks && state.picks[myName]);
+
+// Track: gray, with the stretch from center to the thumb filled in the leaning party's color.
+// The input runs R-lean left→right reversed, so value v = −margin (D on the left).
+function trackStyle(m, min, max, center) {
+  const pct = v => (v - min) / (max - min) * 100;
+  const a = pct(center), b = pct(m);
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  const c = m === center ? '#bbb' : (m < center ? '#1565c0' : '#c62828');
+  return `--trk:linear-gradient(to right,#e6e6e3 0 ${lo}%,${c} ${lo}% ${hi}%,#e6e6e3 ${hi}% 100%);--thumb:${c}`;
+}
+const raceTrack = m => trackStyle(-m, -MAX_MARGIN, MAX_MARGIN, 0);
+const houseTrack = v => trackStyle(-v, -HOUSE_MAX, -HOUSE_MIN, -houseLine());
+
+function raceRowHtml(r, editable) {
+  const m = pickOf(draft, r.k);
+  const touched = draft[r.k] != null;
+  const dis = editable ? '' : 'disabled';
+  return `<div class="race" id="race-${r.k}">
+    <div class="race-top"><span class="race-st">${esc(r.st)}<small>${r.note ? esc(r.note) + ' · ' : ''}${esc(r.held)} seat</small></span>
+      <span class="race-val ${mCls(m)}" id="val-${r.k}" style="${touched ? '' : 'opacity:.45'}">${fmtM(m, r)}</span></div>
+    <div class="race-names"><span class="d">${esc(r.d)} <small>(${dParty(r)})</small></span><span class="r">${esc(r.r)} <small>(R)</small></span></div>
+    <div class="slide-row">
+      <button class="nudge" ${dis} onclick="nudge('${r.k}',0.5)" aria-label="Half point toward ${esc(r.d)}">‹</button>
+      <input type="range" class="mg" id="sl-${r.k}" min="${-MAX_MARGIN}" max="${MAX_MARGIN}" step="0.5" value="${-m}" ${dis}
+        style="${raceTrack(m)}" oninput="slide('${r.k}',this.value)" onpointerdown="mDrag=true" aria-label="${esc(r.st)} margin">
+      <button class="nudge" ${dis} onclick="nudge('${r.k}',-0.5)" aria-label="Half point toward ${esc(r.r)}">›</button>
+    </div>
+  </div>`;
+}
+
+function houseRowHtml(editable) {
+  const line = houseLine();
+  const v = draft.HOUSE;
+  const set_ = v != null;
+  const shown = set_ ? v : Math.ceil(line);
+  const dis = editable ? '' : 'disabled';
+  return `<div class="race" id="race-HOUSE">
+    <div class="race-top"><span class="race-st">Democratic House seats<small>line ${line}</small></span>
+      <span class="race-val" id="val-HOUSE" style="${set_ ? '' : 'opacity:.45'}">${houseLabel(v)}</span></div>
+    <div class="race-names"><span class="d">More Dems</span><span class="r">Fewer Dems</span></div>
+    <div class="slide-row">
+      <button class="nudge" ${dis} onclick="nudgeHouse(1)" aria-label="One more Democratic seat">‹</button>
+      <input type="range" class="mg" id="sl-HOUSE" min="${-HOUSE_MAX}" max="${-HOUSE_MIN}" step="1" value="${-shown}" ${dis}
+        style="${set_ ? houseTrack(v) : '--trk:#e6e6e3;--thumb:#bbb'}" oninput="slideHouse(this.value)" onpointerdown="mDrag=true" aria-label="Democratic House seats">
+      <button class="nudge" ${dis} onclick="nudgeHouse(-1)" aria-label="One fewer Democratic seat">›</button>
+    </div>
+    <div class="house-line" id="house-note">${set_ ? houseNote(v) : 'Drag to set your number. 218 is a majority.'}</div>
+  </div>`;
+}
+const houseLabel = v => v == null ? '–' : `${v} D`;
+function houseNote(v) {
+  const over = v > houseLine();
+  return `<b class="${over ? 'dcol' : 'rcol'}">${over ? 'Over' : 'Under'} ${houseLine()}</b> · ${v} D – ${HOUSE_SEATS - v} R · ${v >= 218 ? 'Dems take the House' : 'GOP holds the House'}`;
+}
+
+function pickCardHtml() {
+  const entries = state.picks || {};
+  const sealed = MEMBERS.filter(m => entries[m]);
+  const mine = myName && entries[myName];
+  const canEdit = !!canEditPicks();
+  const touched = RACES.filter(r => draft[r.k] != null).length;
+  const houseSet = draft.HOUSE != null;
+
+  let status;
+  if (!myName) status = 'Tap your name, then slide each race to the margin you think it ends at.';
+  else if (mine) status = `🔒 <strong>${esc(myName)} is locked in.</strong> Your picks stay sealed until 7am on Election Day. Need a redo? Ask the commissioner to unlock you.`;
+  else if (!houseSet) status = `Races you don't touch keep their starting spot (from the Cook rating). The Senate count assumes every Solid seat goes as rated. Set your House number to lock in.`;
+  else status = `Ready to lock in. Untouched races keep their starting spot.`;
+
+  const sen = impliedSenate(draft);
+  const claim = `<div class="claim-bar sticky-bar">
+    <div class="claim-row"><span class="claim-label">I'm</span>
+      ${MEMBERS.map(m => `<span class="name-chip ${m === myName ? 'active' : ''}" style="${m === myName ? `background:${color(m)}` : ''}" onclick="setMyName('${m}')">${entries[m] ? '🔒 ' : ''}${esc(m)}</span>`).join('')}
+    </div>
+    <div class="claim-status">${status}</div>
+    ${canEdit ? `<div class="claim-actions">
+      <span class="tally" id="tally-touched">${touched}/${RACES.length} set</span>
+      <span class="tally" id="tally-senate">Senate <span class="dcol">${sen.D}</span>–<span class="rcol">${sen.R}</span></span>
+      <button class="btn btn-sm btn-green" id="lock-btn" ${houseSet ? '' : 'disabled'} onclick="openSealModal()">🔒 Lock in</button>
+      ${touched || houseSet ? `<button class="btn btn-sm btn-outline" onclick="clearDraft()">Reset</button>` : ''}
+    </div>` : ''}
+    ${mine && mine.pinHash ? `<div class="claim-actions"><button class="btn btn-sm btn-outline" onclick="viewSealed()">👁 View my picks (PIN)</button></div>` : ''}
+    ${sealed.length ? `<div class="locked-in"><span class="claim-label">Locked in · ${sealed.length}/${MEMBERS.length}:</span>
+      ${sealed.map(m => `<span class="locked-chip" style="background:${color(m)}">🔒 ${esc(m)}</span>`).join('')}</div>` : ''}
+    ${isComm && sealed.length ? `<div class="locked-in"><span class="claim-label">Unlock (wipes their picks):</span>
+      ${sealed.map(m => `<button class="btn btn-sm btn-outline" onclick="unlockMember('${m}')">🔓 ${esc(m)}</button>`).join('')}</div>` : ''}
+  </div>`;
+
+  const senate = `<div class="grp">Senate</div>${RACES.slice().sort((x, y) => x.st.localeCompare(y.st)).map(r => raceRowHtml(r, canEdit)).join('')}`;
+
+  return `<div class="card">
+    <div class="card-head"><span class="card-title">Senate &amp; House</span>
+      <span class="card-sub">${RACES.length} Senate races · House line ${houseLine()}</span>
+      <span class="status-chip status-open">Open</span></div>
+    ${countdownHtml()}
+    ${claim}
+    <div class="grp">House</div>
+    ${houseRowHtml(canEdit)}
+    ${senate}
+  </div>`;
+}
+
+// Slider handlers patch only their own row: a full re-render would drop the drag.
+window.slide = function(k, v) {
+  if (!canEditPicks()) return;
+  draft[k] = -parseFloat(v) || 0;
+  saveDraft();
+  paintRace(k);
+};
+window.nudge = function(k, d) {
+  if (!canEditPicks()) return;
+  draft[k] = Math.max(-MAX_MARGIN, Math.min(MAX_MARGIN, pickOf(draft, k) + d));
+  saveDraft();
+  document.getElementById('sl-' + k).value = -draft[k];
+  paintRace(k);
+};
+function paintRace(k) {
+  const m = draft[k], r = RACE[k];
+  const val = document.getElementById('val-' + k);
+  val.textContent = fmtM(m, r);
+  val.className = 'race-val ' + mCls(m);
+  val.style.opacity = '';
+  document.getElementById('sl-' + k).setAttribute('style', raceTrack(m));
+  paintTallies();
+}
+window.slideHouse = function(v) {
+  if (!canEditPicks()) return;
+  draft.HOUSE = -parseInt(v, 10);
+  saveDraft();
+  paintHouse();
+};
+window.nudgeHouse = function(d) {
+  if (!canEditPicks()) return;
+  draft.HOUSE = Math.max(HOUSE_MIN, Math.min(HOUSE_MAX, (draft.HOUSE ?? Math.ceil(houseLine())) + d));
+  saveDraft();
+  document.getElementById('sl-HOUSE').value = -draft.HOUSE;
+  paintHouse();
+};
+function paintHouse() {
+  const v = draft.HOUSE;
+  const val = document.getElementById('val-HOUSE');
+  val.textContent = houseLabel(v);
+  val.style.opacity = '';
+  document.getElementById('sl-HOUSE').setAttribute('style', houseTrack(v));
+  document.getElementById('house-note').innerHTML = houseNote(v);
+  const btn = document.getElementById('lock-btn');
+  if (btn) btn.disabled = false;
+  paintTallies();
+}
+function paintTallies() {
+  const t = document.getElementById('tally-touched');
+  if (t) t.textContent = `${RACES.filter(r => draft[r.k] != null).length}/${RACES.length} set`;
+  const s = document.getElementById('tally-senate');
+  if (s) { const sen = impliedSenate(draft); s.innerHTML = `Senate <span class="dcol">${sen.D}</span>–<span class="rcol">${sen.R}</span>`; }
+}
+document.addEventListener('pointerup', () => { window.mDrag = false; });
+
+// ── Standings ──────────────────────────────────────────────────────
+let openRow = null;
+function standingsHtml(ph) {
+  const picks = decodedPicks();
+  const players = MEMBERS.filter(m => picks[m]);
+  if (!players.length) return `<div class="empty"><div class="empty-icon">🤷</div>Nobody locked in picks.</div>`;
+  const scored = players.map(m => ({ m, ...scorePlayer(picks[m]) }))
+    .sort((a, b) => (a.total - b.total) || ((a.house.off ?? 0) - (b.house.off ?? 0)));
+  const nIn = scored[0].n;
+  const hs = houseStatus();
+  const anyIn = nIn > 0 || hs;
+  const final = ph === 'final';
+
+  const list = scored.map((s, i) => `<div class="sl-row ${s.m === myName ? 'me' : ''}" onclick="toggleRow('${s.m}')">
+      <span class="sl-rank">${anyIn ? i + 1 : ''}</span>
+      <span class="sl-name"><span class="dot" style="background:${color(s.m)}"></span>${esc(s.m)}</span>
+      ${nIn ? `<span class="sl-sub">${s.called}/${nIn} called</span>` : ''}
+      <span class="sl-pts">${anyIn ? roundPts(s.total) : '–'}</span>
+    </div>${openRow === s.m ? picksHtml(s) : ''}`).join('');
+
+  const finals = RACES.filter(r => results()[r.k]?.final).length;
+  const sub = nIn ? `${nIn}/${RACES.length} races in · ${finals} final` : 'Waiting on results';
+  return `<div class="card">
+      <div class="card-head"><span class="card-title">${final ? '🏁 Final standings' : 'Standings'}</span><span class="card-sub">${sub}</span></div>
+      ${list}
+    </div>
+    ${closestHtml(players, picks)}
+    <div class="legend" style="border:none;padding:4px 4px 0;">Score = total points missed, lowest wins. Wrong side of the House line adds ${penalty()}. ${final ? '' : 'Races still counting are scored on the current margin, so numbers move. '}Tap a name to see their picks.</div>`;
+}
+window.toggleRow = function(m) { openRow = openRow === m ? null : m; render(); };
+
+function picksHtml(s) {
+  const h = s.house;
+  const hRow = `<div class="pk"><span class="t">House: ${h.pick} D (${h.side === 'O' ? 'over' : 'under'} ${houseLine()})
+      <small>${h.status ? `${h.status.d} D${h.status.r != null ? ` – ${h.status.r} R` : ''}${h.status.final ? ' · final' : ' · counting'}` : 'No results yet'}</small></span>
+    <span class="v ${h.wrong === true ? 'bad' : h.wrong === false ? 'good' : 'miss'}">${h.wrong === true ? '+' + penalty() : h.wrong === false ? '✓' : '–'}</span></div>`;
+  // Races with results first, biggest miss on top: that's what's costing you.
+  const rows = s.rows.slice().sort((a, b) => (b.a ? 1 : 0) - (a.a ? 1 : 0) || (b.miss ?? 0) - (a.miss ?? 0));
+  return `<div class="my-picks">${hRow}${rows.map(x => `<div class="pk">
+      <span class="t">${esc(x.r.st)}: <b class="${mCls(x.pick)}">${fmtM(x.pick, x.r)}</b>${x.a ? (x.called ? ' ✅' : ' ❌') : ''}
+        <small>${x.a ? `Actual ${fmtM(x.a.m, x.r)}${x.a.final ? '' : ' · counting'}` : 'No results yet'}</small></span>
+      <span class="v miss">${x.a ? roundPts(x.miss) : '–'}</span></div>`).join('')}</div>`;
+}
+
+// Who's nailing the races that are in: the single closest pick per race, tallied.
+function closestHtml(players, picks) {
+  const res = results();
+  const wins = Object.fromEntries(players.map(m => [m, 0]));
+  let n = 0;
+  RACES.forEach(r => {
+    const a = res[r.k];
+    if (!a || a.m == null) return;
+    n++;
+    const best = Math.min(...players.map(m => Math.abs(pickOf(picks[m], r.k) - a.m)));
+    players.filter(m => Math.abs(pickOf(picks[m], r.k) - a.m) === best).forEach(m => wins[m]++);
+  });
+  if (!n) return '';
+  const rows = players.slice().sort((a, b) => wins[b] - wins[a]).filter(m => wins[m]);
+  return `<div class="card"><div class="card-head"><span class="card-title">Closest calls</span><span class="card-sub">Races where you had the nearest margin (ties count for everyone)</span></div>
+    ${rows.map(m => `<div class="sl-row" style="cursor:default"><span class="sl-name"><span class="dot" style="background:${color(m)}"></span>${esc(m)}</span><span class="sl-pts">${wins[m]}</span></div>`).join('')}</div>`;
+}
+
+// ── Races tab ──────────────────────────────────────────────────────
+let openRace = null;
+function racesHtml() {
+  const picks = decodedPicks();
+  const players = MEMBERS.filter(m => picks[m]);
+  if (!players.length) return `<div class="empty"><div class="empty-icon">🤷</div>Nobody locked in picks.</div>`;
+  const res = results();
+  const hs = houseStatus();
+
+  const houseRow = `<div class="rc" onclick="toggleRace('HOUSE')">
+      <span class="t"><b>House</b> · line ${houseLine()}<small>${groupAvg(players.map(m => picks[m].HOUSE))} D average pick</small></span>
+      <span class="res">${hs ? `${hs.d} D${hs.r != null ? ` · ${hs.r} R` : ''}<small>${hs.final ? 'final' : hs.side ? (hs.side === 'O' ? 'over clinched' : 'under clinched') : 'counting'}</small>` : '<small>no results</small>'}</span>
+    </div>${openRace === 'HOUSE' ? `<div class="rc-picks">${players.slice().sort((a, b) => picks[b].HOUSE - picks[a].HOUSE).map(m => {
+      const v = picks[m].HOUSE, over = v > houseLine();
+      const wrong = hs?.side ? (hs.side === 'O') !== over : null;
+      return `<div class="rp"><span class="nm"><span class="dot" style="background:${color(m)}"></span>${esc(m)}</span>
+        <span class="pv">${v} D</span><span class="ms ${wrong === true ? 'bad' : wrong === false ? 'good' : ''}">${over ? 'over' : 'under'}</span></div>`;
+    }).join('')}</div>` : ''}`;
+
+  const rows = RACES.slice().sort((a, b) => {
+    // Called races first; within each, the most-contested by the group on top.
+    const ra = res[a.k]?.m != null, rb = res[b.k]?.m != null;
+    return (rb - ra) || spread(players, picks, b.k) - spread(players, picks, a.k);
+  }).map(r => {
+    const a = res[r.k];
+    const vals = players.map(m => pickOf(picks[m], r.k));
+    const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+    const split = vals.some(v => v > 0) && vals.some(v => v < 0);
+    return `<div class="rc" onclick="toggleRace('${r.k}')">
+      <span class="t"><b>${esc(r.st)}</b> · ${esc(r.d.split(' ').pop())} vs ${esc(r.r.split(' ').pop())}
+        <small>Group avg <span class="${mCls(avg)}">${fmtM(Math.round(avg * 2) / 2, r)}</span>${split ? ' · split on the winner' : ''}</small></span>
+      <span class="res ${a ? mCls(a.m) : ''}">${a ? `${fmtM(a.m, r)}<small>${a.final ? 'final' : 'counting'}</small>` : '<small>no results</small>'}</span>
+    </div>${openRace === r.k ? racePicksHtml(r, players, picks, a) : ''}`;
+  }).join('');
+
+  return `<div class="card">${houseRow}</div><div class="card">${rows}</div>
+    <div class="legend" style="border:none;padding:4px 4px 0;">Tap a race to see everyone's pick. Races without results are sorted by how far apart the group is.</div>`;
+}
+const groupAvg = vs => Math.round(vs.reduce((s, v) => s + v, 0) / vs.length);
+const spread = (players, picks, k) => { const v = players.map(m => pickOf(picks[m], k)); return Math.max(...v) - Math.min(...v); };
+window.toggleRace = function(k) { openRace = openRace === k ? null : k; render(); };
+
+function racePicksHtml(r, players, picks, a) {
+  const list = players.map(m => ({ m, v: pickOf(picks[m], r.k) }))
+    .sort((x, y) => a ? Math.abs(x.v - a.m) - Math.abs(y.v - a.m) : y.v - x.v);
+  return `<div class="rc-picks">${list.map(x => `<div class="rp">
+      <span class="nm"><span class="dot" style="background:${color(x.m)}"></span>${esc(x.m)}</span>
+      <span class="pv ${mCls(x.v)}">${fmtM(x.v, r)}</span>
+      <span class="ms">${a ? `${roundPts(Math.abs(x.v - a.m))} off` : ''}</span></div>`).join('')}</div>`;
+}
+
+// ── Board ──────────────────────────────────────────────────────────
+function boardHtml() {
+  const picks = decodedPicks();
+  const players = MEMBERS.filter(m => picks[m]);
+  if (!players.length) return `<div class="empty"><div class="empty-icon">🤷</div>Nobody locked in picks.</div>`;
+  const res = results();
+  const scored = Object.fromEntries(players.map(m => [m, scorePlayer(picks[m])]));
+  const hs = houseStatus();
+
+  const body = RACES.map(r => {
+    const a = res[r.k];
+    const best = a ? Math.min(...players.map(m => Math.abs(pickOf(picks[m], r.k) - a.m))) : null;
+    return `<tr><td class="tcol">${r.k}</td><td class="${a ? mCls(a.m) : ''}" style="font-weight:800">${a ? fmtM(a.m, r) + (a.final ? '' : '*') : '–'}</td>
+      ${players.map(m => {
+        const v = pickOf(picks[m], r.k);
+        const c = a ? (Math.abs(v - a.m) === best ? 'best' : Math.sign(v) !== Math.sign(a.m) ? 'wrong' : '') : '';
+        return `<td class="pc ${c} ${mCls(v)}">${fmtM(v, r)}</td>`;
+      }).join('')}</tr>`;
+  }).join('');
+  const houseRow = `<tr><td class="tcol">House</td><td style="font-weight:800">${hs ? hs.d + (hs.final ? '' : '*') : '–'}</td>
+    ${players.map(m => { const h = scored[m].house; return `<td class="pc ${h.wrong === true ? 'wrong' : h.wrong === false ? 'best' : ''}">${h.pick}</td>`; }).join('')}</tr>`;
+
+  return `<div class="card"><div class="grid-wrap"><table class="sheet">
+    <thead><tr><th class="tcol">Race</th><th>Result</th>${players.map(m => `<th style="color:${color(m)}">${esc(m)}</th>`).join('')}</tr></thead>
+    <tbody>${houseRow}${body}
+      <tr class="tot"><td class="tcol">Miss</td><td></td>${players.map(m => `<td>${scored[m].n || hs ? roundPts(scored[m].total) : '–'}</td>`).join('')}</tr></tbody>
+  </table></div>
+  <div class="legend">* still counting. <span style="background:#e8f5e9"></span>closest pick (House: right side) <span style="background:#fdecea"></span>wrong winner</div></div>`;
+}
+
+// ── Picking ────────────────────────────────────────────────────────
+window.setMyName = function(name) {
+  myName = name;
+  localStorage.setItem('mid26_name', name);
+  draft = loadDraft();
+  render();
+};
+window.clearDraft = function() {
+  if (!confirm('Reset every slider back to its starting spot?')) return;
+  draft = {};
+  saveDraft();
+  render();
+};
+
+// The sealed card spells out every race, untouched ones included, so a later START change can't move anyone's picks.
+const fullCard = () => ({ ...Object.fromEntries(RACES.map(r => [r.k, pickOf(draft, r.k)])), HOUSE: draft.HOUSE });
+
+window.openSealModal = function() {
+  if (!canEditPicks() || draft.HOUSE == null) return;
+  const card = fullCard();
+  const sen = impliedSenate(card);
+  const recap = RACES.map(r => `<div style="display:flex;justify-content:space-between;"><span>${esc(r.st)}${draft[r.k] == null ? ' <span style="color:#aaa">(start)</span>' : ''}</span><b class="${mCls(card[r.k])}">${fmtM(card[r.k], r)}</b></div>`).join('');
+  document.getElementById('seal-recap').innerHTML = `<div style="font-weight:800;margin-bottom:4px;">${esc(myName)}</div>
+    <div style="margin-bottom:6px;">House: <b>${card.HOUSE} D</b> (${card.HOUSE > houseLine() ? 'over' : 'under'} ${houseLine()}) · Senate <b class="dcol">${sen.D}</b>–<b class="rcol">${sen.R}</b></div>${recap}`;
+  document.getElementById('seal-pin').value = '';
+  document.getElementById('seal-error').textContent = '';
+  document.getElementById('seal-modal').classList.add('open');
+};
+
+window.confirmSeal = async function() {
+  if (!canEditPicks() || draft.HOUSE == null) {
+    document.getElementById('seal-error').textContent = phase() !== 'open' ? 'Picks are locked. Too late!' : 'Set your House number first.';
+    return;
+  }
+  const pin = document.getElementById('seal-pin').value.trim();
+  if (pin && !/^\d{4}$/.test(pin)) {
+    document.getElementById('seal-error').textContent = 'PIN must be exactly 4 digits (or leave it blank).';
+    return;
+  }
+  const salt = Math.random().toString(36).slice(2, 8);
+  const entry = { seal: obf(JSON.stringify(fullCard()), salt), salt, ts: Date.now() };
+  if (pin) entry.pinHash = await sha256hex(pin + salt);
+  await store.set(`picks/${myName}`, entry);
+  closeModal('seal-modal');
+  showToast(`🔒 ${myName} sealed. See you on Election Day`);
+};
+
+window.viewSealed = async function() {
+  const entry = state.picks?.[myName];
+  if (!entry || !entry.pinHash) return;
+  const pin = prompt('Enter your 4-digit PIN:');
+  if (!pin) return;
+  if (await sha256hex(pin.trim() + (entry.salt || '')) !== entry.pinHash) { alert('Wrong PIN.'); return; }
+  const d = deobf(entry.seal, entry.salt || '');
+  if (!d) { alert('Could not decode picks.'); return; }
+  alert(`${myName}: sealed picks (view only)\n\nHouse: ${d.HOUSE} D\n` + RACES.map(r => `${r.st}: ${fmtM(pickOf(d, r.k), r)}`).join('\n'));
+};
+
+window.unlockMember = async function(name) {
+  if (!isComm) return;
+  if (!confirm(`Unlock ${name}? This wipes their sealed picks (their draft on their own phone stays), and they lock in again.`)) return;
+  await store.remove(`picks/${name}`);
+  showToast(`🔓 ${name} unlocked, picks wiped`);
+};
+
+// ── Commissioner ───────────────────────────────────────────────────
+function renderComm(ph) {
+  if (!isComm) return;
+  document.getElementById('comm-actions').innerHTML = `
+    <button class="btn btn-sm btn-amber" onclick="openSetup()">🏛️ House line &amp; lock time</button>
+    ${ph !== 'open' || DEMO ? `<button class="btn btn-sm btn-green" onclick="openResults()">📊 Enter results</button>` : ''}`;
+  const n = Object.keys(state.picks || {}).length;
+  const nRes = RACES.filter(r => results()[r.k]?.m != null).length;
+  const lockStr = new Date(lockAt()).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+  document.getElementById('comm-note').innerHTML = `Status: <strong>${ph}</strong> · ${n} locked in · House line ${houseLine()} · ${nRes}/${RACES.length} races with results · locks ${lockStr} ET`;
+}
+
+window.toggleComm = function() {
+  if (isComm) {
+    isComm = false;
+    document.getElementById('comm-toggle').classList.remove('active');
+    document.getElementById('comm-panel').style.display = 'none';
+    render();
+  } else {
+    document.getElementById('comm-pw-modal').classList.add('open');
+    setTimeout(() => document.getElementById('comm-pw-input').focus(), 50);
+  }
+};
+window.checkCommPw = function() {
+  const val = document.getElementById('comm-pw-input').value.trim().toLowerCase();
+  if (val === COMM_PW) {
+    isComm = true;
+    document.getElementById('comm-toggle').classList.add('active');
+    document.getElementById('comm-panel').style.display = '';
+    closeModal('comm-pw-modal');
+    document.getElementById('comm-pw-input').value = '';
+    render();
+  } else {
+    document.getElementById('comm-pw-error').textContent = 'Wrong password.';
+    setTimeout(() => document.getElementById('comm-pw-error').textContent = '', 2000);
+  }
+};
+
+// datetime-local wants local "YYYY-MM-DDTHH:MM"
+const toLocalInput = ms => { const d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+window.openSetup = function() {
+  document.getElementById('setup-line').value = houseLine();
+  document.getElementById('setup-penalty').value = penalty();
+  document.getElementById('setup-lock').value = toLocalInput(lockAt());
+  document.getElementById('setup-error').textContent = '';
+  document.getElementById('setup-modal').classList.add('open');
+};
+window.saveSetup = async function() {
+  const err = document.getElementById('setup-error');
+  const line = parseFloat(document.getElementById('setup-line').value);
+  const pen = parseFloat(document.getElementById('setup-penalty').value);
+  const lockVal = document.getElementById('setup-lock').value;
+  if (!(line > 0 && line < HOUSE_SEATS) || Math.abs(line % 1 - 0.5) > 1e-9) { err.textContent = 'House line has to be a number ending in .5.'; return; }
+  if (!(pen >= 0)) { err.textContent = 'Penalty has to be 0 or more.'; return; }
+  if (!lockVal) { err.textContent = 'Need a lock time.'; return; }
+  const n = Object.keys(state.picks || {}).length;
+  if (n && line !== houseLine() && !confirm(`${n} already locked in. Their House numbers stay put but get judged against ${line}. Save anyway?`)) return;
+  await store.update('config', { houseLine: line, penalty: pen, lockAt: new Date(lockVal).toISOString() });
+  closeModal('setup-modal');
+  showToast('🏛️ Saved');
+};
+
+// "D+3.2", "R+5", "I+2", "-5", "+3", "even" → signed margin (positive = D/I side).
+function parseMargin(s) {
+  s = String(s).trim().toUpperCase().replace(/\s+/g, '');
+  if (!s) return undefined;
+  if (s === 'EVEN' || s === '0') return 0;
+  const m = s.match(/^([DIR])?\+?(-?\d+(\.\d+)?)$/);
+  if (!m) return NaN;
+  const v = parseFloat(m[2]);
+  return m[1] === 'R' ? -Math.abs(v) : m[1] ? Math.abs(v) : v;
+}
+
+window.openResults = function() {
+  const res = results();
+  const h = res.HOUSE || {};
+  const row = (k, label, sub, val, final) => `<div class="res-row"><span>${label}${sub ? ` <small>${sub}</small>` : ''}</span>
+    <input type="text" id="res-${k}" value="${val ?? ''}" placeholder="D+0.0" autocomplete="off">
+    <label><input type="checkbox" id="fin-${k}" ${final ? 'checked' : ''}>Final</label></div>`;
+  document.getElementById('results-rows').innerHTML = `
+    <div class="res-row"><span><b>House</b> <small>D seats · R seats</small></span>
+      <span style="display:flex;gap:4px;"><input type="text" id="res-HOUSE-d" value="${h.d ?? ''}" placeholder="D" inputmode="numeric"><input type="text" id="res-HOUSE-r" value="${h.r ?? ''}" placeholder="R" inputmode="numeric"></span>
+      <label><input type="checkbox" id="fin-HOUSE" ${h.final ? 'checked' : ''}>Final</label></div>
+    ${RACES.map(r => row(r.k, esc(r.st), `${esc(r.d.split(' ').pop())} (${dParty(r)}) v ${esc(r.r.split(' ').pop())}`,
+      res[r.k]?.m != null ? fmtM(res[r.k].m, r) : '', res[r.k]?.final)).join('')}`;
+  document.getElementById('results-error').textContent = '';
+  document.getElementById('results-modal').classList.add('open');
+};
+window.saveResults = async function() {
+  const out = {}, errs = [];
+  RACES.forEach(r => {
+    const v = parseMargin(document.getElementById('res-' + r.k).value);
+    const fin = document.getElementById('fin-' + r.k).checked;
+    if (v === undefined) { if (fin) errs.push(`${r.st}: marked final with no margin`); return; }
+    if (isNaN(v) || Math.abs(v) > 100) { errs.push(`${r.st}: couldn't read the margin`); return; }
+    out[r.k] = { m: Math.round(v * 10) / 10, final: fin };
+  });
+  const hd = document.getElementById('res-HOUSE-d').value.trim(), hr = document.getElementById('res-HOUSE-r').value.trim();
+  const hFin = document.getElementById('fin-HOUSE').checked;
+  if (hd) {
+    const d = parseInt(hd, 10), r = hr ? parseInt(hr, 10) : null;
+    if (isNaN(d) || d < 0 || d > HOUSE_SEATS || (r != null && (isNaN(r) || d + r > HOUSE_SEATS))) errs.push('House: seat counts don\'t add up');
+    else out.HOUSE = { d, ...(r != null ? { r } : {}), final: hFin };
+  } else if (hFin) errs.push('House: marked final with no seat count');
+  if (errs.length) { document.getElementById('results-error').textContent = errs.join('\n'); return; }
+  await store.set('results', { ...out, updatedAt: Date.now() });
+  closeModal('results-modal');
+  showToast('📊 Results saved');
+};
+
+window.closeModal = id => document.getElementById(id).classList.remove('open');
+
+// ── Site password gate ─────────────────────────────────────────────
+const PW_KEY = 'srb_auth';
+const PW_CORRECT = 'rudy';
+(function() {
+  if (sessionStorage.getItem(PW_KEY) !== 'ok') {
+    document.getElementById('pw-gate').classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => document.getElementById('pw-input').focus(), 50);
+  }
+})();
+window.pwCheck = function() {
+  const val = document.getElementById('pw-input').value.trim().toLowerCase();
+  if (val === PW_CORRECT) {
+    sessionStorage.setItem(PW_KEY, 'ok');
+    document.getElementById('pw-gate').classList.remove('show');
+    document.body.style.overflow = '';
+  } else {
+    const err = document.getElementById('pw-error');
+    err.textContent = 'Wrong password, try again.';
+    document.getElementById('pw-input').value = '';
+    setTimeout(() => err.textContent = '', 2000);
+  }
+};
+
+// ?demo opens picks with a lock a day out.
+// ?demo=live seals random cards for everyone, jumps past the lock and fills in about two-thirds of the results.
+if (DEMO) {
+  window.__demo = { state: () => state, store };
+  state.config = { houseLine: DEFAULT_HOUSE_LINE, penalty: DEFAULT_PENALTY, lockAt: new Date(Date.now() + (DEMO_LIVE ? -6e4 : 864e5)).toISOString() };
+  if (DEMO_LIVE) {
+    const jitter = (c, w) => Math.round((c + (Math.random() * 2 - 1) * w) * 2) / 2;
+    const truth = Object.fromEntries(RACES.map(r => [r.k, jitter(START[r.rating] * 1.3, 8)]));
+    state.picks = {};
+    MEMBERS.forEach((m, i) => {
+      const card = Object.fromEntries(RACES.map(r => [r.k, jitter(START[r.rating], 7)]));
+      card.HOUSE = Math.round(215 + Math.random() * 35);
+      const salt = 'demo' + i;
+      state.picks[m] = { seal: obf(JSON.stringify(card), salt), salt, ts: Date.now() };
+    });
+    state.results = { HOUSE: { d: 226, r: 190, final: false } };
+    RACES.forEach(r => { if (Math.random() < .66) state.results[r.k] = { m: truth[r.k], final: Math.random() < .7 }; });
+  }
+}
+</script>
+</body>
+</html>

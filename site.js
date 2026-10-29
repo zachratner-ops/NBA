@@ -16,6 +16,7 @@
     'dunlap-2026': { href: 'dunlap.html', label: "Matt's 2026 Goals", icon: '🦌' },
     'sunday-lines': { href: 'sunday-bets.html', label: 'BBQC Sunday Bets', icon: '🔥' },
     'nba-ous': { href: 'nba-ous.html', label: 'NBA Over/Under', icon: '🏀' },
+    'midterms-2026': { href: 'midterms.html', label: '2026 Midterms', icon: '🗳️' },
   };
   const HISTORY = [
     { href: 'nba-history.html', label: 'NBA Playoff History', icon: '🏀' },

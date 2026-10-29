@@ -900,6 +900,37 @@ if (firebaseReady) {
   console.log('[NBA O/U] lock-in listener attached | season=' + NBAOUS_SEASON + ' | dryRun=' + BBQC_DRY_RUN);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// 2026 MIDTERMS — GroupMe lock-in posts (same bot, same scheme as NBA O/U)
+// ═══════════════════════════════════════════════════════════════════
+const MIDTERMS_PAGE = 'gyou.in/midterms.html';
+const midtermsRef = (p) => admin.database().ref('midterms/2026/' + p);
+
+async function midtermsHandleLock(name, e) {
+  if (!firebaseReady || !e || (e.ts || 0) < BBQC_BOOT) return; // skip backfill on connect
+  try {
+    const flag = midtermsRef('notify/locks/' + name);
+    if ((await flag.get()).exists()) return;
+    const [picksSnap, cfgSnap] = await Promise.all([midtermsRef('picks').get(), midtermsRef('config').get()]);
+    const inNames = Object.keys(picksSnap.val() || {});
+    const out = NBAOUS_MEMBERS.filter(function(m) { return inNames.indexOf(m) === -1; });
+    const lockAt = (cfgSnap.val() || {}).lockAt || '2026-11-03T12:00:00Z';
+    const when = new Date(lockAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET';
+    await bbqcPost(['🗳️ ' + name + ' is locked in for the Midterms (' + inNames.length + '/' + NBAOUS_MEMBERS.length + ' in).',
+      out.length ? 'Still out: ' + out.join(', ') + '. Picks lock ' + when + '.' : 'Everyone is in! Picks reveal at ' + when + '.',
+      '🔗 ' + MIDTERMS_PAGE].join('\n'));
+    await flag.set(true);
+  } catch (err) { console.error('[Midterms] lock post error:', err.message); }
+}
+
+if (firebaseReady) {
+  const picksRef = midtermsRef('picks');
+  picksRef.on('child_added', function(snap) { midtermsHandleLock(snap.key, snap.val()); });
+  picksRef.on('child_changed', function(snap) { midtermsHandleLock(snap.key, snap.val()); });
+  picksRef.on('child_removed', function(snap) { midtermsRef('notify/locks/' + snap.key).remove().catch(function() {}); });
+  console.log('[Midterms] lock-in listener attached | dryRun=' + BBQC_DRY_RUN);
+}
+
 // ── Standings: ESPN regular-season W-L → nba_ous/<season>/standings ─
 // Pulled every 15 min through the evening game window (pages subscribe, so
 // they update live), plus a 3am ET pull that also writes the finished day to
