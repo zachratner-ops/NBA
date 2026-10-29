@@ -913,10 +913,10 @@ async function midtermsHandleLock(name, e) {
     if ((await flag.get()).exists()) return;
     const [picksSnap, cfgSnap] = await Promise.all([midtermsRef('picks').get(), midtermsRef('config').get()]);
     const inNames = Object.keys(picksSnap.val() || {});
-    const out = NBAOUS_MEMBERS.filter(function(m) { return inNames.indexOf(m) === -1; });
+    const out = BBQC_MEMBERS.filter(function(m) { return inNames.indexOf(m) === -1; });
     const lockAt = (cfgSnap.val() || {}).lockAt || '2026-11-03T12:00:00Z';
     const when = new Date(lockAt).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET';
-    await bbqcPost(['🗳️ ' + name + ' is locked in for the Midterms (' + inNames.length + '/' + NBAOUS_MEMBERS.length + ' in).',
+    await bbqcPost(['🗳️ ' + name + ' is locked in for the Midterms (' + inNames.length + '/' + BBQC_MEMBERS.length + ' in).',
       out.length ? 'Still out: ' + out.join(', ') + '. Picks lock ' + when + '.' : 'Everyone is in! Picks reveal at ' + when + '.',
       '🔗 ' + MIDTERMS_PAGE].join('\n'));
     await flag.set(true);
