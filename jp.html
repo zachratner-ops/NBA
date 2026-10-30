@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JohnnyPop Wheel</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { height: 100%; width: 100%; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #fff7ec;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    width: 520px; height: 520px;
+    background: radial-gradient(circle, #ffd0e4 0%, transparent 70%);
+    top: -120px; left: -120px;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    width: 440px; height: 440px;
+    background: radial-gradient(circle, #c9f3ff 0%, transparent 70%);
+    bottom: -90px; right: -90px;
+    pointer-events: none;
+  }
+
+  /* Drifting background pops */
+  .bg-pop {
+    position: fixed;
+    bottom: -140px;
+    pointer-events: none;
+    opacity: .35;
+    animation: drift linear infinite;
+    z-index: 0;
+  }
+  @keyframes drift {
+    0%   { transform: translateY(0) rotate(var(--r0)); }
+    100% { transform: translateY(-130vh) rotate(var(--r1)); }
+  }
+
+  /* CSS popsicle */
+  .pop { position: relative; display: inline-block; width: var(--w, 40px); height: calc(var(--w, 40px) * 2); }
+  .pop .ice {
+    position: absolute; left: 0; top: 0;
+    width: 100%; height: 70%;
+    border-radius: calc(var(--w, 40px) * .5) calc(var(--w, 40px) * .5) calc(var(--w, 40px) * .14) calc(var(--w, 40px) * .14);
+    background: linear-gradient(180deg, var(--c1, #ff5fa2) 0%, var(--c1, #ff5fa2) 48%, var(--c2, #ffb347) 52%, var(--c2, #ffb347) 100%);
+    box-shadow: inset calc(var(--w, 40px) * -.12) 0 0 rgba(0,0,0,.1);
+    overflow: hidden;
+  }
+  .pop .ice::after {
+    content: '';
+    position: absolute;
+    left: 18%; top: 12%;
+    width: 14%; height: 45%;
+    border-radius: 99px;
+    background: rgba(255,255,255,.55);
+  }
+  .pop .stick {
+    position: absolute;
+    left: 50%; bottom: 0;
+    transform: translateX(-50%);
+    width: 22%; height: 40%;
+    background: #e8c48f;
+    border-radius: 0 0 99px 99px;
+    z-index: -1;
+  }
+  .pop .drip {
+    position: absolute;
+    top: 64%;
+    width: 12%; height: 14%;
+    border-radius: 0 0 99px 99px;
+    background: var(--c2, #ffb347);
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+    padding: 20px 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .brand {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.6rem;
+    color: #ff4f93;
+    letter-spacing: .01em;
+    margin-bottom: 4px;
+    text-shadow: 3px 3px 0 #ffd23f;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .tagline {
+    font-size: .85rem;
+    color: #d39a6a;
+    margin-bottom: 26px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .question {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.55rem;
+    color: #3b2547;
+    text-align: center;
+    margin-bottom: 30px;
+    line-height: 1.3;
+  }
+  .question .hl { color: #ff4f93; }
+
+  .wheel-wrap {
+    position: relative;
+    width: 340px;
+    height: 340px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vw - 32px);
+    margin: 0 auto 32px;
+  }
+
+  .pointer {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+    z-index: 10;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,.3));
+    --w: 26px;
+    --c1: #3b2547;
+    --c2: #3b2547;
+  }
+
+  canvas {
+    border-radius: 50%;
+    box-shadow: 0 8px 40px rgba(0,0,0,.15), 0 0 0 6px #fff, 0 0 0 10px #ff4f9322;
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+  }
+
+  .spin-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    background: linear-gradient(135deg, #ff4f93, #ff9a3c);
+    color: #fff;
+    border: none;
+    padding: 14px 52px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px #ff4f9355;
+    transition: transform .15s, box-shadow .15s;
+    letter-spacing: .02em;
+    display: block;
+    margin: 0 auto;
+  }
+  .spin-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 28px #ff4f9366; }
+  .spin-btn:active { transform: translateY(1px); }
+  .spin-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(59, 37, 71, .55);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 28px;
+    padding: 40px 36px;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    box-shadow: 0 24px 80px rgba(0,0,0,.2);
+    animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .modal-pop {
+    --w: 54px;
+    margin-bottom: 14px;
+    animation: wiggle 1.2s ease-in-out infinite;
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
+  }
+  .modal-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: #d39a6a;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .modal-name {
+    font-family: 'Fredoka One', cursive;
+    font-size: 2.6rem;
+    color: #ff4f93;
+    line-height: 1.05;
+    margin-bottom: 14px;
+  }
+  .modal-sub {
+    font-size: 1rem;
+    color: #7a6385;
+    font-weight: 700;
+    margin-bottom: 26px;
+  }
+  .modal-close {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    background: #3b2547;
+    color: #fff;
+    border: none;
+    padding: 12px 36px;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .modal-close:hover { background: #5a3a6a; }
+
+  .confetti-piece {
+    position: fixed;
+    animation: confettiFall linear forwards;
+    pointer-events: none;
+    z-index: 99;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="brand">
+    <span class="pop" style="--w:22px;--c1:#ff4f93;--c2:#ffd23f"><span class="ice"></span><span class="stick"></span></span>
+    JohnnyPop Wheel
+  </div>
+  <div class="tagline">Totally unbiased · Scientifically spun</div>
+  <div class="question">Should <span class="hl">Sacha</span> get<br><span class="hl">Zach</span> a JohnnyPop?</div>
+
+  <div class="wheel-wrap">
+    <div class="pointer pop"><span class="ice"></span><span class="stick"></span></div>
+    <canvas id="wheel" width="680" height="680"></canvas>
+  </div>
+
+  <button class="spin-btn" id="spinBtn" onclick="spin()">Spin the Wheel</button>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="pop modal-pop" id="modalPop"><span class="ice"></span><span class="drip" style="left:22%"></span><span class="drip" style="left:62%;height:20%"></span><span class="stick"></span></div>
+    <div class="modal-title">The wheel has spoken</div>
+    <div class="modal-name" id="modalName"></div>
+    <div class="modal-sub" id="modalSub"></div>
+    <button class="modal-close" onclick="closeModal()">Go get it 🏃</button>
+  </div>
+</div>
+
+<script>
+  // Flavor pairs: [top, bottom]
+  const FLAVORS = [
+    ['#ff4f93', '#ffb3d1'],
+    ['#ff9a3c', '#ffd23f'],
+    ['#7ed957', '#d4f7a1'],
+    ['#3cc8f0', '#a8ecff'],
+    ['#a066ff', '#e0c7ff'],
+    ['#ff5e5e', '#ffc2a8'],
+  ];
+
+  const SEGMENTS = [
+    { label: 'YES',        sub: "Simple as that. Go." },
+    { label: 'Obviously',  sub: "Was this ever in question?" },
+    { label: 'Absolutely', sub: "No notes. Grab a JohnnyPop." },
+    { label: 'Duh',        sub: "The freezer is waiting." },
+    { label: 'Hell yes',   sub: "Strawberry Rosé, ideally." },
+    { label: 'Yes, two',   sub: "Why stop at one?" },
+    { label: '100%',       sub: "Certified by the wheel." },
+    { label: 'Yep',        sub: "Quick, before they melt." },
+    { label: 'Of course',  sub: "It would be rude not to." },
+    { label: 'Sí',         sub: "Universal language of popsicles." },
+    { label: 'Yes ma\'am', sub: "Zach thanks you in advance." },
+    { label: 'YES!!!',     sub: "The wheel is very sure about this." },
+  ];
+
+  const canvas = document.getElementById('wheel');
+  const ctx = canvas.getContext('2d');
+  const S = 2; // canvas drawn at 2x for crisp retina
+  const N = SEGMENTS.length;
+  const ARC = (2 * Math.PI) / N;
+  const R = 170, CX = 170, CY = 170;
+  let currentAngle = 0, spinning = false;
+
+  function roundRect(x, y, w, h, rTop, rBot) {
+    ctx.beginPath();
+    ctx.moveTo(x + rTop, y);
+    ctx.lineTo(x + w - rTop, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + rTop);
+    ctx.lineTo(x + w, y + h - rBot);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - rBot, y + h);
+    ctx.lineTo(x + rBot, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - rBot);
+    ctx.lineTo(x, y + rTop);
+    ctx.quadraticCurveTo(x, y, x + rTop, y);
+    ctx.closePath();
+  }
+
+  // Popsicle pointing "up" (toward -y), centered at (0,0)
+  function drawPop(w, c1, c2) {
+    const h = w * 1.4;
+    // stick
+    ctx.fillStyle = '#e8c48f';
+    roundRect(-w * .11, h * .3, w * .22, w * .7, 1, w * .11);
+    ctx.fill();
+    // ice
+    roundRect(-w / 2, -h / 2 - h * .1, w, h, w / 2, w * .14);
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = c1;
+    ctx.fillRect(-w / 2, -h, w, h);
+    ctx.fillStyle = c2;
+    ctx.fillRect(-w / 2, -h * .1, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    roundRect(-w * .3, -h * .45, w * .14, h * .45, w * .07, w * .07);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWheel(angle) {
+    ctx.setTransform(S, 0, 0, S, 0, 0);
+    ctx.clearRect(0, 0, 340, 340);
+    for (let i = 0; i < N; i++) {
+      const start = angle + i * ARC;
+      const end = start + ARC;
+      const [c1, c2] = FLAVORS[i % FLAVORS.length];
+      ctx.beginPath();
+      ctx.moveTo(CX, CY);
+      ctx.arc(CX, CY, R, start, end);
+      ctx.closePath();
+      const g = ctx.createRadialGradient(CX, CY, 20, CX, CY, R);
+      g.addColorStop(0, c2);
+      g.addColorStop(.75, c1);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(CX, CY);
+      ctx.rotate(start + ARC / 2);
+
+      // little pop near the rim, pointing outward
+      ctx.save();
+      ctx.translate(R - 20, 0);
+      ctx.rotate(Math.PI / 2);
+      ctx.shadowColor = 'rgba(0,0,0,.18)';
+      ctx.shadowBlur = 3;
+      drawPop(13, '#fff', c2);
+      ctx.restore();
+
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
+      ctx.font = "bold 14px 'Nunito', sans-serif";
+      ctx.shadowColor = 'rgba(0,0,0,.3)';
+      ctx.shadowBlur = 3;
+      ctx.fillText(SEGMENTS[i].label, R - 42, 1);
+      ctx.restore();
+    }
+    // hub
+    ctx.beginPath();
+    ctx.arc(CX, CY, 30, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,.15)';
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ff4f93';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.save();
+    ctx.translate(CX, CY - 2);
+    ctx.rotate(-0.35);
+    drawPop(16, '#ff4f93', '#ffd23f');
+    ctx.restore();
+  }
+
+  drawWheel(currentAngle);
+  document.fonts && document.fonts.ready.then(() => drawWheel(currentAngle));
+
+  function getWinner(finalAngle) {
+    const normalized = (((-finalAngle - Math.PI / 2) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    return Math.floor(normalized / ARC) % N;
+  }
+
+  function spin() {
+    if (spinning) return;
+    spinning = true;
+    document.getElementById('spinBtn').disabled = true;
+    const targetAngle = currentAngle + (6 + Math.random() * 6) * 2 * Math.PI;
+    const duration = 4000 + Math.random() * 1000;
+    const startAngle = currentAngle;
+    const startTime = performance.now();
+    function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+    function animate(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      currentAngle = startAngle + (targetAngle - startAngle) * easeOut(t);
+      drawWheel(currentAngle);
+      if (t < 1) { requestAnimationFrame(animate); }
+      else {
+        currentAngle = targetAngle;
+        spinning = false;
+        document.getElementById('spinBtn').disabled = false;
+        setTimeout(() => showModal(getWinner(currentAngle)), 400);
+      }
+    }
+    requestAnimationFrame(animate);
+  }
+
+  function showModal(i) {
+    const seg = SEGMENTS[i];
+    const [c1, c2] = FLAVORS[i % FLAVORS.length];
+    const pop = document.getElementById('modalPop');
+    pop.style.setProperty('--c1', c1);
+    pop.style.setProperty('--c2', c2);
+    document.getElementById('modalName').textContent = seg.label;
+    document.getElementById('modalName').style.color = c1;
+    document.getElementById('modalSub').textContent = seg.sub;
+    document.getElementById('modalBg').classList.add('show');
+    launchPops();
+  }
+
+  function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+
+  function makePop(w, c1, c2) {
+    const el = document.createElement('div');
+    el.className = 'pop';
+    el.style.setProperty('--w', w + 'px');
+    el.style.setProperty('--c1', c1);
+    el.style.setProperty('--c2', c2);
+    el.innerHTML = '<span class="ice"></span><span class="stick"></span>';
+    return el;
+  }
+
+  function launchPops() {
+    for (let i = 0; i < 45; i++) {
+      const [c1, c2] = FLAVORS[Math.floor(Math.random() * FLAVORS.length)];
+      const el = makePop(10 + Math.random() * 12, c1, c2);
+      el.classList.add('confetti-piece');
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.top = '-40px';
+      el.style.animationDuration = (2 + Math.random() * 2) + 's';
+      el.style.animationDelay = Math.random() * .6 + 's';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4800);
+    }
+  }
+
+  // Background drifting pops
+  for (let i = 0; i < 10; i++) {
+    const [c1, c2] = FLAVORS[i % FLAVORS.length];
+    const el = makePop(24 + Math.random() * 22, c1, c2);
+    el.classList.add('bg-pop');
+    el.style.left = (i * 10 + Math.random() * 6) + 'vw';
+    el.style.setProperty('--r0', (Math.random() * 60 - 30) + 'deg');
+    el.style.setProperty('--r1', (Math.random() * 120 - 60) + 'deg');
+    el.style.animationDuration = (14 + Math.random() * 10) + 's';
+    el.style.animationDelay = (-Math.random() * 20) + 's';
+    document.body.appendChild(el);
+  }
+</script>
+</body>
+</html>
