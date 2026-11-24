@@ -514,17 +514,35 @@ function bbqcEtWallToEpoch(y, mo, d, h, mi) {
   const etAsUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, 0);
   return guess - (etAsUTC - guess); // subtract ET's offset from UTC
 }
-// Slate posting window for a board: [Saturday 10pm ET the night before its
-// Sunday date, Sunday 1pm ET reveal]. Dateless boards post immediately.
+// Reveal/lock time for a board (ET wall clock, "HH:MM"); default 1:00pm.
+function bbqcRevealHM(w) {
+  const p = String((w && w.revealET) || '13:00').split(':');
+  return { h: Math.min(23, Math.max(0, parseInt(p[0], 10) || 13)), m: Math.min(59, Math.max(0, parseInt(p[1], 10) || 0)) };
+}
+function bbqcFmtTime(h, m) {
+  const ap = h < 12 ? 'am' : 'pm'; let hh = h % 12; if (hh === 0) hh = 12;
+  return hh + ':' + String(m).padStart(2, '0') + ap + ' ET';
+}
+// Key epochs for a board, derived from its date + reveal time — any weekday:
+// slate window opens 10pm ET the night before, reminder 2h before reveal,
+// reveal/lock at the board's own time. Dateless boards post immediately.
+function bbqcBoardTimes(w) {
+  if (!w.date) return { slateStart: 0, reminder: 0, reveal: Infinity };
+  const parts = w.date.split('-').map(Number);
+  const day = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  const prev = new Date(day.getTime()); prev.setUTCDate(prev.getUTCDate() - 1);
+  const hm = bbqcRevealHM(w);
+  const reveal = bbqcEtWallToEpoch(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), hm.h, hm.m);
+  return {
+    slateStart: bbqcEtWallToEpoch(prev.getUTCFullYear(), prev.getUTCMonth() + 1, prev.getUTCDate(), 22, 0),
+    reminder: reveal - 2 * 3600 * 1000,
+    reveal: reveal
+  };
+}
 function bbqcSlateWindow(w) {
   if (!w.date) return { start: 0, end: Infinity };
-  const parts = w.date.split('-').map(Number);
-  const sun = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
-  const sat = new Date(sun.getTime()); sat.setUTCDate(sat.getUTCDate() - 1);
-  return {
-    start: bbqcEtWallToEpoch(sat.getUTCFullYear(), sat.getUTCMonth() + 1, sat.getUTCDate(), 22, 0),
-    end: bbqcEtWallToEpoch(sun.getUTCFullYear(), sun.getUTCMonth() + 1, sun.getUTCDate(), 13, 0)
-  };
+  const t = bbqcBoardTimes(w);
+  return { start: t.slateStart, end: t.reveal };
 }
 // Post the slate once, only inside its window (10pm Sat → 1pm Sun ET).
 async function bbqcTrySlate(weekId, w) {
@@ -1044,54 +1062,69 @@ app.get('/bernie/preview', function(req, res) {
 });
 
 // ── Timed posts: 11am ET reminder + 1pm ET reveal (Sundays) ───────
-// Both target the open board dated for today (ET) and fire once per board.
+// Post the reminder once for a board (who's in / still out, when picks close).
+async function bbqcDoReminder(id, w) {
+  const notifyRef = bbqcRef('notify/' + id);
+  if ((await notifyRef.child('reminder').get()).val()) return;
+  const inNames = Object.keys(w.picks || {}).filter(function(n) { return n !== w.house; });
+  const missing = BBQC_MEMBERS.filter(function(m) { return m !== w.house && inNames.indexOf(m) === -1; });
+  const hm = bbqcRevealHM(w);
+  const msg = ['⏰ Last call — Sunday Bets ' + (w.title || ''),
+    'Picks close at ' + bbqcFmtTime(hm.h, hm.m) + ', then everything reveals.',
+    w.house ? ('🏠 Backstop: ' + w.house) : '',
+    inNames.length ? ('✅ In: ' + inNames.join(', ')) : '',
+    missing.length ? ('🕐 Still out: ' + missing.join(', ')) : '🎉 Everyone is in!',
+    '', '🔗 ' + BBQC_PAGE].filter(Boolean).join('\n');
+  await bbqcPost(msg);
+  await notifyRef.child('reminder').set(true);
+  console.log('[BBQC] reminder posted for ' + (w.title || id));
+}
+// Post the reveal (what's on the line + money on the line) once and lock the board.
+async function bbqcDoReveal(id, w) {
+  const notifyRef = bbqcRef('notify/' + id);
+  if ((await notifyRef.child('reveal').get()).val()) return;
+  await bbqcPost(bbqcOnTheLineMsg(w));            // #1 what's on the line (per bet + $)
+  const ml = bbqcMoneyLineMsg(w);                 // #2 money on the line (matchups + exposure)
+  if (ml) await bbqcPost(ml);
+  await notifyRef.child('reveal').set(true);
+  await bbqcRef('weeks/' + id + '/status').set('locked'); // auto-lock so the site reveals too
+  console.log('[BBQC] reveal posted + board locked for ' + (w.title || id));
+}
+// Manual "do it now" jobs behind the /bbqc/reminder and /bbqc/reveal endpoints
+// (no time gate — fire for any open board dated today ET).
 async function bbqcReminderJob() {
   if (!firebaseReady) return;
-  const today = bbqcTodayET();
-  const weeks = (await bbqcRef('weeks').get()).val() || {};
-  for (const [id, w] of Object.entries(weeks)) {
-    if (!w || w.status !== 'open' || w.date !== today) continue;
-    const notifyRef = bbqcRef('notify/' + id);
-    if ((await notifyRef.child('reminder').get()).val()) continue;
-    const inNames = Object.keys(w.picks || {}).filter(function(n) { return n !== w.house; });
-    const missing = BBQC_MEMBERS.filter(function(m) { return m !== w.house && inNames.indexOf(m) === -1; });
-    const msg = ['⏰ 2 hours to lock — Sunday Bets ' + (w.title || ''),
-      'Picks close at 1pm ET, then everything reveals.',
-      w.house ? ('🏠 Backstop: ' + w.house) : '',
-      inNames.length ? ('✅ In: ' + inNames.join(', ')) : '',
-      missing.length ? ('🕐 Still out: ' + missing.join(', ')) : '🎉 Everyone is in!',
-      '', '🔗 ' + BBQC_PAGE].filter(Boolean).join('\n');
-    await bbqcPost(msg);
-    await notifyRef.child('reminder').set(true);
-    console.log('[BBQC] reminder posted for ' + (w.title || id));
-  }
+  const today = bbqcTodayET(), weeks = (await bbqcRef('weeks').get()).val() || {};
+  for (const [id, w] of Object.entries(weeks)) if (w && w.status === 'open' && w.date === today) await bbqcDoReminder(id, w);
 }
 async function bbqcRevealJob() {
   if (!firebaseReady) return;
-  const today = bbqcTodayET();
-  const weeks = (await bbqcRef('weeks').get()).val() || {};
-  for (const [id, w] of Object.entries(weeks)) {
-    if (!w || w.status !== 'open' || w.date !== today) continue;
-    const notifyRef = bbqcRef('notify/' + id);
-    if ((await notifyRef.child('reveal').get()).val()) continue;
-    await bbqcPost(bbqcOnTheLineMsg(w));            // #1 what's on the line (per bet + $)
-    const ml = bbqcMoneyLineMsg(w);                 // #2 money on the line (matchups + exposure)
-    if (ml) await bbqcPost(ml);
-    await notifyRef.child('reveal').set(true);
-    await bbqcRef('weeks/' + id + '/status').set('locked'); // auto-lock so the site reveals too
-    console.log('[BBQC] reveal posted + board locked for ' + (w.title || id));
-  }
+  const today = bbqcTodayET(), weeks = (await bbqcRef('weeks').get()).val() || {};
+  for (const [id, w] of Object.entries(weeks)) if (w && w.status === 'open' && w.date === today) await bbqcDoReveal(id, w);
 }
-// Slate release: fire at 10pm ET Saturday for any board already completed for
-// the next day (boards completed later post on their own via bbqcTrySlate).
 async function bbqcSlateJob() {
   if (!firebaseReady) return;
   const weeks = (await bbqcRef('weeks').get()).val() || {};
   for (const [id, w] of Object.entries(weeks)) await bbqcTrySlate(id, w);
 }
-cron.schedule('0 22 * * 6', bbqcSlateJob, ET_TZ);    // Saturdays 22:00 ET
-cron.schedule('0 11 * * 0', bbqcReminderJob, ET_TZ); // Sundays 11:00 ET
-cron.schedule('0 13 * * 0', bbqcRevealJob, ET_TZ);   // Sundays 13:00 ET
+// Unified scheduler: runs often and fires each board's slate / reminder / reveal
+// when its OWN date + time arrive — works any weekday (Sunday, Thanksgiving
+// Thursday, a Monday nighter). Idempotent via notify flags.
+async function bbqcTick() {
+  if (!firebaseReady) return;
+  const now = Date.now(), today = bbqcTodayET();
+  const weeks = (await bbqcRef('weeks').get()).val() || {};
+  for (const [id, w] of Object.entries(weeks)) {
+    if (!w || w.status !== 'open') continue;
+    await bbqcTrySlate(id, w);              // slate: only inside its 10pm-night-before → reveal window
+    if (w.date !== today) continue;         // reminder/reveal only on the board's game day
+    const t = bbqcBoardTimes(w);
+    const notify = (await bbqcRef('notify/' + id).get()).val() || {};
+    if (now >= t.reminder && now < t.reveal && !notify.reminder) await bbqcDoReminder(id, w);
+    if (now >= t.reveal && !notify.reveal) await bbqcDoReveal(id, w);
+  }
+}
+cron.schedule('*/2 * * * *', bbqcTick, ET_TZ); // every 2 min: per-board slate/reminder/reveal by its own date + time
 
 // Manual triggers for testing (dry-run unless BBQC_GROUPME_BOT_ID is set).
 app.post('/bbqc/slate', async function(req, res) { await bbqcSlateJob(); res.json({ ok: true, dryRun: BBQC_DRY_RUN }); });

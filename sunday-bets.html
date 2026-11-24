@@ -326,8 +326,9 @@ table.gmtable{border-collapse:collapse;width:100%;table-layout:fixed;}
   <div class="modal">
     <h2 id="nw-modal-title">🔥 New Sunday Board</h2>
     <div class="field"><label>Week label</label><input id="nw-title" type="text" placeholder="e.g. Week 1"></div>
-    <div class="field"><label>Date — the Sunday of the slate</label><input id="nw-date" type="date">
-      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Drives the GroupMe timing: slate posts 10pm ET the night before, reminder 11am &amp; reveal 1pm ET that day.</div>
+    <div class="field"><label>Game day (date)</label><input id="nw-date" type="date"></div>
+    <div class="field"><label>Picks lock at</label><input id="nw-reveal" type="time" value="13:00">
+      <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Picks reveal &amp; lock at this time on game day (default 1:00 PM — Sundays). The slate posts 10pm ET the night before and a reminder goes out 2 hours before lock. For a Thursday/holiday slate, set the date and an earlier lock (e.g. 12:00 PM before the 12:30 kickoff).</div>
     </div>
     <div class="field"><label>Slate set by (name)</label><input id="nw-poster" type="text" placeholder="e.g. Zach">
       <div style="font-size:11px;color:#999;margin-top:5px;line-height:1.4;">Whoever's curating this week's slate. Shows on the board and brands the GroupMe post as "{name} Edition".</div>
@@ -1324,6 +1325,7 @@ window.openNewWeek = function() {
   const nums = Object.values(weeks).map(w => parseInt((w.title || '').replace(/\D/g, '')) || 0);
   document.getElementById('nw-title').value = `Week ${Math.max(0, ...nums) + 1}`;
   document.getElementById('nw-poster').value = '';
+  document.getElementById('nw-reveal').value = '13:00';
   fillHouseSelect('');
   const d = new Date();
   d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
@@ -1342,6 +1344,7 @@ window.openEditWeek = function(weekId) {
   document.getElementById('nw-title').value = w.title || '';
   document.getElementById('nw-date').value = w.date || '';
   document.getElementById('nw-poster').value = w.poster || '';
+  document.getElementById('nw-reveal').value = w.revealET || '13:00';
   fillHouseSelect(w.house || '');
   for (let i = 1; i <= 5; i++) {
     const ln = w.lines?.[`l${i}`] || {};
@@ -1359,6 +1362,7 @@ window.saveNewWeek = async function() {
   const title = document.getElementById('nw-title').value.trim();
   const date = document.getElementById('nw-date').value;
   const poster = document.getElementById('nw-poster').value.trim();
+  const revealET = document.getElementById('nw-reveal').value || '13:00';
   const lines = {};
   for (let i = 1; i <= 5; i++) {
     const header = document.getElementById(`nw-h${i}`).value.trim();
@@ -1383,7 +1387,7 @@ window.saveNewWeek = async function() {
   if (editing) {
     const nPicks = Object.keys(prev?.picks || {}).length;
     if (nPicks && !confirm(`${nPicks} ${nPicks === 1 ? 'player has' : 'players have'} already locked in. Editing a bet's wording is safe (picks are stored as side A/B, not the text) — but swapping a bet's two sides or changing the Backstop will change how it scores. Save changes?`)) return;
-    await update(ref(db, `bbqc/${SEASON}/weeks/${editing}`), { title, date, poster, house: house || null, lines });
+    await update(ref(db, `bbqc/${SEASON}/weeks/${editing}`), { title, date, poster, revealET, house: house || null, lines });
     editingWeekId = null;
     document.getElementById('nw-error').textContent = '';
     closeModal('new-week-modal');
@@ -1391,7 +1395,7 @@ window.saveNewWeek = async function() {
     return;
   }
 
-  await push(weeksRef, { title, date, poster, house, status: 'open', lines, picks: {}, created: Date.now() });
+  await push(weeksRef, { title, date, poster, revealET, house, status: 'open', lines, picks: {}, created: Date.now() });
   for (let i = 1; i <= 5; i++) { document.getElementById(`nw-h${i}`).value = ''; document.getElementById(`nw-l${i}a`).value = ''; document.getElementById(`nw-l${i}b`).value = ''; }
   document.getElementById('nw-error').textContent = '';
   closeModal('new-week-modal');
